@@ -779,7 +779,7 @@ function renderTable() {
       <td onclick="event.stopPropagation()">
         <input type="checkbox" class="row-check" data-id="${p.id}" style="cursor:pointer">
       </td>
-      <td class="col-name" onclick="openProject(${p.id})" style="cursor:pointer;color:var(--green);text-decoration:underline;text-underline-offset:3px">${escHtml(p.name)}</td>
+      <td class="col-name proj-link" data-id="${p.id}" style="cursor:pointer;color:var(--green);text-decoration:underline;text-underline-offset:3px">${escHtml(p.name)}</td>
       <td class="col-location">${escHtml(p.location||'-')}</td>
       <td><span class="type-badge">${escHtml(p.type||'-')}</span></td>
       <td>${statusBadge(p.status)}</td>
@@ -797,6 +797,13 @@ function renderTable() {
   `).join('');
 
   updateStats();
+
+  // 프로젝트명 클릭 이벤트 (이벤트 위임 방식 - 가장 안정적)
+  document.querySelectorAll('.proj-link').forEach(td => {
+    td.addEventListener('click', function() {
+      openProject(this.dataset.id);
+    });
+  });
 }
 
 function statusBadge(s) {
@@ -828,11 +835,13 @@ function setFilter(val, btn) {
 
 // ── OPEN PROJECT ──
 function openProject(id) {
-  const p = projects.find(x => x.id === id);
-  if (!p) return;
-  // 프로젝트 정보를 sessionStorage에 저장 후 상세 페이지로 이동
-  sessionStorage.setItem('currentProject', JSON.stringify(p));
-  window.location.href = `project.html?id=${id}`;
+  const p = projects.find(x => String(x.id) === String(id));
+  if (!p) {
+    alert('프로젝트 정보를 찾을 수 없습니다. (id: ' + id + ')');
+    return;
+  }
+  try { sessionStorage.setItem('currentProject', JSON.stringify(p)); } catch(e) {}
+  window.location.href = 'project.html?id=' + id;
 }
 
 function selectRow(tr) {
