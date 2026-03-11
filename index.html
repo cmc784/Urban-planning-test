@@ -775,11 +775,11 @@ function renderTable() {
   }
 
   tbody.innerHTML = list.map(p => `
-    <tr onclick="selectRow(this)" data-id="${p.id}">
+    <tr data-id="${p.id}">
       <td onclick="event.stopPropagation()">
         <input type="checkbox" class="row-check" data-id="${p.id}" style="cursor:pointer">
       </td>
-      <td class="col-name">${escHtml(p.name)}</td>
+      <td class="col-name" onclick="openProject(${p.id})" style="cursor:pointer;color:var(--green);text-decoration:underline;text-underline-offset:3px">${escHtml(p.name)}</td>
       <td class="col-location">${escHtml(p.location||'-')}</td>
       <td><span class="type-badge">${escHtml(p.type||'-')}</span></td>
       <td>${statusBadge(p.status)}</td>
@@ -826,7 +826,15 @@ function setFilter(val, btn) {
   renderTable();
 }
 
-// ── SELECT ROW ──
+// ── OPEN PROJECT ──
+function openProject(id) {
+  const p = projects.find(x => x.id === id);
+  if (!p) return;
+  // 프로젝트 정보를 sessionStorage에 저장 후 상세 페이지로 이동
+  sessionStorage.setItem('currentProject', JSON.stringify(p));
+  window.location.href = `project.html?id=${id}`;
+}
+
 function selectRow(tr) {
   tr.classList.toggle('selected');
 }
