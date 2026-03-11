@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>프로젝트 상세</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #f4f2ee;
+  --white: #fff;
+  --ink: #1a1a1a;
+  --ink2: #444;
+  --ink3: #888;
+  --border: #ddd9d0;
+  --border2: #eceae4;
+  --green: #1a5c3a;
+  --green-light: #e6f2eb;
+  --green-mid: #2e7d52;
+  --blue: #1a3a6e;
+  --blue-light: #e8f0fc;
+  --amber: #b45309;
+  --amber-light: #fef3cd;
+  --red: #b91c1c;
+  --red-light: #fee2e2;
+  --purple: #5b21b6;
+  --purple-light: #ede9fe;
+  --teal: #0f766e;
+  --teal-light: #ccfbf1;
+  --shadow: 0 1px 4px rgba(0,0,0,0.07);
+  --shadow-md: 0 4px 20px rgba(0,0,0,0.10);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.13);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--ink); min-height:100vh; }
+
+/* TOPBAR */
+.topbar {
+  background:var(--green); color:white;
+  padding:0 28px; height:54px;
+  display:flex; align-items:center; justify-content:space-between;
+  position:sticky; top:0; z-index:200;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.topbar-left { display:flex; align-items:center; gap:12px; }
+.back-btn {
+  background:rgba(255,255,255,0.15); border:none; color:white;
+  padding:6px 14px; border-radius:7px; font-size:12px; font-weight:700;
+  cursor:pointer; font-family:'Noto Sans KR',sans-serif;
+  display:flex; align-items:center; gap:5px; transition:background 0.15s;
+}
+.back-btn:hover { background:rgba(255,255,255,0.28); }
+.topbar-title { font-size:15px; font-weight:700; }
+.topbar-badge {
+  background:rgba(255,255,255,0.18); border-radius:5px;
+  padding:3px 10px; font-size:11px; font-weight:600;
+}
+
+/* MAIN */
+.main { max-width:1100px; margin:0 auto; padding:32px 20px 80px; }
+
+/* PROJECT HEADER */
+.project-header {
+  background:var(--white); border:1px solid var(--border);
+  border-radius:14px; padding:24px 28px; margin-bottom:28px;
+  box-shadow:var(--shadow-md);
+  display:flex; align-items:flex-start; justify-content:space-between; gap:20px;
+  flex-wrap:wrap;
+}
+.project-header-left { flex:1; min-width:200px; }
+.project-eyebrow {
+  font-size:10px; font-weight:700; text-transform:uppercase;
+  letter-spacing:1px; color:var(--ink3); font-family:'DM Mono',monospace;
+  margin-bottom:6px;
+}
+.project-title {
+  font-size:22px; font-weight:800; color:var(--ink);
+  margin-bottom:10px; line-height:1.3;
+}
+.project-meta { display:flex; gap:18px; flex-wrap:wrap; }
+.meta-chip {
+  display:flex; align-items:center; gap:5px;
+  font-size:12px; color:var(--ink3);
+}
+.meta-chip strong { color:var(--ink2); font-weight:600; }
+
+.project-header-right { display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
+
+/* STATUS BADGE */
+.status-badge {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:5px 12px; border-radius:20px; font-size:12px; font-weight:700;
+}
+.s-진행중 { background:#dbeafe; color:#1d4ed8; }
+.s-검토중 { background:var(--amber-light); color:var(--amber); }
+.s-완료   { background:var(--green-light); color:var(--green); }
+.s-보류   { background:#f3f4f6; color:#6b7280; }
+
+/* STATS ROW */
+.stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:28px; }
+.stat-card {
+  background:var(--white); border:1px solid var(--border);
+  border-radius:10px; padding:14px 18px; box-shadow:var(--shadow);
+}
+.stat-label { font-size:10px; color:var(--ink3); font-weight:700; text-transform:uppercase; letter-spacing:0.6px; margin-bottom:5px; font-family:'DM Mono',monospace; }
+.stat-val { font-size:20px; font-weight:800; font-family:'DM Mono',monospace; }
+.stat-unit { font-size:11px; color:var(--ink3); margin-left:2px; font-weight:400; font-family:'Noto Sans KR',sans-serif; }
+
+/* SECTION TITLE */
+.section-title {
+  font-size:11px; font-weight:800; text-transform:uppercase;
+  letter-spacing:1px; color:var(--ink3); font-family:'DM Mono',monospace;
+  margin-bottom:14px; display:flex; align-items:center; gap:8px;
+}
+.section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+/* WORK GRID */
+.work-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:32px; }
+
+.work-card {
+  background:var(--white); border:1px solid var(--border);
+  border-radius:14px; padding:22px; cursor:pointer;
+  transition:all 0.2s; box-shadow:var(--shadow);
+  display:flex; flex-direction:column; gap:12px;
+  position:relative; overflow:hidden;
+  text-decoration:none; color:inherit;
+}
+.work-card::before {
+  content:''; position:absolute; top:0; left:0; right:0;
+  height:3px; border-radius:14px 14px 0 0;
+  transition:height 0.2s;
+}
+.work-card:hover { transform:translateY(-3px); box-shadow:var(--shadow-lg); border-color:transparent; }
+.work-card:hover::before { height:4px; }
+
+.wc-green::before  { background:var(--green); }
+.wc-blue::before   { background:var(--blue); }
+.wc-amber::before  { background:var(--amber); }
+.wc-purple::before { background:var(--purple); }
+.wc-teal::before   { background:var(--teal); }
+.wc-red::before    { background:var(--red); }
+
+.work-card:hover.wc-green  { border-color:var(--green-light);  background:linear-gradient(160deg,#fff 60%,var(--green-light)); }
+.work-card:hover.wc-blue   { border-color:var(--blue-light);   background:linear-gradient(160deg,#fff 60%,var(--blue-light)); }
+.work-card:hover.wc-amber  { border-color:var(--amber-light);  background:linear-gradient(160deg,#fff 60%,var(--amber-light)); }
+.work-card:hover.wc-purple { border-color:var(--purple-light); background:linear-gradient(160deg,#fff 60%,var(--purple-light)); }
+.work-card:hover.wc-teal   { border-color:var(--teal-light);   background:linear-gradient(160deg,#fff 60%,var(--teal-light)); }
+.work-card:hover.wc-red    { border-color:var(--red-light);    background:linear-gradient(160deg,#fff 60%,var(--red-light)); }
+
+.wc-icon { font-size:28px; }
+.wc-top { display:flex; align-items:flex-start; justify-content:space-between; }
+
+.wc-badge {
+  font-size:9px; font-weight:800; padding:3px 8px;
+  border-radius:10px; text-transform:uppercase; letter-spacing:0.5px;
+  font-family:'DM Mono',monospace;
+}
+.badge-ready  { background:var(--green-light);  color:var(--green); }
+.badge-soon   { background:var(--amber-light);  color:var(--amber); }
+.badge-plan   { background:#f3f4f6; color:#6b7280; }
+
+.wc-title { font-size:15px; font-weight:800; color:var(--ink); }
+.wc-desc  { font-size:12px; color:var(--ink3); line-height:1.65; }
+
+.wc-footer {
+  margin-top:auto; padding-top:10px; border-top:1px solid var(--border2);
+  display:flex; align-items:center; justify-content:space-between;
+}
+.wc-tag { font-size:10px; font-family:'DM Mono',monospace; color:var(--ink3); }
+.wc-arrow { font-size:14px; color:var(--ink3); transition:transform 0.2s; }
+.work-card:hover .wc-arrow { transform:translateX(4px); }
+
+/* COMING SOON OVERLAY */
+.work-card.coming-soon { cursor:default; opacity:0.7; }
+.work-card.coming-soon:hover { transform:none; box-shadow:var(--shadow); }
+
+/* RECENT ACTIVITY */
+.activity-list { display:flex; flex-direction:column; gap:0; }
+.activity-item {
+  display:flex; align-items:center; gap:14px;
+  padding:12px 0; border-bottom:1px solid var(--border2);
+}
+.activity-item:last-child { border-bottom:none; }
+.activity-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.activity-dot.green  { background:var(--green); }
+.activity-dot.blue   { background:var(--blue); }
+.activity-dot.amber  { background:var(--amber); }
+.activity-text { flex:1; font-size:12px; color:var(--ink2); }
+.activity-text strong { color:var(--ink); font-weight:700; }
+.activity-time { font-size:11px; color:var(--ink3); font-family:'DM Mono',monospace; white-space:nowrap; }
+
+/* MEMO CARD */
+.memo-card {
+  background:var(--white); border:1px solid var(--border);
+  border-radius:12px; padding:18px 20px; box-shadow:var(--shadow);
+}
+.memo-text { font-size:13px; color:var(--ink2); line-height:1.7; }
+
+/* GRID 2COL */
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px; }
+
+/* TOAST */
+.toast {
+  position:fixed; bottom:24px; left:50%;
+  transform:translateX(-50%) translateY(80px);
+  background:var(--ink); color:white; padding:10px 22px;
+  border-radius:30px; font-size:13px; font-weight:500;
+  z-index:999; transition:transform 0.3s ease; pointer-events:none;
+}
+.toast.show { transform:translateX(-50%) translateY(0); }
+
+@media(max-width:768px) {
+  .work-grid { grid-template-columns:1fr 1fr; }
+  .stats-row { grid-template-columns:1fr 1fr; }
+  .grid-2 { grid-template-columns:1fr; }
+}
+@media(max-width:480px) {
+  .work-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <button class="back-btn" onclick="history.back()">← 목록으로</button>
+    <span class="topbar-title" id="topTitle">프로젝트</span>
+  </div>
+  <div>
+    <span class="topbar-badge" id="topBadge">진행중</span>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- PROJECT HEADER -->
+  <div class="project-header">
+    <div class="project-header-left">
+      <div class="project-eyebrow">Urban Planning Project</div>
+      <div class="project-title" id="projTitle">—</div>
+      <div class="project-meta">
+        <div class="meta-chip">📍 <strong id="projLocation">—</strong></div>
+        <div class="meta-chip">🗂️ <strong id="projType">—</strong></div>
+        <div class="meta-chip">👤 <strong id="projManager">—</strong></div>
+        <div class="meta-chip">📐 <strong id="projArea">—</strong> ㎡</div>
+      </div>
+    </div>
+    <div class="project-header-right">
+      <span class="status-badge" id="projStatus">—</span>
+      <span style="font-size:11px;color:var(--ink3);font-family:'DM Mono',monospace" id="projDate">—</span>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">사업 면적</div>
+      <div class="stat-val"><span id="s-area">—</span><span class="stat-unit">㎡</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">작업 항목</div>
+      <div class="stat-val"><span id="s-tasks">5</span><span class="stat-unit">개</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">완료 작업</div>
+      <div class="stat-val"><span id="s-done">0</span><span class="stat-unit">개</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">진행률</div>
+      <div class="stat-val"><span id="s-progress">0</span><span class="stat-unit">%</span></div>
+    </div>
+  </div>
+
+  <!-- WORK MENU -->
+  <div class="section-title">작업 메뉴</div>
+  <div class="work-grid">
+
+    <!-- 편입토지조서 -->
+    <div class="work-card wc-green" onclick="goWork('land-parcel-auto.html')">
+      <div class="wc-top">
+        <div class="wc-icon">🗺️</div>
+        <span class="wc-badge badge-ready">사용 가능</span>
+      </div>
+      <div class="wc-title">편입토지조서</div>
+      <div class="wc-desc">PNU 파일과 토지대장을 업로드하면<br>편입토지조서를 자동으로 생성합니다.</div>
+      <div class="wc-footer">
+        <span class="wc-tag">PNU · 토지대장 · 조서출력</span>
+        <span class="wc-arrow">→</span>
+      </div>
+    </div>
+
+    <!-- 용적률/건폐율 계산 -->
+    <div class="work-card wc-blue coming-soon">
+      <div class="wc-top">
+        <div class="wc-icon">📐</div>
+        <span class="wc-badge badge-soon">준비 중</span>
+      </div>
+      <div class="wc-title">용적률 · 건폐율 계산</div>
+      <div class="wc-desc">용도지역별 용적률·건폐율 기준을<br>자동으로 계산하고 검토합니다.</div>
+      <div class="wc-footer">
+        <span class="wc-tag">면적 · 층수 · 용도지역</span>
+        <span class="wc-arrow">→</span>
+      </div>
+    </div>
+
+    <!-- 보상가 산정 -->
+    <div class="work-card wc-amber coming-soon">
+      <div class="wc-top">
+        <div class="wc-icon">💰</div>
+        <span class="wc-badge badge-soon">준비 중</span>
+      </div>
+      <div class="wc-title">보상가 산정</div>
+      <div class="wc-desc">공시지가 기반 토지보상금을<br>필지별로 산정하고 총액을 집계합니다.</div>
+      <div class="wc-footer">
+        <span class="wc-tag">공시지가 · 보상율 · 합계</span>
+        <span class="wc-arrow">→</span>
+      </div>
+    </div>
+
+    <!-- 지장물 조서 -->
+    <div class="work-card wc-purple coming-soon">
+      <div class="wc-top">
+        <div class="wc-icon">🏠</div>
+        <span class="wc-badge badge-plan">계획</span>
+      </div>
+      <div class="wc-title">지장물 조서</div>
+      <div class="wc-desc">건축물·공작물·입목 등 지장물 현황을<br>항목별로 정리하고 관리합니다.</div>
+      <div class="wc-footer">
+        <span class="wc-tag">건축물 · 공작물 · 수목</span>
+        <span class="wc-arrow">→</span>
+      </div>
+    </div>
+
+    <!-- 보고서 출력 -->
+    <div class="work-card wc-teal coming-soon">
+      <div class="wc-top">
+        <div class="wc-icon">📄</div>
+        <span class="wc-badge badge-plan">계획</span>
+      </div>
+      <div class="wc-title">보고서 출력</div>
+      <div class="wc-desc">작성된 조서를 바탕으로<br>PDF/엑셀 보고서를 자동 생성합니다.</div>
+      <div class="wc-footer">
+        <span class="wc-tag">PDF · Excel · 양식</span>
+        <span class="wc-arrow">→</span>
+      </div>
+    </div>
+
+    <!-- 메모/이력 -->
+    <div class="work-card wc-red coming-soon">
+      <div class="wc-top">
+        <div class="wc-icon">📋</div>
+        <span class="wc-badge badge-plan">계획</span>
+      </div>
+      <div class="wc-title">업무 이력 관리</div>
+      <div class="wc-desc">프로젝트 진행 이력, 회의록, 메모를<br>날짜순으로 기록하고 조회합니다.</div>
+      <div class="wc-footer">
+        <span class="wc-tag">이력 · 메모 · 첨부</span>
+        <span class="wc-arrow">→</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- BOTTOM: MEMO + ACTIVITY -->
+  <div class="grid-2">
+
+    <div>
+      <div class="section-title">프로젝트 메모</div>
+      <div class="memo-card">
+        <div class="memo-text" id="projMemo">등록된 메모가 없습니다.</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">최근 작업 이력</div>
+      <div class="memo-card" style="padding:0 20px">
+        <div class="activity-list" id="activityList">
+          <div class="activity-item">
+            <div class="activity-dot blue"></div>
+            <div class="activity-text">프로젝트가 <strong>생성</strong>되었습니다</div>
+            <div class="activity-time">오늘</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── 프로젝트 정보 로드 ──────────────────────────────
+function loadProject() {
+  let project = null;
+
+  // 1. sessionStorage에서 읽기 (대시보드에서 클릭해서 온 경우)
+  try {
+    const raw = sessionStorage.getItem('currentProject');
+    if (raw) project = JSON.parse(raw);
+  } catch(e) {}
+
+  // 2. URL 파라미터로 ID 확인 후 localStorage에서 읽기
+  if (!project) {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    if (id) {
+      try {
+        const projects = JSON.parse(localStorage.getItem('urbanProjects') || '[]');
+        project = projects.find(p => String(p.id) === String(id));
+      } catch(e) {}
+    }
+  }
+
+  // 3. 샘플 데이터 (직접 접속 시 fallback)
+  if (!project) {
+    project = {
+      name: '샘플 프로젝트', location: '서울특별시 강남구',
+      type: '도시개발사업', manager: '담당자',
+      area: '50000', status: '진행중',
+      memo: '프로젝트 메모를 여기에 입력하세요.',
+      date: new Date().toISOString().slice(0,10)
+    };
+  }
+
+  // 화면에 반영
+  document.title = `${project.name} — 프로젝트 상세`;
+  document.getElementById('topTitle').textContent = project.name;
+  document.getElementById('projTitle').textContent = project.name;
+  document.getElementById('projLocation').textContent = project.location || '—';
+  document.getElementById('projType').textContent = project.type || '—';
+  document.getElementById('projManager').textContent = project.manager || '—';
+  document.getElementById('projArea').textContent = project.area ? Number(project.area).toLocaleString() : '—';
+  document.getElementById('s-area').textContent = project.area ? Number(project.area).toLocaleString() : '—';
+  document.getElementById('projDate').textContent = project.date ? `등록일: ${project.date}` : '';
+  document.getElementById('projMemo').textContent = project.memo || '등록된 메모가 없습니다.';
+
+  const statusEl = document.getElementById('projStatus');
+  const badgeEl = document.getElementById('topBadge');
+  const statusClass = { '진행중':'s-진행중','검토중':'s-검토중','완료':'s-완료','보류':'s-보류' };
+  statusEl.className = `status-badge ${statusClass[project.status] || ''}`;
+  statusEl.textContent = project.status || '—';
+  badgeEl.textContent = project.status || '—';
+
+  // sessionStorage에 프로젝트 정보 저장 (하위 페이지에서도 읽을 수 있게)
+  sessionStorage.setItem('currentProject', JSON.stringify(project));
+}
+
+// ─── 작업 페이지 이동 ────────────────────────────────
+function goWork(page) {
+  // 준비 중인 기능은 클릭 무시 (coming-soon 카드는 onclick 없음)
+  window.location.href = page;
+}
+
+// ─── 토스트 ──────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+// ─── 초기화 ──────────────────────────────────────────
+loadProject();
+</script>
+</body>
+</html>
