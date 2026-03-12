@@ -718,32 +718,52 @@ tbody tr:hover .action-btns { opacity: 1; }
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
-<script>
+<script type="module">
+// ── FIREBASE SETUP ──
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+// ✅ 아래 firebaseConfig 값을 본인의 Firebase 프로젝트 설정으로 교체하세요
+const firebaseConfig = {
+  apiKey: "AIzaSyBoG6ZwhhW-7iqHDuXjdQeBfV7fVYcuoOM",
+  authDomain: "urbanplanning-test.firebaseapp.com",
+  projectId: "urbanplanning-test",
+  storageBucket: "urbanplanning-test.firebasestorage.app",
+  messagingSenderId: "604565575520",
+  appId: "1:604565575520:web:951f429f4f2033c020f005",
+  measurementId: "G-T3F8V1RTG0"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const colRef = collection(db, 'projects');
+
 // ── DATA ──
-const STORAGE_KEY = 'urbanProjects_v1';
 let projects = [];
 let currentFilter = 'all';
 let deleteTargetId = null;
 
+// ── 실시간 리스너 (Firestore → 화면 자동 동기화) ──
 function loadData() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) projects = JSON.parse(raw);
-  } catch(e) {}
-  if (projects.length === 0) {
-    projects = [
-      { id: 1, name: '은평구 불광동 도시개발사업', location: '서울시 은평구 불광동', type: '도시개발사업', status: '진행중', manager: '김도현', area: 85000, memo: '2025년 착공 예정, 환경영향평가 완료', date: '2024-03-12' },
-      { id: 2, name: '수원시 권선구 주거환경개선', location: '경기도 수원시 권선구', type: '주거환경개선', status: '검토중', manager: '이수진', area: 42000, memo: '주민동의율 확보 필요', date: '2024-05-20' },
-      { id: 3, name: '인천 미추홀구 재개발 2구역', location: '인천시 미추홀구', type: '재개발', status: '완료', manager: '박철민', area: 120000, memo: '2023년 12월 준공 완료', date: '2022-08-01' },
-      { id: 4, name: '부산 해운대 지구단위계획', location: '부산시 해운대구', type: '지구단위계획', status: '진행중', manager: '최유나', area: 230000, memo: '문화재 인접 구역 검토 필요', date: '2024-01-15' },
-      { id: 5, name: '대전 유성구 재건축 정비사업', location: '대전시 유성구', type: '재건축', status: '보류', manager: '정태호', area: 67000, memo: '조합설립 동의율 미달로 보류', date: '2024-02-28' },
-    ];
-    saveData();
-  }
+  showLoadingState();
+  const q = query(colRef, orderBy('createdAt', 'desc'));
+  onSnapshot(q, (snapshot) => {
+    projects = snapshot.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
+    renderTable();
+  }, (err) => {
+    console.error('Firestore 오류:', err);
+    showToast('⚠️ 데이터 로드 실패. Firebase 설정을 확인하세요.');
+  });
 }
 
-function saveData() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(projects)); } catch(e) {}
+function showLoadingState() {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><div class="empty-icon">⏳</div><div class="empty-text">데이터를 불러오는 중...</div></div></td></tr>`;
+}
+
+async function saveData() {
+  // Firebase 사용 시 saveData는 직접 호출하지 않고
+  // addDoc / updateDoc 으로 개별 처리합니다
 }
 
 // ── RENDER ──
@@ -764,7 +784,10 @@ function renderTable() {
     if (sort === 'name') return a.name.localeCompare(b.name);
     if (sort === 'area') return (b.area||0) - (a.area||0);
     if (sort === 'status') return a.status.localeCompare(b.status);
-    return b.id - a.id; // newest
+    // newest: createdAt timestamp 또는 date 문자열 기준
+    const aTime = a.createdAt?.seconds || 0;
+    const bTime = b.createdAt?.seconds || 0;
+    return bTime - aTime;
   });
 
   const tbody = document.getElementById('tableBody');
@@ -775,11 +798,11 @@ function renderTable() {
   }
 
   tbody.innerHTML = list.map(p => `
-    <tr data-id="${p.id}">
+    <tr data-id="${p.firestoreId}">
       <td onclick="event.stopPropagation()">
-        <input type="checkbox" class="row-check" data-id="${p.id}" style="cursor:pointer">
+        <input type="checkbox" class="row-check" data-id="${p.firestoreId}" style="cursor:pointer">
       </td>
-      <td class="col-name proj-link" data-id="${p.id}" style="cursor:pointer;color:var(--green);text-decoration:underline;text-underline-offset:3px">${escHtml(p.name)}</td>
+      <td class="col-name proj-link" data-id="${p.firestoreId}" style="cursor:pointer;color:var(--green);text-decoration:underline;text-underline-offset:3px">${escHtml(p.name)}</td>
       <td class="col-location">${escHtml(p.location||'-')}</td>
       <td><span class="type-badge">${escHtml(p.type||'-')}</span></td>
       <td>${statusBadge(p.status)}</td>
@@ -789,8 +812,8 @@ function renderTable() {
       <td style="font-size:12px;color:var(--ink3);font-family:'DM Mono',monospace">${p.date||'-'}</td>
       <td onclick="event.stopPropagation()">
         <div class="action-btns">
-          <button class="btn-icon" title="수정" onclick="openEditModal(${p.id})">✏️</button>
-          <button class="btn-icon" title="삭제" onclick="openDeleteConfirm(${p.id})">🗑️</button>
+          <button class="btn-icon" title="수정" onclick="openEditModal('${p.firestoreId}')">✏️</button>
+          <button class="btn-icon" title="삭제" onclick="openDeleteConfirm('${p.firestoreId}')">🗑️</button>
         </div>
       </td>
     </tr>
@@ -834,14 +857,14 @@ function setFilter(val, btn) {
 }
 
 // ── OPEN PROJECT ──
-function openProject(id) {
-  const p = projects.find(x => String(x.id) === String(id));
+function openProject(firestoreId) {
+  const p = projects.find(x => x.firestoreId === firestoreId);
   if (!p) {
-    alert('프로젝트 정보를 찾을 수 없습니다. (id: ' + id + ')');
+    alert('프로젝트 정보를 찾을 수 없습니다.');
     return;
   }
   try { sessionStorage.setItem('currentProject', JSON.stringify(p)); } catch(e) {}
-  window.location.href = 'project.html?id=' + id;
+  window.location.href = 'project.html?id=' + firestoreId;
 }
 
 function selectRow(tr) {
@@ -862,11 +885,11 @@ function openAddModal() {
   document.getElementById('modalOverlay').classList.add('open');
 }
 
-function openEditModal(id) {
-  const p = projects.find(x => x.id === id);
+function openEditModal(firestoreId) {
+  const p = projects.find(x => x.firestoreId === firestoreId);
   if (!p) return;
   document.getElementById('modalTitle').textContent = '프로젝트 수정';
-  document.getElementById('editId').value = id;
+  document.getElementById('editId').value = firestoreId;
   document.getElementById('f-name').value = p.name||'';
   document.getElementById('f-location').value = p.location||'';
   document.getElementById('f-type').value = p.type||'도시개발사업';
@@ -884,11 +907,11 @@ function closeModalDirect() {
   document.getElementById('modalOverlay').classList.remove('open');
 }
 
-function saveProject() {
+async function saveProject() {
   const name = document.getElementById('f-name').value.trim();
   if (!name) { showToast('⚠️ 프로젝트명을 입력해주세요'); return; }
 
-  const editId = document.getElementById('editId').value;
+  const editFirestoreId = document.getElementById('editId').value;
   const data = {
     name,
     location: document.getElementById('f-location').value.trim(),
@@ -899,37 +922,42 @@ function saveProject() {
     memo: document.getElementById('f-memo').value.trim(),
   };
 
-  if (editId) {
-    const idx = projects.findIndex(p => p.id === Number(editId));
-    if (idx !== -1) projects[idx] = { ...projects[idx], ...data };
-    showToast('✅ 수정되었습니다');
-  } else {
-    data.id = Date.now();
-    data.date = new Date().toISOString().slice(0,10);
-    projects.unshift(data);
-    showToast('✅ 프로젝트가 추가되었습니다');
+  try {
+    if (editFirestoreId) {
+      // 수정
+      await updateDoc(doc(db, 'projects', editFirestoreId), data);
+      showToast('✅ 수정되었습니다');
+    } else {
+      // 신규 추가
+      data.date = new Date().toISOString().slice(0,10);
+      data.createdAt = serverTimestamp();
+      await addDoc(colRef, data);
+      showToast('✅ 프로젝트가 추가되었습니다');
+    }
+    closeModalDirect();
+  } catch(e) {
+    console.error(e);
+    showToast('⚠️ 저장 실패: ' + e.message);
   }
-
-  saveData();
-  renderTable();
-  closeModalDirect();
 }
 
 // ── DELETE ──
-function openDeleteConfirm(id) {
-  deleteTargetId = id;
+function openDeleteConfirm(firestoreId) {
+  deleteTargetId = firestoreId;
   document.getElementById('confirmOverlay').classList.add('open');
 }
 function closeConfirm() {
   deleteTargetId = null;
   document.getElementById('confirmOverlay').classList.remove('open');
 }
-function confirmDelete() {
-  projects = projects.filter(p => p.id !== deleteTargetId);
-  saveData();
-  renderTable();
-  closeConfirm();
-  showToast('🗑️ 삭제되었습니다');
+async function confirmDelete() {
+  try {
+    await deleteDoc(doc(db, 'projects', deleteTargetId));
+    closeConfirm();
+    showToast('🗑️ 삭제되었습니다');
+  } catch(e) {
+    showToast('⚠️ 삭제 실패: ' + e.message);
+  }
 }
 
 // ── TOAST ──
@@ -942,7 +970,19 @@ function showToast(msg) {
 
 // ── INIT ──
 loadData();
-renderTable();
+
+// 전역 함수 노출 (onclick 에서 호출하기 위해)
+window.openAddModal = openAddModal;
+window.openEditModal = openEditModal;
+window.openDeleteConfirm = openDeleteConfirm;
+window.closeModalDirect = closeModalDirect;
+window.closeModal = closeModal;
+window.saveProject = saveProject;
+window.confirmDelete = confirmDelete;
+window.closeConfirm = closeConfirm;
+window.setFilter = setFilter;
+window.toggleAll = toggleAll;
+window.renderTable = renderTable;
 </script>
 </body>
 </html>

@@ -392,30 +392,55 @@ body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--
 
 <div class="toast" id="toast"></div>
 
-<script>
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+// ✅ index.html 과 동일한 firebaseConfig 를 여기에도 입력하세요
+const firebaseConfig = {
+  apiKey: "AIzaSyBoG6ZwhhW-7iqHDuXjdQeBfV7fVYcuoOM",
+  authDomain: "urbanplanning-test.firebaseapp.com",
+  projectId: "urbanplanning-test",
+  storageBucket: "urbanplanning-test.firebasestorage.app",
+  messagingSenderId: "604565575520",
+  appId: "1:604565575520:web:951f429f4f2033c020f005",
+  measurementId: "G-T3F8V1RTG0"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
 // ─── 프로젝트 정보 로드 ──────────────────────────────
-function loadProject() {
+async function loadProject() {
   let project = null;
 
-  // 1. sessionStorage에서 읽기 (대시보드에서 클릭해서 온 경우)
+  // 1. sessionStorage 에서 읽기 (대시보드에서 클릭해서 온 경우 - 즉시 표시)
   try {
     const raw = sessionStorage.getItem('currentProject');
-    if (raw) project = JSON.parse(raw);
+    if (raw) {
+      project = JSON.parse(raw);
+      renderProject(project); // 먼저 빠르게 표시
+    }
   } catch(e) {}
 
-  // 2. URL 파라미터로 ID 확인 후 localStorage에서 읽기
-  if (!project) {
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get('id');
-    if (id) {
-      try {
-        const projects = JSON.parse(localStorage.getItem('urbanProjects') || '[]');
-        project = projects.find(p => String(p.id) === String(id));
-      } catch(e) {}
+  // 2. URL 파라미터로 Firestore 에서 최신 데이터 로드
+  const params = new URLSearchParams(window.location.search);
+  const firestoreId = params.get('id');
+  if (firestoreId) {
+    try {
+      const snap = await getDoc(doc(db, 'projects', firestoreId));
+      if (snap.exists()) {
+        project = { firestoreId: snap.id, ...snap.data() };
+        renderProject(project);
+        sessionStorage.setItem('currentProject', JSON.stringify(project));
+      }
+    } catch(e) {
+      console.error('Firestore 로드 오류:', e);
+      showToast('⚠️ Firebase 설정을 확인하세요.');
     }
   }
 
-  // 3. 샘플 데이터 (직접 접속 시 fallback)
+  // 3. 아무것도 없으면 샘플 (직접 접속 시 fallback)
   if (!project) {
     project = {
       name: '샘플 프로젝트', location: '서울특별시 강남구',
@@ -424,9 +449,11 @@ function loadProject() {
       memo: '프로젝트 메모를 여기에 입력하세요.',
       date: new Date().toISOString().slice(0,10)
     };
+    renderProject(project);
   }
+}
 
-  // 화면에 반영
+function renderProject(project) {
   document.title = `${project.name} — 프로젝트 상세`;
   document.getElementById('topTitle').textContent = project.name;
   document.getElementById('projTitle').textContent = project.name;
@@ -444,14 +471,10 @@ function loadProject() {
   statusEl.className = `status-badge ${statusClass[project.status] || ''}`;
   statusEl.textContent = project.status || '—';
   badgeEl.textContent = project.status || '—';
-
-  // sessionStorage에 프로젝트 정보 저장 (하위 페이지에서도 읽을 수 있게)
-  sessionStorage.setItem('currentProject', JSON.stringify(project));
 }
 
 // ─── 작업 페이지 이동 ────────────────────────────────
-function goWork(page) {
-  // 준비 중인 기능은 클릭 무시 (coming-soon 카드는 onclick 없음)
+window.goWork = function(page) {
   window.location.href = page;
 }
 
@@ -462,6 +485,7 @@ function showToast(msg) {
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2400);
 }
+window.showToast = showToast;
 
 // ─── 초기화 ──────────────────────────────────────────
 loadProject();
