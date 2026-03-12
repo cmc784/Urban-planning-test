@@ -599,6 +599,26 @@ tbody tr:hover .action-btns { opacity: 1; }
 }
 .toast.show { transform: translateX(-50%) translateY(0); }
 
+/* ACTION BUTTONS IN TOOLBAR */
+.btn-action {
+  padding: 7px 14px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'Noto Sans KR', sans-serif;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.btn-action:disabled { opacity: 0.38; cursor: not-allowed; }
+.btn-act-add { background: var(--green); color: white; border-color: var(--green); }
+.btn-act-add:hover { background: var(--green-mid); }
+.btn-act-edit { background: var(--white); color: var(--ink2); }
+.btn-act-edit:not(:disabled):hover { background: var(--blue-light); border-color: var(--blue); color: var(--blue); }
+.btn-act-del { background: var(--white); color: var(--ink2); }
+.btn-act-del:not(:disabled):hover { background: var(--red-light); border-color: var(--red); color: var(--red); }
+
 /* RESPONSIVE */
 @media (max-width: 640px) {
   .topbar { padding: 0 16px; }
@@ -641,7 +661,6 @@ tbody tr:hover .action-btns { opacity: 1; }
     </div>
   </div>
   <div class="topbar-right">
-    <button class="btn-add" onclick="openAddModal()">＋ 프로젝트 추가</button>
   </div>
 </div>
 
@@ -686,11 +705,17 @@ tbody tr:hover .action-btns { opacity: 1; }
   <button class="filter-btn" data-filter="진행중" onclick="setFilter('진행중', this)">진행중</button>
   <button class="filter-btn" data-filter="완료" onclick="setFilter('완료', this)">완료</button>
   <button class="filter-btn" data-filter="보류" onclick="setFilter('보류', this)">보류</button>
-  <select class="sort-select" onchange="renderTable()" id="sortSelect">
-    <option value="newest">최근 추가순</option>
-    <option value="name">사업명순</option>
-    <option value="status">상태순</option>
-  </select>
+  <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+    <button class="btn-action btn-act-add" onclick="openAddModal()">＋ 추가</button>
+    <button class="btn-action btn-act-edit" id="btnEdit" onclick="editSelectedRow()" disabled>✏️ 수정</button>
+    <button class="btn-action btn-act-del" id="btnDel" onclick="deleteSelectedRow()" disabled>🗑️ 삭제</button>
+    <div style="width:1px;height:24px;background:var(--border);margin:0 4px"></div>
+    <select class="sort-select" onchange="renderTable()" id="sortSelect" style="margin-left:0">
+      <option value="newest">최근 추가순</option>
+      <option value="name">사업명순</option>
+      <option value="status">상태순</option>
+    </select>
+  </div>
 </div>
 
 <!-- TABLE -->
@@ -890,12 +915,49 @@ function renderTable() {
 
   updateStats();
 
-  // 프로젝트명 클릭 이벤트 (이벤트 위임 방식 - 가장 안정적)
+  // 프로젝트명 클릭 이벤트
   document.querySelectorAll('.proj-link').forEach(td => {
     td.addEventListener('click', function() {
       openProject(this.dataset.id);
     });
   });
+
+  // 체크박스 변경 시 버튼 활성화
+  document.querySelectorAll('.row-check').forEach(chk => {
+    chk.addEventListener('change', updateActionButtons);
+  });
+}
+
+function updateActionButtons() {
+  const checked = document.querySelectorAll('.row-check:checked');
+  const btnEdit = document.getElementById('btnEdit');
+  const btnDel = document.getElementById('btnDel');
+  btnEdit.disabled = checked.length !== 1;
+  btnDel.disabled = checked.length === 0;
+}
+
+function editSelectedRow() {
+  const checked = document.querySelectorAll('.row-check:checked');
+  if (checked.length !== 1) return;
+  openEditModal(checked[0].dataset.id);
+}
+
+async function deleteSelectedRow() {
+  const checked = document.querySelectorAll('.row-check:checked');
+  if (checked.length === 0) return;
+  if (checked.length === 1) {
+    // 단건 삭제는 기존 confirm 모달 사용
+    openDeleteConfirm(checked[0].dataset.id);
+  } else {
+    // 다건 삭제
+    if (!confirm(`선택한 ${checked.length}개 프로젝트를 삭제할까요?`)) return;
+    try {
+      await Promise.all(Array.from(checked).map(c => deleteDoc(doc(db, 'projects', c.dataset.id))));
+      showToast(`🗑️ ${checked.length}개 삭제되었습니다`);
+    } catch(e) {
+      showToast('⚠️ 삭제 실패: ' + e.message);
+    }
+  }
 }
 
 function statusBadge(s) {
@@ -941,6 +1003,7 @@ function selectRow(tr) {
 
 function toggleAll(chk) {
   document.querySelectorAll('.row-check').forEach(c => c.checked = chk.checked);
+  updateActionButtons();
 }
 
 // ── MODAL ──
@@ -1075,6 +1138,8 @@ window.confirmDelete = confirmDelete;
 window.closeConfirm = closeConfirm;
 window.setFilter = setFilter;
 window.toggleAll = toggleAll;
+window.editSelectedRow = editSelectedRow;
+window.deleteSelectedRow = deleteSelectedRow;
 window.renderTable = renderTable;
 </script>
 
