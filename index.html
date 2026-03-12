@@ -673,20 +673,13 @@ tbody tr:hover .action-btns { opacity: 1; }
     <span class="stat-label">보류</span>
     <span class="stat-val" id="cnt-hold">0</span>
   </div>
-  <div class="stat-divider"></div>
-  <div class="stat-item">
-    <div class="stat-dot" style="background:var(--green)"></div>
-    <span class="stat-label">총 면적</span>
-    <span class="stat-val" id="total-area">0</span>
-    <span style="font-size:11px;color:var(--ink3);margin-left:3px">㎡</span>
-  </div>
 </div>
 
 <!-- TOOLBAR -->
 <div class="toolbar">
   <div class="search-wrap">
     <span class="search-icon">🔍</span>
-    <input type="text" id="searchInput" placeholder="프로젝트명, 위치, 담당자 검색..." oninput="renderTable()">
+    <input type="text" id="searchInput" placeholder="사업명, 담당자 검색..." oninput="renderTable()">
   </div>
   <button class="filter-btn active" data-filter="all" onclick="setFilter('all', this)">전체</button>
   <button class="filter-btn" data-filter="검토중" onclick="setFilter('검토중', this)">검토중</button>
@@ -695,8 +688,7 @@ tbody tr:hover .action-btns { opacity: 1; }
   <button class="filter-btn" data-filter="보류" onclick="setFilter('보류', this)">보류</button>
   <select class="sort-select" onchange="renderTable()" id="sortSelect">
     <option value="newest">최근 추가순</option>
-    <option value="name">프로젝트명순</option>
-    <option value="area">면적 큰 순</option>
+    <option value="name">사업명순</option>
     <option value="status">상태순</option>
   </select>
 </div>
@@ -707,14 +699,13 @@ tbody tr:hover .action-btns { opacity: 1; }
     <thead>
       <tr>
         <th style="width:36px"><input type="checkbox" id="checkAll" onchange="toggleAll(this)" style="cursor:pointer"></th>
-        <th>프로젝트명</th>
-        <th>위치</th>
+        <th style="width:90px">사업번호</th>
+        <th>사업명</th>
         <th>사업 유형</th>
         <th>진행 상태</th>
         <th>담당자</th>
-        <th>면적 (㎡)</th>
-        <th>메모/비고</th>
-        <th>등록일</th>
+        <th>비고</th>
+        <th style="width:100px">등록일</th>
         <th style="width:80px"></th>
       </tr>
     </thead>
@@ -733,18 +724,18 @@ tbody tr:hover .action-btns { opacity: 1; }
       <input type="hidden" id="editId">
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">프로젝트명 *</label>
+          <label class="form-label">사업명 *</label>
           <input class="form-input" id="f-name" placeholder="예: 은평구 도시개발사업">
         </div>
         <div class="form-group">
-          <label class="form-label">위치</label>
-          <input class="form-input" id="f-location" placeholder="예: 서울시 은평구">
+          <label class="form-label">담당자</label>
+          <input class="form-input" id="f-manager" placeholder="예: 홍길동">
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">사업 유형</label>
-          <select class="form-select" id="f-type">
+          <select class="form-select" id="f-type" onchange="toggleCustomType(this)">
             <option>도시개발사업</option>
             <option>도시정비사업</option>
             <option>재개발</option>
@@ -752,8 +743,10 @@ tbody tr:hover .action-btns { opacity: 1; }
             <option>주거환경개선</option>
             <option>지구단위계획</option>
             <option>도시계획시설</option>
-            <option>기타</option>
+            <option value="__custom__">직접 입력...</option>
           </select>
+          <input class="form-input" id="f-type-custom" placeholder="사업 유형 직접 입력"
+            style="display:none;margin-top:6px">
         </div>
         <div class="form-group">
           <label class="form-label">진행 상태</label>
@@ -765,19 +758,9 @@ tbody tr:hover .action-btns { opacity: 1; }
           </select>
         </div>
       </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">담당자</label>
-          <input class="form-input" id="f-manager" placeholder="예: 홍길동">
-        </div>
-        <div class="form-group">
-          <label class="form-label">면적 (㎡)</label>
-          <input class="form-input" id="f-area" type="number" placeholder="예: 50000">
-        </div>
-      </div>
       <div class="form-row full">
         <div class="form-group">
-          <label class="form-label">메모/비고</label>
+          <label class="form-label">비고</label>
           <textarea class="form-textarea" id="f-memo" placeholder="특이사항, 참고 내용 등..."></textarea>
         </div>
       </div>
@@ -845,7 +828,7 @@ function loadData() {
 
 function showLoadingState() {
   const tbody = document.getElementById('tableBody');
-  tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><div class="empty-icon">⏳</div><div class="empty-text">데이터를 불러오는 중...</div></div></td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">⏳</div><div class="empty-text">데이터를 불러오는 중...</div></div></td></tr>`;
 }
 
 async function saveData() {
@@ -862,8 +845,8 @@ function renderTable() {
     const matchFilter = currentFilter === 'all' || p.status === currentFilter;
     const matchSearch = !q ||
       p.name.toLowerCase().includes(q) ||
-      (p.location||'').toLowerCase().includes(q) ||
-      (p.manager||'').toLowerCase().includes(q);
+      (p.manager||'').toLowerCase().includes(q) ||
+      (p.type||'').toLowerCase().includes(q);
     return matchFilter && matchSearch;
   });
 
@@ -884,17 +867,16 @@ function renderTable() {
     return;
   }
 
-  tbody.innerHTML = list.map(p => `
+  tbody.innerHTML = list.map((p, i) => `
     <tr data-id="${p.firestoreId}">
       <td onclick="event.stopPropagation()">
         <input type="checkbox" class="row-check" data-id="${p.firestoreId}" style="cursor:pointer">
       </td>
+      <td style="font-size:12px;color:var(--ink3);font-family:'DM Mono',monospace;text-align:center">${String(i+1).padStart(3,'0')}</td>
       <td class="col-name proj-link" data-id="${p.firestoreId}" style="cursor:pointer;color:var(--green);text-decoration:underline;text-underline-offset:3px">${escHtml(p.name)}</td>
-      <td class="col-location">${escHtml(p.location||'-')}</td>
       <td><span class="type-badge">${escHtml(p.type||'-')}</span></td>
       <td>${statusBadge(p.status)}</td>
       <td>${escHtml(p.manager||'-')}</td>
-      <td><span class="area-val">${p.area ? Number(p.area).toLocaleString() : '-'}</span></td>
       <td><div class="memo-cell" title="${escHtml(p.memo||'')}">${escHtml(p.memo||'-')}</div></td>
       <td style="font-size:12px;color:var(--ink3);font-family:'DM Mono',monospace">${p.date||'-'}</td>
       <td onclick="event.stopPropagation()">
@@ -931,8 +913,7 @@ function updateStats() {
   document.getElementById('cnt-progress').textContent = projects.filter(p=>p.status==='진행중').length;
   document.getElementById('cnt-done').textContent = projects.filter(p=>p.status==='완료').length;
   document.getElementById('cnt-hold').textContent = projects.filter(p=>p.status==='보류').length;
-  const total = projects.reduce((s,p) => s + (Number(p.area)||0), 0);
-  document.getElementById('total-area').textContent = total.toLocaleString();
+
 }
 
 // ── FILTER ──
@@ -966,7 +947,8 @@ function toggleAll(chk) {
 function openAddModal() {
   document.getElementById('modalTitle').textContent = '프로젝트 추가';
   document.getElementById('editId').value = '';
-  ['name','location','manager','area','memo'].forEach(f => document.getElementById('f-'+f).value = '');
+  ['name','manager','memo'].forEach(f => document.getElementById('f-'+f).value = '');
+  document.getElementById('f-type-custom').style.display = 'none';
   document.getElementById('f-type').value = '도시개발사업';
   document.getElementById('f-status').value = '검토중';
   document.getElementById('modalOverlay').classList.add('open');
@@ -978,12 +960,22 @@ function openEditModal(firestoreId) {
   document.getElementById('modalTitle').textContent = '프로젝트 수정';
   document.getElementById('editId').value = firestoreId;
   document.getElementById('f-name').value = p.name||'';
-  document.getElementById('f-location').value = p.location||'';
-  document.getElementById('f-type').value = p.type||'도시개발사업';
-  document.getElementById('f-status').value = p.status||'검토중';
   document.getElementById('f-manager').value = p.manager||'';
-  document.getElementById('f-area').value = p.area||'';
   document.getElementById('f-memo').value = p.memo||'';
+  document.getElementById('f-status').value = p.status||'검토중';
+  // 사업유형 - 기존 옵션에 있으면 선택, 없으면 직접입력 모드
+  const typeSelect = document.getElementById('f-type');
+  const typeCustom = document.getElementById('f-type-custom');
+  const options = Array.from(typeSelect.options).map(o => o.value);
+  if (p.type && !options.includes(p.type)) {
+    typeSelect.value = '__custom__';
+    typeCustom.style.display = 'block';
+    typeCustom.value = p.type;
+  } else {
+    typeSelect.value = p.type||'도시개발사업';
+    typeCustom.style.display = 'none';
+    typeCustom.value = '';
+  }
   document.getElementById('modalOverlay').classList.add('open');
 }
 
@@ -999,13 +991,17 @@ async function saveProject() {
   if (!name) { showToast('⚠️ 프로젝트명을 입력해주세요'); return; }
 
   const editFirestoreId = document.getElementById('editId').value;
+  const typeSelect = document.getElementById('f-type');
+  const typeVal = typeSelect.value === '__custom__'
+    ? document.getElementById('f-type-custom').value.trim()
+    : typeSelect.value;
+  if (!typeVal) { showToast('⚠️ 사업 유형을 입력해주세요'); return; }
+
   const data = {
     name,
-    location: document.getElementById('f-location').value.trim(),
-    type: document.getElementById('f-type').value,
+    type: typeVal,
     status: document.getElementById('f-status').value,
     manager: document.getElementById('f-manager').value.trim(),
-    area: Number(document.getElementById('f-area').value) || 0,
     memo: document.getElementById('f-memo').value.trim(),
   };
 
@@ -1059,6 +1055,16 @@ function showToast(msg) {
 loadData();
 
 // 전역 함수 노출 (onclick 에서 호출하기 위해)
+window.toggleCustomType = function(sel) {
+  const custom = document.getElementById('f-type-custom');
+  if (sel.value === '__custom__') {
+    custom.style.display = 'block';
+    custom.focus();
+  } else {
+    custom.style.display = 'none';
+    custom.value = '';
+  }
+};
 window.openAddModal = openAddModal;
 window.openEditModal = openEditModal;
 window.openDeleteConfirm = openDeleteConfirm;
