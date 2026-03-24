@@ -264,9 +264,12 @@ tbody.result-body td:last-child { border-right:none; }
           <input type="file" id="pnuFile" accept=".xlsx,.xls" onchange="handlePNU(event)" style="display:none">
         </div>
         <div id="pnuPreview" style="display:none">
-          <div class="alert alert-green" style="margin-top:14px">
-            <span class="alert-icon">✅</span>
-            <div id="pnuSummary"></div>
+          <div class="alert alert-green" style="margin-top:14px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+            <div style="display:flex;gap:10px;flex:1">
+              <span class="alert-icon">✅</span>
+              <div id="pnuSummary"></div>
+            </div>
+            <button onclick="clearPNU()" title="파일 삭제" style="flex-shrink:0;background:#fee2e2;border:1px solid #fca5a5;color:#b91c1c;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;white-space:nowrap;">🗑️ 삭제</button>
           </div>
           <div style="margin-top:10px;font-size:12px;font-weight:700;color:var(--ink3);margin-bottom:6px">PNU 파싱 결과 미리보기 (상위 5건)</div>
           <div class="preview-wrap"><table class="preview-table" id="pnuTable"></table></div>
@@ -294,9 +297,12 @@ tbody.result-body td:last-child { border-right:none; }
           <input type="file" id="ldFile" accept=".xlsx,.xls" onchange="handleLD(event)" style="display:none">
         </div>
         <div id="ldPreview" style="display:none">
-          <div class="alert alert-green" style="margin-top:14px">
-            <span class="alert-icon">✅</span>
-            <div id="ldSummary"></div>
+          <div class="alert alert-green" style="margin-top:14px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+            <div style="display:flex;gap:10px;flex:1">
+              <span class="alert-icon">✅</span>
+              <div id="ldSummary"></div>
+            </div>
+            <button onclick="clearLD()" title="파일 삭제" style="flex-shrink:0;background:#fee2e2;border:1px solid #fca5a5;color:#b91c1c;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;white-space:nowrap;">🗑️ 삭제</button>
           </div>
           <div style="margin-top:10px;font-size:12px;font-weight:700;color:var(--ink3);margin-bottom:6px">토지대장 미리보기 (상위 5건)</div>
           <div class="preview-wrap"><table class="preview-table" id="ldTable"></table></div>
@@ -904,7 +910,32 @@ function exportExcel() {
   showToast('📥 엑셀 다운로드 완료!');
 }
 
-// ─── 유틸 ─────────────────────────────────────────────
+// ─── 파일 삭제 ────────────────────────────────────────
+function clearPNU() {
+  pnuRows = [];
+  document.getElementById('pnuPreview').style.display = 'none';
+  document.getElementById('pnuDropZone').classList.remove('done');
+  document.getElementById('pnuIcon').textContent = '📋';
+  document.getElementById('pnuTitle').textContent = 'PNU 엑셀 파일 업로드';
+  document.getElementById('pnuDesc').textContent = 'PNU 값이 포함된 .xlsx 파일을 올려주세요\n드래그&드롭도 가능합니다';
+  document.getElementById('pnuFile').value = '';
+  document.getElementById('btn1next').disabled = true;
+  showToast('🗑️ PNU 파일이 삭제되었습니다');
+}
+
+function clearLD() {
+  ldHeaders = [];
+  ldRows = [];
+  colMapping = {};
+  document.getElementById('ldPreview').style.display = 'none';
+  document.getElementById('ldDropZone').classList.remove('done');
+  document.getElementById('ldIcon').textContent = '📊';
+  document.getElementById('ldTitle').textContent = '토지대장 엑셀 파일 업로드';
+  document.getElementById('ldDesc').textContent = '토지대장 .xlsx 파일을 올려주세요\n드래그&드롭도 가능합니다';
+  document.getElementById('ldFile').value = '';
+  document.getElementById('btn1next').disabled = true;
+  showToast('🗑️ 토지대장 파일이 삭제되었습니다');
+}
 function goStep(n) {
   currentStep = n;
   document.querySelectorAll('.step-panel').forEach((p,i) => p.classList.toggle('active', i===n-1));
