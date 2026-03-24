@@ -212,121 +212,112 @@ tbody.result-body td:last-child { border-right:none; }
   <div class="step-progress">
     <div class="sp-item active" id="sp1">
       <div class="sp-circle">1</div>
-      <div class="sp-label">PNU 업로드</div>
+      <div class="sp-label">파일 업로드</div>
     </div>
     <div class="sp-line" id="spl1"></div>
     <div class="sp-item" id="sp2">
       <div class="sp-circle">2</div>
-      <div class="sp-label">토지대장 업로드</div>
+      <div class="sp-label">컬럼 매핑</div>
     </div>
     <div class="sp-line" id="spl2"></div>
     <div class="sp-item" id="sp3">
       <div class="sp-circle">3</div>
-      <div class="sp-label">컬럼 매핑</div>
-    </div>
-    <div class="sp-line" id="spl3"></div>
-    <div class="sp-item" id="sp4">
-      <div class="sp-circle">4</div>
       <div class="sp-label">조서 확인 및 출력</div>
     </div>
   </div>
 
-  <!-- ── STEP 1: PNU 업로드 ── -->
+  <!-- ── STEP 1: PNU + 토지대장 업로드 ── -->
   <div class="step-panel active" id="panel1">
-    <div class="sec-card">
-      <div class="sec-card-title"><div class="dot"></div>STEP 1 — PNU 파일 업로드</div>
 
-      <!-- 법정동 코드 상태 -->
-      <div class="alert alert-blue" style="margin-bottom:14px">
-        <span class="alert-icon">🗺️</span>
-        <div>
-          <strong>법정동 코드 DB</strong> &nbsp;
-          <span id="bjdStatus" style="font-size:12px">로딩 중...</span>
-          <div style="font-size:11px;color:var(--ink3);margin-top:3px">
-            행정구역 코드가 변경된 경우: Claude에게 최신 CSV를 업로드하면 즉시 업데이트해드립니다.
+    <!-- 법정동 코드 상태 -->
+    <div class="alert alert-blue" style="margin-bottom:16px">
+      <span class="alert-icon">🗺️</span>
+      <div>
+        <strong>법정동 코드 DB</strong> &nbsp;
+        <span id="bjdStatus" style="font-size:12px">로딩 중...</span>
+        <div style="font-size:11px;color:var(--ink3);margin-top:3px">
+          행정구역 코드가 변경된 경우: Claude에게 최신 CSV를 업로드하면 즉시 업데이트해드립니다.
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+
+      <!-- PNU 업로드 -->
+      <div class="sec-card" style="margin-bottom:0">
+        <div class="sec-card-title"><div class="dot"></div>PNU 파일 업로드</div>
+        <div class="alert alert-blue" style="margin-bottom:14px">
+          <span class="alert-icon">ℹ️</span>
+          <div>
+            <strong>PNU(필지고유번호)</strong>는 19자리 숫자입니다.<br>
+            PNU 값이 담긴 엑셀 파일을 업로드해주세요.<br>
+            <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--blue)">예: 2817010300101980002</span>
           </div>
         </div>
-      </div>
-
-      <div class="alert alert-blue">
-        <span class="alert-icon">ℹ️</span>
-        <div>
-          <strong>PNU(필지고유번호)</strong>는 19자리 숫자입니다.<br>
-          엑셀 파일에 PNU 값이 담긴 열이 있으면 업로드해주세요.<br>
-          <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--blue)">예: 2817010300101980002 → 인천 남동구 남촌동 198-2</span>
+        <div class="upload-box" id="pnuDropZone"
+          onclick="document.getElementById('pnuFile').click()"
+          ondragover="dragOver(event,'pnuDropZone')" ondragleave="dragLeave('pnuDropZone')" ondrop="dropFile(event,'pnu')">
+          <div class="upload-icon" id="pnuIcon">📋</div>
+          <div class="upload-title" id="pnuTitle">PNU 엑셀 파일 업로드</div>
+          <div class="upload-desc" id="pnuDesc">PNU 값이 포함된 .xlsx 파일을 올려주세요<br>드래그&드롭도 가능합니다</div>
+          <label class="upload-label">📎 파일 선택</label>
+          <input type="file" id="pnuFile" accept=".xlsx,.xls" onchange="handlePNU(event)" style="display:none">
+        </div>
+        <div id="pnuPreview" style="display:none">
+          <div class="alert alert-green" style="margin-top:14px">
+            <span class="alert-icon">✅</span>
+            <div id="pnuSummary"></div>
+          </div>
+          <div style="margin-top:10px;font-size:12px;font-weight:700;color:var(--ink3);margin-bottom:6px">PNU 파싱 결과 미리보기 (상위 5건)</div>
+          <div class="preview-wrap"><table class="preview-table" id="pnuTable"></table></div>
         </div>
       </div>
 
-      <div class="upload-box" id="pnuDropZone"
-        onclick="document.getElementById('pnuFile').click()"
-        ondragover="dragOver(event,'pnuDropZone')" ondragleave="dragLeave('pnuDropZone')" ondrop="dropFile(event,'pnu')">
-        <div class="upload-icon" id="pnuIcon">📋</div>
-        <div class="upload-title" id="pnuTitle">PNU 엑셀 파일 업로드</div>
-        <div class="upload-desc" id="pnuDesc">PNU 값이 포함된 .xlsx 파일을 올려주세요<br>드래그&드롭도 가능합니다</div>
-        <label class="upload-label">📎 파일 선택</label>
-        <input type="file" id="pnuFile" accept=".xlsx,.xls" onchange="handlePNU(event)" style="display:none">
+      <!-- 토지대장 업로드 -->
+      <div class="sec-card" style="margin-bottom:0">
+        <div class="sec-card-title"><div class="dot"></div>토지대장 파일 업로드</div>
+        <div class="alert alert-blue" style="margin-bottom:14px">
+          <span class="alert-icon">ℹ️</span>
+          <div>
+            토지대장 엑셀 파일을 업로드해주세요.<br>
+            <strong>지번, 실면적, 공시지가, 소유자 성명/주소</strong> 등이 포함된 파일입니다.<br>
+            컬럼명이 달라도 다음 단계에서 매핑할 수 있습니다.
+          </div>
+        </div>
+        <div class="upload-box" id="ldDropZone"
+          onclick="document.getElementById('ldFile').click()"
+          ondragover="dragOver(event,'ldDropZone')" ondragleave="dragLeave('ldDropZone')" ondrop="dropFile(event,'ld')">
+          <div class="upload-icon" id="ldIcon">📊</div>
+          <div class="upload-title" id="ldTitle">토지대장 엑셀 파일 업로드</div>
+          <div class="upload-desc" id="ldDesc">토지대장 .xlsx 파일을 올려주세요<br>드래그&드롭도 가능합니다</div>
+          <label class="upload-label">📎 파일 선택</label>
+          <input type="file" id="ldFile" accept=".xlsx,.xls" onchange="handleLD(event)" style="display:none">
+        </div>
+        <div id="ldPreview" style="display:none">
+          <div class="alert alert-green" style="margin-top:14px">
+            <span class="alert-icon">✅</span>
+            <div id="ldSummary"></div>
+          </div>
+          <div style="margin-top:10px;font-size:12px;font-weight:700;color:var(--ink3);margin-bottom:6px">토지대장 미리보기 (상위 5건)</div>
+          <div class="preview-wrap"><table class="preview-table" id="ldTable"></table></div>
+        </div>
       </div>
 
-      <div id="pnuPreview" style="display:none">
-        <div class="alert alert-green" style="margin-top:14px">
-          <span class="alert-icon">✅</span>
-          <div id="pnuSummary"></div>
-        </div>
-        <div style="margin-top:10px;font-size:12px;font-weight:700;color:var(--ink3);margin-bottom:6px">PNU 파싱 결과 미리보기 (상위 5건)</div>
-        <div class="preview-wrap"><table class="preview-table" id="pnuTable"></table></div>
-      </div>
     </div>
 
     <div class="nav-btns">
       <div></div>
-      <button class="btn-next" id="btn1next" onclick="goStep(2)" disabled>다음: 토지대장 업로드 →</button>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+        <button class="btn-next" id="btn1next" onclick="goStep(2)" disabled>다음: 컬럼 매핑 →</button>
+        <span style="font-size:11px;color:var(--ink3)">PNU와 토지대장 파일을 모두 업로드해야 다음 단계로 이동할 수 있습니다.</span>
+      </div>
     </div>
   </div>
 
-  <!-- ── STEP 2: 토지대장 업로드 ── -->
+  <!-- ── STEP 2: 컬럼 매핑 ── -->
   <div class="step-panel" id="panel2">
     <div class="sec-card">
-      <div class="sec-card-title"><div class="dot"></div>STEP 2 — 토지대장 엑셀 업로드</div>
-
-      <div class="alert alert-blue">
-        <span class="alert-icon">ℹ️</span>
-        <div>
-          토지대장 엑셀 파일을 업로드해주세요.<br>
-          <strong>지번, 실면적, 지산액(공시지가), 소유자 성명/주소</strong> 등이 포함된 파일입니다.<br>
-          컬럼명이 달라도 다음 단계에서 직접 매핑할 수 있습니다.
-        </div>
-      </div>
-
-      <div class="upload-box" id="ldDropZone"
-        onclick="document.getElementById('ldFile').click()"
-        ondragover="dragOver(event,'ldDropZone')" ondragleave="dragLeave('ldDropZone')" ondrop="dropFile(event,'ld')">
-        <div class="upload-icon" id="ldIcon">📊</div>
-        <div class="upload-title" id="ldTitle">토지대장 엑셀 파일 업로드</div>
-        <div class="upload-desc" id="ldDesc">토지대장 .xlsx 파일을 올려주세요</div>
-        <label class="upload-label">📎 파일 선택</label>
-        <input type="file" id="ldFile" accept=".xlsx,.xls" onchange="handleLD(event)" style="display:none">
-      </div>
-
-      <div id="ldPreview" style="display:none">
-        <div class="alert alert-green" style="margin-top:14px">
-          <span class="alert-icon">✅</span>
-          <div id="ldSummary"></div>
-        </div>
-        <div style="margin-top:10px;font-size:12px;font-weight:700;color:var(--ink3);margin-bottom:6px">토지대장 미리보기 (상위 5건)</div>
-        <div class="preview-wrap"><table class="preview-table" id="ldTable"></table></div>
-      </div>
-    </div>
-
-    <div class="nav-btns">
-      <button class="btn-prev" onclick="goStep(1)">← 이전</button>
-      <button class="btn-next" id="btn2next" onclick="goStep(3)" disabled>다음: 컬럼 매핑 →</button>
-    </div>
-  </div>
-
-  <!-- ── STEP 3: 컬럼 매핑 ── -->
-  <div class="step-panel" id="panel3">
-    <div class="sec-card">
-      <div class="sec-card-title"><div class="dot"></div>STEP 3 — 토지대장 컬럼 매핑</div>
+      <div class="sec-card-title"><div class="dot"></div>STEP 2 — 토지대장 컬럼 매핑</div>
       <div class="alert alert-amber">
         <span class="alert-icon">⚠️</span>
         <div>토지대장의 각 컬럼이 조서의 어떤 항목에 해당하는지 선택해주세요.<br>자동으로 추측해서 설정했으니 확인 후 맞지 않으면 수정해주세요.</div>
@@ -345,13 +336,13 @@ tbody.result-body td:last-child { border-right:none; }
     </div>
 
     <div class="nav-btns">
-      <button class="btn-prev" onclick="goStep(2)">← 이전</button>
+      <button class="btn-prev" onclick="goStep(1)">← 이전</button>
       <button class="btn-next" onclick="buildResult()">조서 생성하기 →</button>
     </div>
   </div>
 
-  <!-- ── STEP 4: 결과 ── -->
-  <div class="step-panel" id="panel4">
+  <!-- ── STEP 3: 결과 ── -->
+  <div class="step-panel" id="panel3">
 
     <div class="stats-row">
       <div class="stat-card">
@@ -424,7 +415,7 @@ tbody.result-body td:last-child { border-right:none; }
     </div>
 
     <div class="nav-btns">
-      <button class="btn-prev" onclick="goStep(3)">← 매핑 수정</button>
+      <button class="btn-prev" onclick="goStep(2)">← 매핑 수정</button>
       <button class="btn-next" onclick="exportExcel()">📥 엑셀 저장</button>
     </div>
   </div>
@@ -636,7 +627,8 @@ function processPNU(data) {
   document.getElementById('pnuDropZone').classList.add('done');
   document.getElementById('pnuIcon').textContent = '✅';
   document.getElementById('pnuTitle').textContent = `${pnuRows.length}개 필지 로드 완료`;
-  document.getElementById('btn1next').disabled = false;
+  // 토지대장도 이미 업로드된 경우 다음 버튼 활성화, 아니면 단독 활성화
+  document.getElementById('btn1next').disabled = ldRows.length === 0;
   showToast(`✅ ${pnuRows.length}개 PNU 파싱 완료!`);
 }
 
@@ -669,7 +661,11 @@ function processLD(data) {
   document.getElementById('ldDropZone').classList.add('done');
   document.getElementById('ldIcon').textContent = '✅';
   document.getElementById('ldTitle').textContent = `${ldRows.length}행 로드 완료`;
-  document.getElementById('btn2next').disabled = false;
+
+  // PNU도 이미 업로드된 경우 다음 버튼 활성화
+  if (pnuRows.length > 0) {
+    document.getElementById('btn1next').disabled = false;
+  }
 
   // 다음 단계 매핑 준비
   autoDetectMapping();
@@ -822,7 +818,7 @@ function buildResult() {
   }
 
   document.getElementById('btnExport').disabled = false;
-  goStep(4);
+  goStep(3);
   renderResult();
   showToast(`✅ 조서 생성 완료! (매핑 성공 ${matched}건, 실패 ${unmatched}건)`);
 }
@@ -912,10 +908,10 @@ function exportExcel() {
 function goStep(n) {
   currentStep = n;
   document.querySelectorAll('.step-panel').forEach((p,i) => p.classList.toggle('active', i===n-1));
-  for (let i=1; i<=4; i++) {
+  for (let i=1; i<=3; i++) {
     const el = document.getElementById('sp'+i);
     el.className = 'sp-item' + (i===n?' active':i<n?' done':'');
-    if (i<4) document.getElementById('spl'+i).className = 'sp-line' + (i<n?' done':'');
+    if (i<3) document.getElementById('spl'+i).className = 'sp-line' + (i<n?' done':'');
   }
   window.scrollTo({top:0, behavior:'smooth'});
 }
@@ -932,7 +928,6 @@ function resetAll() {
   document.getElementById('pnuTitle').textContent='PNU 엑셀 파일 업로드';
   document.getElementById('ldTitle').textContent='토지대장 엑셀 파일 업로드';
   document.getElementById('btn1next').disabled=true;
-  document.getElementById('btn2next').disabled=true;
   document.getElementById('btnExport').disabled=true;
   document.getElementById('unmatchedAlert').style.display='none';
   goStep(1);
