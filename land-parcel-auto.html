@@ -432,6 +432,8 @@ tbody.result-body td:last-child { border-right:none; }
           <thead>
             <tr class="th-main">
               <th rowspan="2" style="width:36px">#</th>
+              <th rowspan="2">행정구역</th>
+              <th rowspan="2">대장<br>구분</th>
               <th colspan="4">소 재 지</th>
               <th rowspan="2">지목</th>
               <th colspan="2">면 적 (㎡)</th>
@@ -448,7 +450,7 @@ tbody.result-body td:last-child { border-right:none; }
             </tr>
           </thead>
           <tbody class="result-body" id="resultBody">
-            <tr><td colspan="14" style="padding:40px;text-align:center;color:var(--ink3)">데이터를 불러오는 중...</td></tr>
+            <tr><td colspan="16" style="padding:40px;text-align:center;color:var(--ink3)">데이터를 불러오는 중...</td></tr>
           </tbody>
         </table>
       </div>
@@ -555,18 +557,28 @@ function parseJibunJimok(raw) {
 function parsePNUCode(raw) {
   const s = String(raw||'').trim().replace(/[^0-9]/g,'').padStart(19,'0');
   if (s.length < 10) return null;
-  const san = s[10] === '1';
+
+  // 11번째 자리(index 10): 1=일반, 2=산
+  const daejangCode = s[10];
+  const daejang = daejangCode === '2' ? '산' : '일반';
+
+  // 12~15번째(index 11~14): 본번, 16~19번째(index 15~18): 부번
   const bon = parseInt(s.slice(11,15))||0;
   const bu  = parseInt(s.slice(15,19))||0;
-  const jibunFromPNU = (san?'산':'') + bon + (bu>0?`-${bu}`:'');
+
+  // 지번: 산인 경우 "산" 접두, 부번이 0이면 본번만
+  const jibunFromPNU = (daejangCode === '2' ? '산' : '') + bon + (bu > 0 ? `-${bu}` : '');
 
   // 법정동 코드로 행정구역명 조회
   const addr = lookupBJD(s);
 
+  // 행정구역 full string
+  const haengjeong = [addr.sido, addr.sigungu, addr.emd].filter(Boolean).join(' ');
+
   return {
     pnu: s,
     sido: s.slice(0,2), sigungu: s.slice(0,5), emd: s.slice(5,10),
-    san, bon, bu, jibunFromPNU,
+    daejang, bon, bu, jibunFromPNU, haengjeong,
     sidoName:    addr.sido,
     sigunguName: addr.sigungu,
     emdName:     addr.emd,
@@ -714,14 +726,16 @@ function processLD(data) {
 
 // ─── 컬럼 자동 탐지 ──────────────────────────────────
 const TARGET_FIELDS = [
-  { key:'jibun',     label:'지번',          required:false, hints:['지번','번지','jibun'] },
-  { key:'jimok',     label:'지목',          required:false, hints:['지목','jimok'] },
-  { key:'area',      label:'지적면적(㎡)',  required:false, hints:['면적','지적','실측','area'] },
-  { key:'pyeonip',   label:'편입면적(㎡)',  required:false, hints:['편입','pyeonip'] },
-  { key:'price',     label:'공시지가(원/㎡)',required:false, hints:['공시','지가','지산','감정','price'] },
-  { key:'ownerName', label:'소유자 성명',   required:false, hints:['소유자','성명','이름','명의','owner'] },
-  { key:'ownerAddr', label:'소유자 주소',   required:false, hints:['주소','거주','소재','addr'] },
-  { key:'ownerType', label:'소유구분',      required:false, hints:['구분','사유','국유','소유구분'] },
+  { key:'jibun',      label:'지번',           auto:'pnu', required:false, hints:['지번','번지','jibun'] },
+  { key:'daejang',    label:'대장구분',        auto:'pnu', required:false, hints:['대장','구분','daejang'] },
+  { key:'haengjeong', label:'행정구역',        auto:'pnu', required:false, hints:['행정','구역','주소','haeng'] },
+  { key:'jimok',      label:'지목',            auto:false,  required:false, hints:['지목','jimok'] },
+  { key:'area',       label:'지적면적(㎡)',    auto:false,  required:false, hints:['면적','지적','실측','area'] },
+  { key:'pyeonip',    label:'편입면적(㎡)',    auto:false,  required:false, hints:['편입','pyeonip'] },
+  { key:'price',      label:'공시지가(원/㎡)', auto:false,  required:false, hints:['공시','지가','지산','감정','price'] },
+  { key:'ownerName',  label:'소유자 성명',     auto:false,  required:false, hints:['소유자','성명','이름','명의','owner'] },
+  { key:'ownerAddr',  label:'소유자 주소',     auto:false,  required:false, hints:['주소','거주','소재','addr'] },
+  { key:'ownerType',  label:'소유구분',        auto:false,  required:false, hints:['구분','사유','국유','소유구분'] },
 ];
 
 // 토지대장 PNU 컬럼 인덱스 (별도 관리)
@@ -776,6 +790,24 @@ function buildMappingUI() {
   // ── 나머지 컬럼 매핑 rows
   const el = document.getElementById('mappingRows');
   el.innerHTML = TARGET_FIELDS.map(f => {
+    // PNU에서 자동 생성되는 항목은 드롭다운 없이 뱃지로만 표시
+    if (f.auto === 'pnu') {
+      const desc = {
+        jibun:      '본번(12~15자리) + 부번(16~19자리) 조합',
+        daejang:    '11번째 자리 1=일반, 2=산',
+        haengjeong: '시도 + 시군구 + 읍면동 조합',
+      };
+      return `
+      <div class="mapping-row" style="background:var(--green-light);border-radius:8px;padding:8px 10px">
+        <div>
+          <div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:2px">${f.label}</div>
+          <div style="font-size:10px;color:var(--green);font-weight:600">🔑 PNU에서 자동 생성</div>
+          <div style="font-size:10px;color:var(--ink3);margin-top:2px">${desc[f.key]||''}</div>
+        </div>
+        <div class="map-arrow" style="color:var(--green)">→</div>
+        <div style="font-size:11px;font-weight:700;color:var(--green);padding:6px 10px;background:white;border-radius:6px;border:1px solid #b8dfc6">자동 생성</div>
+      </div>`;
+    }
     const options = ldHeaders.map((h, i) =>
       `<option value="${i}" ${colMapping[f.key] === i ? 'selected' : ''}>${escHtml(h)}</option>`
     ).join('');
@@ -914,10 +946,14 @@ function buildResult() {
         })).filter(o => o.name)
       : [{ name: '', addr: '' }];
 
-    // 지번: 토지대장 > PNU에서 파싱한 값
-    const jibun = (ld && colMapping.jibun >= 0 && ld[colMapping.jibun])
-      ? String(ld[colMapping.jibun])
-      : p.jibunFromPNU || p.jibun || '';
+    // 대장구분 — PNU 11번째 자리에서 자동 생성
+    const daejang = p.daejang || '일반';
+
+    // 행정구역 — PNU에서 자동 생성
+    const haengjeong = p.haengjeong || [p.sidoName, p.sigunguName, p.emdName].filter(Boolean).join(' ');
+
+    // 지번 — PNU에서 자동 생성 (본번-부번)
+    const jibun = p.jibunFromPNU || p.jibun || '';
 
     // 지목: 토지대장 > PNU JIBUN 파싱값
     const jimok = (ld && colMapping.jimok >= 0 && ld[colMapping.jimok])
@@ -932,6 +968,8 @@ function buildResult() {
     return {
       id: idx + 1,
       pnu: p.pnu,
+      haengjeong,
+      daejang,
       sidoName:    p.sidoName    || '',
       sigunguName: p.sigunguName || '',
       emdName:     p.emdName     || '',
@@ -1000,9 +1038,14 @@ function renderResult() {
   tbody.innerHTML = list.map((r, i) => {
     const ownerMain = r.owners[0]||{name:'-',addr:''};
     const extraOwners = r.owners.slice(1).filter(o=>o.name);
+    const daejangBadge = r.daejang === '산'
+      ? `<span style="background:#fef3cd;color:#b45309;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700">산</span>`
+      : `<span style="background:#e6f2eb;color:#1a5c3a;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700">일반</span>`;
     return `
     <tr class="${r.matched?'':'no-match'}">
       <td class="td-mono">${i+1}</td>
+      <td class="td-left" style="font-size:11px;white-space:nowrap">${escHtml(r.haengjeong||'-')}</td>
+      <td style="text-align:center">${daejangBadge}</td>
       <td>${escHtml(r.sidoName)}</td>
       <td>${escHtml(r.sigunguName)}</td>
       <td>${escHtml(r.emdName)}</td>
@@ -1027,13 +1070,16 @@ function renderResult() {
 function exportExcel() {
   if (resultRows.length === 0) { showToast('⚠️ 데이터가 없습니다'); return; }
 
-  const header = ['연번','시도','시군구','읍면동','지번','지목','지적면적(㎡)','편입면적(㎡)','소유자별구분','소유자성명','소유자주소','공시지가(원/㎡)','편입여부','PNU','매핑여부'];
+  const header = ['연번','행정구역','대장구분','시도','시군구','읍면동','지번','지목','지적면적(㎡)','편입면적(㎡)','소유자별구분','소유자성명','소유자주소','공시지가(원/㎡)','편입여부','PNU','매핑여부'];
   const data = [header];
 
   resultRows.forEach((r, i) => {
     r.owners.forEach((o, oi) => {
       data.push([
-        oi===0?i+1:'', oi===0?r.sidoName:'', oi===0?r.sigunguName:'', oi===0?r.emdName:'',
+        oi===0?i+1:'',
+        oi===0?r.haengjeong:'',
+        oi===0?r.daejang:'',
+        oi===0?r.sidoName:'', oi===0?r.sigunguName:'', oi===0?r.emdName:'',
         oi===0?r.jibun:'', oi===0?r.jimok:'', oi===0?r.area:'', oi===0?r.pyeonip:'',
         oi===0?r.ownerType:'', o.name, o.addr,
         oi===0?r.price:'', oi===0?r.status:'', oi===0?r.pnu:'',
@@ -1043,7 +1089,7 @@ function exportExcel() {
   });
 
   const ws = XLSX.utils.aoa_to_sheet(data);
-  ws['!cols'] = [6,10,10,10,10,6,12,12,10,12,30,14,8,20,8].map(w=>({wch:w}));
+  ws['!cols'] = [6,24,8,10,10,10,10,6,12,12,10,12,30,14,8,20,8].map(w=>({wch:w}));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, '편입토지조서');
   const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
