@@ -367,9 +367,9 @@ canvas { border-radius:6px; max-width:100%; }
             <div class="upload-icon" id="topoIcon">🗺️</div>
             <div class="upload-title" id="topoTitle">수치지형도 업로드</div>
             <div class="upload-desc" id="topoDesc">.dxf 또는 .geojson 파일<br>드래그&드롭 가능</div>
-            <label class="upload-label" for="topoFile" onclick="event.stopPropagation()">📎 파일 선택</label>
-            <input type="file" id="topoFile" accept=".dxf,.geojson,.json,.shp,.zip,.DXF,.GEOJSON" onchange="handleTopoFile(event)" style="display:none">
+            <button type="button" class="upload-label" onclick="document.getElementById('topoFile').click(); event.stopPropagation();">📎 파일 선택</button>
           </div>
+          <input type="file" id="topoFile" style="display:none" onchange="handleTopoFile(this)">
           <div id="topoFileTag" style="display:none"></div>
         </div>
 
@@ -389,9 +389,9 @@ canvas { border-radius:6px; max-width:100%; }
             <div class="upload-icon" id="zoneIcon">📐</div>
             <div class="upload-title" id="zoneTitle">구역계 파일 업로드</div>
             <div class="upload-desc" id="zoneDesc">.dxf 또는 .geojson 파일<br>드래그&드롭 가능</div>
-            <label class="upload-label" for="zoneFile" onclick="event.stopPropagation()">📎 파일 선택</label>
-            <input type="file" id="zoneFile" accept=".dxf,.geojson,.json,.shp,.zip,.DXF,.GEOJSON" onchange="handleZoneFile(event)" style="display:none">
+            <button type="button" class="upload-label" onclick="document.getElementById('zoneFile').click(); event.stopPropagation();">📎 파일 선택</button>
           </div>
+          <input type="file" id="zoneFile" style="display:none" onchange="handleZoneFile(this)">
           <div id="zoneFileTag" style="display:none"></div>
         </div>
 
@@ -587,9 +587,9 @@ canvas { border-radius:6px; max-width:100%; }
               <div class="upload-icon" id="cadIcon">📐</div>
               <div class="upload-title" id="cadTitle">CAD / GIS 파일 업로드</div>
               <div class="upload-desc" id="cadDesc">.dxf, .geojson, .json 파일<br>드래그&드롭 가능</div>
-              <label class="upload-label" for="cadFile" onclick="event.stopPropagation()">📎 파일 선택</label>
-              <input type="file" id="cadFile" accept=".dxf,.geojson,.json,.prj,.DXF,.GEOJSON" onchange="handleCadFile(event)" style="display:none">
+              <button type="button" class="upload-label" onclick="document.getElementById('cadFile').click(); event.stopPropagation();">📎 파일 선택</button>
             </div>
+            <input type="file" id="cadFile" style="display:none" onchange="handleCadFile(this)">
           </div>
           <div id="detectResultBox" style="display:flex;flex-direction:column;justify-content:center;align-items:center;background:var(--bg);border-radius:10px;border:1px solid var(--border);padding:20px;min-height:140px">
             <div style="font-size:28px;margin-bottom:8px" id="detectIcon">🔍</div>
@@ -823,21 +823,26 @@ function dropFile(e, type) {
 }
 
 // ─── 파일 처리 ────────────────────────────────────────
-function handleTopoFile(e) {
-  const file = e.target.files[0];
-  if (!file) return;
+function handleTopoFile(input) {
+  var files = input.files;
+  if (!files || files.length === 0) return;
+  var file = files[0];
+  var ext = file.name.split('.').pop().toLowerCase();
+  var allowed = ['dxf','geojson','json','shp','zip'];
+  if (!allowed.includes(ext)) { showToast('⚠️ 지원 형식: DXF, GeoJSON, SHP, ZIP'); return; }
   applyTopoFile(file);
-  setTimeout(() => { try { e.target.value = ''; } catch(err) {} }, 200);
 }
-function handleZoneFile(e) {
-  const file = e.target.files[0];
-  if (!file) return;
+function handleZoneFile(input) {
+  var files = input.files;
+  if (!files || files.length === 0) return;
+  var file = files[0];
+  var ext = file.name.split('.').pop().toLowerCase();
+  var allowed = ['dxf','geojson','json','shp','zip'];
+  if (!allowed.includes(ext)) { showToast('⚠️ 지원 형식: DXF, GeoJSON, SHP, ZIP'); return; }
   applyZoneFile(file);
-  setTimeout(() => { try { e.target.value = ''; } catch(err) {} }, 200);
 }
 
 function applyTopoFile(file) {
-  if (!file || !file.name) return;
   topoFile = file;
   const box = document.getElementById('topoDropZone');
   box.classList.add('done');
@@ -850,7 +855,6 @@ function applyTopoFile(file) {
 }
 
 function applyZoneFile(file) {
-  if (!file || !file.name) return;
   zoneFile = file;
   const box = document.getElementById('zoneDropZone');
   box.classList.add('done');
@@ -1300,11 +1304,10 @@ function dropFileCad(e) {
   const file = e.dataTransfer.files[0];
   if (file) applyCadFile(file);
 }
-function handleCadFile(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  applyCadFile(file);
-  setTimeout(() => { try { e.target.value = ''; } catch(err) {} }, 200);
+function handleCadFile(input) {
+  var files = input.files;
+  if (!files || files.length === 0) return;
+  applyCadFile(files[0]);
 }
 
 function applyCadFile(file) {
