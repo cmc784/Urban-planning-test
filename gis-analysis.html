@@ -823,10 +823,21 @@ function dropFile(e, type) {
 }
 
 // ─── 파일 처리 ────────────────────────────────────────
-function handleTopoFile(e) { if (e.target.files[0]) applyTopoFile(e.target.files[0]); e.target.value = ''; }
-function handleZoneFile(e) { if (e.target.files[0]) applyZoneFile(e.target.files[0]); e.target.value = ''; }
+function handleTopoFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  applyTopoFile(file);
+  setTimeout(() => { try { e.target.value = ''; } catch(err) {} }, 200);
+}
+function handleZoneFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  applyZoneFile(file);
+  setTimeout(() => { try { e.target.value = ''; } catch(err) {} }, 200);
+}
 
 function applyTopoFile(file) {
+  if (!file || !file.name) return;
   topoFile = file;
   const box = document.getElementById('topoDropZone');
   box.classList.add('done');
@@ -839,6 +850,7 @@ function applyTopoFile(file) {
 }
 
 function applyZoneFile(file) {
+  if (!file || !file.name) return;
   zoneFile = file;
   const box = document.getElementById('zoneDropZone');
   box.classList.add('done');
@@ -1289,8 +1301,10 @@ function dropFileCad(e) {
   if (file) applyCadFile(file);
 }
 function handleCadFile(e) {
-  if (e.target.files[0]) applyCadFile(e.target.files[0]);
-  e.target.value = '';
+  const file = e.target.files[0];
+  if (!file) return;
+  applyCadFile(file);
+  setTimeout(() => { try { e.target.value = ''; } catch(err) {} }, 200);
 }
 
 function applyCadFile(file) {
