@@ -277,13 +277,13 @@ body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--
   <div class="section-title">작업 메뉴</div>
   <div class="work-grid">
 
-    <!-- 편입토지조서 -->
+    <!-- 조서 작업 -->
     <div class="work-card wc-green" onclick="goWork('land-parcel-auto.html')">
       <div class="wc-top">
         <div class="wc-icon">🗺️</div>
         <span class="wc-badge badge-ready">사용 가능</span>
       </div>
-      <div class="wc-title">편입토지조서</div>
+      <div class="wc-title">조서 작업</div>
       <div class="wc-desc">PNU 파일과 토지대장을 업로드하면<br>편입토지조서를 자동으로 생성합니다.</div>
       <div class="wc-footer">
         <span class="wc-tag">PNU · 토지대장 · 조서출력</span>
@@ -291,8 +291,22 @@ body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--
       </div>
     </div>
 
+    <!-- GIS 분석 -->
+    <div class="work-card wc-blue" onclick="goWork('gis-analysis.html')">
+      <div class="wc-top">
+        <div class="wc-icon">🛰️</div>
+        <span class="wc-badge badge-ready">사용 가능</span>
+      </div>
+      <div class="wc-title">GIS 분석</div>
+      <div class="wc-desc">수치지형도·구역계 파일을 업로드하면<br>표고·경사·면적 등 공간 분석을 수행합니다.</div>
+      <div class="wc-footer">
+        <span class="wc-tag">표고 · 경사 · 면적 · 구역계</span>
+        <span class="wc-arrow">→</span>
+      </div>
+    </div>
+
     <!-- 용적률/건폐율 계산 -->
-    <div class="work-card wc-blue coming-soon">
+    <div class="work-card wc-amber coming-soon">
       <div class="wc-top">
         <div class="wc-icon">📐</div>
         <span class="wc-badge badge-soon">준비 중</span>
