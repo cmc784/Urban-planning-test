@@ -363,13 +363,12 @@ canvas { border-radius:6px; max-width:100%; }
             </div>
           </div>
           <div class="upload-box" id="topoDropZone"
-            onclick="document.getElementById('topoFile').click()"
             ondragover="dragOver(event,'topoDropZone')" ondragleave="dragLeave('topoDropZone')" ondrop="dropFile(event,'topo')">
             <div class="upload-icon" id="topoIcon">🗺️</div>
             <div class="upload-title" id="topoTitle">수치지형도 업로드</div>
             <div class="upload-desc" id="topoDesc">.dxf 또는 .geojson 파일<br>드래그&드롭 가능</div>
-            <label class="upload-label">📎 파일 선택</label>
-            <input type="file" id="topoFile" accept=".dxf,.geojson,.json,.shp,.zip" onchange="handleTopoFile(event)" style="display:none">
+            <label class="upload-label" for="topoFile" onclick="event.stopPropagation()">📎 파일 선택</label>
+            <input type="file" id="topoFile" accept=".dxf,.geojson,.json,.shp,.zip,.DXF,.GEOJSON" onchange="handleTopoFile(event)" style="display:none">
           </div>
           <div id="topoFileTag" style="display:none"></div>
         </div>
@@ -386,13 +385,12 @@ canvas { border-radius:6px; max-width:100%; }
             </div>
           </div>
           <div class="upload-box" id="zoneDropZone"
-            onclick="document.getElementById('zoneFile').click()"
             ondragover="dragOver(event,'zoneDropZone')" ondragleave="dragLeave('zoneDropZone')" ondrop="dropFile(event,'zone')">
             <div class="upload-icon" id="zoneIcon">📐</div>
             <div class="upload-title" id="zoneTitle">구역계 파일 업로드</div>
             <div class="upload-desc" id="zoneDesc">.dxf 또는 .geojson 파일<br>드래그&드롭 가능</div>
-            <label class="upload-label">📎 파일 선택</label>
-            <input type="file" id="zoneFile" accept=".dxf,.geojson,.json,.shp,.zip" onchange="handleZoneFile(event)" style="display:none">
+            <label class="upload-label" for="zoneFile" onclick="event.stopPropagation()">📎 파일 선택</label>
+            <input type="file" id="zoneFile" accept=".dxf,.geojson,.json,.shp,.zip,.DXF,.GEOJSON" onchange="handleZoneFile(event)" style="display:none">
           </div>
           <div id="zoneFileTag" style="display:none"></div>
         </div>
@@ -585,13 +583,12 @@ canvas { border-radius:6px; max-width:100%; }
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
           <div>
             <div class="upload-box" id="cadDropZone"
-              onclick="document.getElementById('cadFile').click()"
               ondragover="dragOver(event,'cadDropZone')" ondragleave="dragLeave('cadDropZone')" ondrop="dropFileCad(event)">
               <div class="upload-icon" id="cadIcon">📐</div>
               <div class="upload-title" id="cadTitle">CAD / GIS 파일 업로드</div>
               <div class="upload-desc" id="cadDesc">.dxf, .geojson, .json 파일<br>드래그&드롭 가능</div>
-              <label class="upload-label">📎 파일 선택</label>
-              <input type="file" id="cadFile" accept=".dxf,.geojson,.json,.prj" onchange="handleCadFile(event)" style="display:none">
+              <label class="upload-label" for="cadFile" onclick="event.stopPropagation()">📎 파일 선택</label>
+              <input type="file" id="cadFile" accept=".dxf,.geojson,.json,.prj,.DXF,.GEOJSON" onchange="handleCadFile(event)" style="display:none">
             </div>
           </div>
           <div id="detectResultBox" style="display:flex;flex-direction:column;justify-content:center;align-items:center;background:var(--bg);border-radius:10px;border:1px solid var(--border);padding:20px;min-height:140px">
