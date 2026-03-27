@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>위치도 생성</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #f4f2ee;
+  --white: #ffffff;
+  --ink: #1c1c1c;
+  --ink2: #4a4a4a;
+  --ink3: #888;
+  --border: #ddd9d0;
+  --border2: #ece9e2;
+  --green: #1a5c3a;
+  --green-light: #e6f2eb;
+  --green-mid: #2e7d52;
+  --blue: #1a3a6e;
+  --blue-light: #e6edf8;
+  --teal: #0f766e;
+  --teal-light: #ccfbf1;
+  --amber: #b45309;
+  --amber-light: #fef3cd;
+  --red: #b91c1c;
+  --red-light: #fee2e2;
+  --shadow: 0 1px 4px rgba(0,0,0,0.07);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.10);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.13);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── TOPBAR ── */
+.topbar {
+  background: var(--green);
+  color: white;
+  padding: 0 24px;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  z-index: 200;
+}
+.topbar-left { display:flex; align-items:center; gap:12px; }
+.back-btn {
+  background: rgba(255,255,255,0.15); border:none; color:white;
+  padding: 6px 14px; border-radius:7px; font-size:12px; font-weight:700;
+  cursor:pointer; font-family:'Noto Sans KR',sans-serif;
+  display:flex; align-items:center; gap:5px; transition:background 0.15s;
+}
+.back-btn:hover { background:rgba(255,255,255,0.28); }
+.topbar-title { font-size:15px; font-weight:700; }
+.topbar-badge {
+  background: rgba(255,255,255,0.18); border-radius:5px;
+  padding: 3px 10px; font-size:11px; font-weight:600;
+  font-family:'DM Mono',monospace;
+}
+.step-bar {
+  display:flex; align-items:center; gap:2px;
+  font-size:11px; color:rgba(255,255,255,0.55);
+}
+.step-item {
+  display:flex; align-items:center; gap:5px;
+  padding: 4px 10px; border-radius:20px; transition:all .2s;
+  font-weight:500;
+}
+.step-item.active { background:rgba(255,255,255,0.2); color:#fff; }
+.step-item.done { color:rgba(255,255,255,0.75); }
+.step-dot { width:5px; height:5px; border-radius:50%; background:rgba(255,255,255,0.3); flex-shrink:0; }
+.step-item.done .step-dot { background:#7dd4a0; }
+.step-item.active .step-dot { background:#fff; }
+
+/* ── LAYOUT ── */
+.layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: 300px;
+  flex-shrink: 0;
+  background: var(--white);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.sidebar::-webkit-scrollbar { width:4px; }
+.sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+.panel {
+  padding: 18px 18px 16px;
+  border-bottom: 1px solid var(--border2);
+}
+.panel-title {
+  font-size:10px; font-weight:800; text-transform:uppercase;
+  letter-spacing:1px; color:var(--ink3); font-family:'DM Mono',monospace;
+  margin-bottom:12px; display:flex; align-items:center; gap:6px;
+}
+.panel-title::before {
+  content:''; width:3px; height:11px;
+  background:var(--teal); border-radius:2px; flex-shrink:0;
+}
+
+/* 드롭존 */
+.dropzone {
+  border: 2px dashed var(--border);
+  border-radius: 10px;
+  padding: 20px 14px;
+  text-align: center;
+  cursor: pointer;
+  transition: all .2s;
+  background: var(--bg);
+}
+.dropzone:hover, .dropzone.dragover {
+  border-color: var(--teal);
+  background: var(--teal-light);
+}
+.dropzone svg { width:28px; height:28px; color:var(--ink3); margin-bottom:6px; }
+.dz-label { font-size:12px; color:var(--ink3); line-height:1.5; }
+.dz-label strong { color:var(--teal); }
+.dropzone input { display:none; }
+
+.file-chip {
+  display:none; margin-top:10px;
+  background:var(--teal-light); border:1px solid rgba(15,118,110,.2);
+  border-radius:7px; padding:8px 12px;
+  font-size:11px; color:var(--teal);
+}
+.file-chip.show { display:block; }
+.file-chip .fn { font-family:'DM Mono',monospace; font-weight:600; word-break:break-all; }
+.file-chip .fm { color:var(--ink3); margin-top:2px; font-size:10px; }
+
+/* 폼 요소 */
+.field-label {
+  display:block; font-size:11px; font-weight:600; color:var(--ink3);
+  margin:10px 0 4px; letter-spacing:0.3px;
+}
+select, input[type="text"], input[type="color"] {
+  width:100%; padding:7px 10px;
+  border:1px solid var(--border); border-radius:7px;
+  font-size:12px; font-family:'Noto Sans KR',sans-serif;
+  color:var(--ink); background:var(--white); outline:none;
+  transition:border-color .15s;
+}
+select:focus, input[type="text"]:focus { border-color:var(--teal); }
+select option { background:#fff; }
+
+.row2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+
+input[type="range"] {
+  width:100%; accent-color:var(--teal); cursor:pointer; margin-top:2px;
+}
+.range-val {
+  font-size:10px; font-family:'DM Mono',monospace;
+  color:var(--ink3); float:right; margin-top:-14px;
+}
+
+/* 토글 */
+.toggle-row {
+  display:flex; align-items:center; justify-content:space-between;
+  font-size:12px; color:var(--ink2); margin-top:9px;
+}
+.toggle {
+  width:34px; height:18px; border-radius:9px;
+  background:var(--border); position:relative; cursor:pointer;
+  transition:background .2s; flex-shrink:0;
+}
+.toggle.on { background:var(--teal); }
+.toggle::after {
+  content:''; position:absolute;
+  top:2px; left:2px; width:14px; height:14px;
+  border-radius:50%; background:#fff; transition:left .2s;
+}
+.toggle.on::after { left:18px; }
+
+/* 레이어 목록 */
+.layer-empty { font-size:12px; color:var(--ink3); line-height:1.6; }
+.layer-list { display:flex; flex-direction:column; gap:3px; margin-top:4px; }
+.layer-item {
+  display:flex; align-items:center; gap:8px;
+  padding:6px 9px; border-radius:6px; cursor:pointer;
+  border:1px solid transparent; font-size:11px;
+  transition:all .15s; background:var(--bg);
+}
+.layer-item:hover { border-color:var(--border); }
+.layer-item.selected { border-color:rgba(15,118,110,.25); background:var(--teal-light); }
+.layer-swatch { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
+.layer-name { flex:1; font-family:'DM Mono',monospace; color:var(--ink2); }
+.layer-cnt { font-size:10px; color:var(--ink3); }
+
+/* 진행바 */
+.prog-wrap { display:none; margin-bottom:8px; }
+.prog-wrap.show { display:block; }
+.prog-bg { height:3px; background:var(--border2); border-radius:2px; overflow:hidden; }
+.prog-fill { height:100%; background:var(--teal); border-radius:2px; width:0%; transition:width .4s; }
+.prog-label { font-size:10px; color:var(--ink3); margin-top:4px; font-family:'DM Mono',monospace; }
+
+/* 버튼 */
+.btn {
+  width:100%; padding:10px; border-radius:8px; border:none;
+  font-family:'Noto Sans KR',sans-serif; font-size:13px; font-weight:700;
+  cursor:pointer; transition:all .15s;
+  display:flex; align-items:center; justify-content:center; gap:7px;
+}
+.btn-main { background:var(--teal); color:#fff; }
+.btn-main:hover { background:#0d6460; transform:translateY(-1px); box-shadow:var(--shadow-md); }
+.btn-main:disabled { background:var(--border); color:var(--ink3); cursor:not-allowed; transform:none; box-shadow:none; }
+.btn-outline {
+  background:var(--white); color:var(--ink2);
+  border:1px solid var(--border); margin-top:6px; font-size:12px;
+}
+.btn-outline:hover { border-color:var(--ink3); }
+.btn-export {
+  background:var(--bg); color:var(--ink2);
+  border:1px solid var(--border); margin-top:6px; font-size:12px;
+}
+.btn-export:hover { border-color:var(--teal); color:var(--teal); }
+.btn-pdf:hover { border-color:var(--amber); color:var(--amber); }
+
+/* ── 지도 영역 ── */
+.map-area {
+  flex:1; position:relative; background:#e8e4dc;
+}
+#map { width:100%; height:100%; }
+
+/* 지도 위 빈 상태 */
+.map-empty {
+  position:absolute; inset:0; z-index:10;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:10px; pointer-events:none;
+  background: radial-gradient(ellipse at 50% 50%, rgba(15,118,110,.05) 0%, transparent 65%);
+}
+.map-empty.hidden { display:none; }
+.map-empty-icon { font-size:40px; opacity:.3; }
+.map-empty-text { font-size:13px; color:var(--ink3); text-align:center; line-height:1.7; }
+.map-empty-text strong { color:var(--teal); }
+
+/* 지도 컨트롤 버튼 */
+.map-ctrl {
+  position:absolute; top:12px; right:12px; z-index:1000;
+  display:flex; flex-direction:column; gap:4px;
+}
+.map-ctrl-btn {
+  width:32px; height:32px; border-radius:6px;
+  background:var(--white); border:1px solid var(--border);
+  color:var(--ink2); cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px; font-weight:700;
+  box-shadow:var(--shadow); transition:all .15s;
+  font-family:'DM Mono',monospace;
+}
+.map-ctrl-btn:hover { border-color:var(--teal); color:var(--teal); }
+
+/* 방위표 커스텀 */
+.north-arrow-ctrl {
+  background:rgba(255,255,255,0.92) !important;
+  border:1px solid var(--border) !important;
+  border-radius:8px !important;
+  padding:6px !important;
+  box-shadow:var(--shadow) !important;
+  pointer-events:none;
+}
+
+/* Leaflet 오버라이드 */
+.leaflet-control-zoom { display:none; }
+.leaflet-control-scale-line {
+  background:rgba(255,255,255,0.88) !important;
+  border-color:var(--ink3) !important;
+  color:var(--ink) !important;
+  font-family:'DM Mono',monospace !important;
+  font-size:10px !important;
+  border-radius:0 0 3px 3px !important;
+}
+.leaflet-control-attribution {
+  background:rgba(255,255,255,0.75) !important;
+  font-size:9px !important;
+}
+
+/* 토스트 */
+.toast {
+  position:fixed; bottom:24px; left:50%;
+  transform:translateX(-50%) translateY(80px);
+  background:var(--ink); color:#fff;
+  padding:9px 20px; border-radius:20px;
+  font-size:12px; font-weight:600;
+  z-index:9999; transition:transform .25s; pointer-events:none;
+  box-shadow:var(--shadow-lg);
+}
+.toast.show { transform:translateX(-50%) translateY(0); }
+.toast.success { background:var(--teal); }
+.toast.error { background:var(--red); }
+
+/* 출력 타이틀 오버레이 (캡처용) */
+#print-title-overlay {
+  position:absolute; top:14px; left:14px; z-index:900;
+  background:rgba(255,255,255,0.92); border:1px solid var(--border);
+  border-radius:8px; padding:8px 16px;
+  font-size:14px; font-weight:800; color:var(--ink);
+  box-shadow:var(--shadow); display:none;
+  font-family:'Noto Sans KR',sans-serif;
+  letter-spacing:-0.3px;
+}
+#print-title-overlay.show { display:block; }
+
+/* 좌표 정보 표시 */
+.coord-info {
+  background:var(--green-light); border:1px solid rgba(26,92,58,.15);
+  border-radius:6px; padding:7px 10px; margin-top:8px;
+  font-size:10px; font-family:'DM Mono',monospace; color:var(--green);
+  display:none;
+}
+.coord-info.show { display:block; }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <button class="back-btn" onclick="history.back()">← 돌아가기</button>
+    <span class="topbar-title">위치도 생성</span>
+    <span class="topbar-badge">DXF → 위성지도</span>
+  </div>
+  <div class="step-bar">
+    <div class="step-item done" id="s1"><span class="step-dot"></span>업로드</div>
+    <div class="step-item" id="s2"><span class="step-dot"></span>레이어</div>
+    <div class="step-item" id="s3"><span class="step-dot"></span>생성</div>
+    <div class="step-item" id="s4"><span class="step-dot"></span>출력</div>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- 사이드바 -->
+  <div class="sidebar">
+
+    <!-- 1. 파일 업로드 -->
+    <div class="panel">
+      <div class="panel-title">DXF 파일 업로드</div>
+      <div class="dropzone" id="dropzone">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14,2 14,8 20,8"/>
+          <line x1="12" y1="18" x2="12" y2="12"/>
+          <polyline points="9,15 12,12 15,15"/>
+        </svg>
+        <div class="dz-label"><strong>클릭</strong>하거나 DXF 파일을<br>드래그하세요</div>
+        <input type="file" id="dxf-input" accept=".dxf">
+      </div>
+      <div class="file-chip" id="file-chip">
+        <div class="fn" id="file-name"></div>
+        <div class="fm" id="file-meta"></div>
+      </div>
+    </div>
+
+    <!-- 2. 좌표계 -->
+    <div class="panel">
+      <div class="panel-title">좌표계 설정</div>
+      <label class="field-label">원본 좌표계</label>
+      <select id="src-crs">
+        <option value="5174" selected>EPSG:5174 — 중부원점 Bessel</option>
+        <option value="5186">EPSG:5186 — 중부원점 GRS80</option>
+        <option value="5185">EPSG:5185 — 서부원점 GRS80</option>
+        <option value="5187">EPSG:5187 — 동부원점 GRS80</option>
+        <option value="32652">EPSG:32652 — UTM Zone 52N</option>
+        <option value="4326">EPSG:4326 — WGS84 (위경도)</option>
+      </select>
+      <div class="coord-info show">→ WGS84 자동 변환 후 Vworld 위성지도 표시</div>
+    </div>
+
+    <!-- 3. 레이어 -->
+    <div class="panel">
+      <div class="panel-title">레이어 선택</div>
+      <div class="layer-empty" id="layer-empty">DXF 파일을 업로드하면<br>레이어 목록이 표시됩니다.</div>
+      <div class="layer-list" id="layer-list"></div>
+    </div>
+
+    <!-- 4. 구역계 스타일 -->
+    <div class="panel">
+      <div class="panel-title">구역계 스타일</div>
+      <div class="row2">
+        <div>
+          <label class="field-label">선 색상</label>
+          <input type="color" id="line-color" value="#e03030">
+        </div>
+        <div>
+          <label class="field-label">선 두께</label>
+          <input type="range" id="line-weight" min="1" max="6" value="2" step="0.5">
+          <div class="range-val" id="lw-val">2px</div>
+        </div>
+      </div>
+      <label class="field-label">채우기 투명도</label>
+      <input type="range" id="fill-opacity" min="0" max="0.4" value="0.08" step="0.01">
+      <div class="range-val" id="fo-val">8%</div>
+    </div>
+
+    <!-- 5. 지도 설정 -->
+    <div class="panel">
+      <div class="panel-title">지도 설정</div>
+      <label class="field-label">사업지구명 (출력 제목)</label>
+      <input type="text" id="project-name" placeholder="예) ○○도시개발사업">
+      <div class="row2">
+        <div>
+          <label class="field-label">출력 용지</label>
+          <select id="paper-size">
+            <option value="a3l" selected>A3 가로</option>
+            <option value="a3p">A3 세로</option>
+            <option value="a4l">A4 가로</option>
+            <option value="a4p">A4 세로</option>
+          </select>
+        </div>
+        <div>
+          <label class="field-label">배경 지도</label>
+          <select id="map-layer">
+            <option value="sat" selected>위성 (Vworld)</option>
+            <option value="hybrid">위성+지명</option>
+            <option value="base">일반 지도</option>
+          </select>
+        </div>
+      </div>
+      <div class="toggle-row">
+        <span>방위표 표시</span>
+        <div class="toggle on" id="toggle-north" onclick="this.classList.toggle('on'); toggleNorth();"></div>
+      </div>
+      <div class="toggle-row">
+        <span>스케일바 표시</span>
+        <div class="toggle on" id="toggle-scale" onclick="this.classList.toggle('on'); toggleScale();"></div>
+      </div>
+      <div class="toggle-row">
+        <span>출력 제목 표시</span>
+        <div class="toggle on" id="toggle-title" onclick="this.classList.toggle('on'); toggleTitle();"></div>
+      </div>
+    </div>
+
+    <!-- 6. 실행 / 출력 -->
+    <div class="panel">
+      <div class="panel-title">실행 및 출력</div>
+      <div class="prog-wrap" id="prog-wrap">
+        <div class="prog-bg"><div class="prog-fill" id="prog-fill"></div></div>
+        <div class="prog-label" id="prog-label">처리 중...</div>
+      </div>
+      <button class="btn btn-main" id="btn-gen" onclick="generateMap()" disabled>
+        🗺️&nbsp; 위치도 생성
+      </button>
+      <div id="export-btns" style="display:none;">
+        <button class="btn btn-export" onclick="exportPNG()">📷&nbsp; PNG 다운로드</button>
+        <button class="btn btn-export btn-pdf" onclick="exportPDF()">📄&nbsp; PDF 다운로드</button>
+        <button class="btn btn-outline" onclick="resetAll()">↺&nbsp; 초기화</button>
+      </div>
+    </div>
+
+  </div><!-- /sidebar -->
+
+  <!-- 지도 -->
+  <div class="map-area">
+    <div id="map"></div>
+
+    <!-- 출력 제목 오버레이 -->
+    <div id="print-title-overlay" class="show"></div>
+
+    <!-- 빈 상태 -->
+    <div class="map-empty" id="map-empty">
+      <div class="map-empty-icon">🗺️</div>
+      <div class="map-empty-text">
+        DXF 파일을 업로드하고<br>
+        <strong>위치도 생성</strong>을 클릭하세요
+      </div>
+    </div>
+
+    <!-- 지도 버튼 -->
+    <div class="map-ctrl">
+      <button class="map-ctrl-btn" title="전체보기" onclick="fitAll()">⊡</button>
+      <button class="map-ctrl-btn" title="확대" onclick="map.zoomIn()">+</button>
+      <button class="map-ctrl-btn" title="축소" onclick="map.zoomOut()">−</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ── 좌표계 정의 ── */
+proj4.defs([
+  ['EPSG:5174', '+proj=tmerc +lat_0=38 +lon_0=127.0028902777778 +k=1 +x_0=200000 +y_0=500000 +ellps=bessel +towgs84=-115.80,474.99,674.11,1.16,-2.31,-1.63,6.43 +units=m +no_defs'],
+  ['EPSG:5186', '+proj=tmerc +lat_0=38 +lon_0=127 +k=1 +x_0=200000 +y_0=600000 +ellps=GRS80 +towgs84=0,0,0 +units=m +no_defs'],
+  ['EPSG:5185', '+proj=tmerc +lat_0=38 +lon_0=125 +k=1 +x_0=200000 +y_0=600000 +ellps=GRS80 +towgs84=0,0,0 +units=m +no_defs'],
+  ['EPSG:5187', '+proj=tmerc +lat_0=38 +lon_0=129 +k=1 +x_0=200000 +y_0=600000 +ellps=GRS80 +towgs84=0,0,0 +units=m +no_defs'],
+  ['EPSG:32652', '+proj=utm +zone=52 +datum=WGS84 +units=m +no_defs']
+]);
+
+/* ── 전역 상태 ── */
+let map, dxfData = null, drawnLayers = [], selectedLayers = new Set();
+let northCtrl = null, scaleCtrl = null;
+let showNorth = true, showScale = true, showTitle = true;
+let tileSat, tileHybrid, tileBase;
+
+/* ── 지도 초기화 ── */
+map = L.map('map', { center:[36.5, 127.5], zoom:7, zoomControl:false, attributionControl:true });
+
+tileSat = L.tileLayer(
+  'https://api.vworld.kr/req/wmts/1.0.0/BB5AFCB1-3D61-3E9E-BB7C-9A4C2E3B8AB5/Satellite/{z}/{y}/{x}.jpeg',
+  { maxZoom:19, attribution:'© Vworld 국토지리정보원' }
+).addTo(map);
+
+tileHybrid = L.tileLayer(
+  'https://api.vworld.kr/req/wmts/1.0.0/BB5AFCB1-3D61-3E9E-BB7C-9A4C2E3B8AB5/Hybrid/{z}/{y}/{x}.png',
+  { maxZoom:19 }
+).addTo(map);
+
+tileBase = L.tileLayer(
+  'https://api.vworld.kr/req/wmts/1.0.0/BB5AFCB1-3D61-3E9E-BB7C-9A4C2E3B8AB5/Base/{z}/{y}/{x}.png',
+  { maxZoom:19, attribution:'© Vworld 국토지리정보원' }
+);
+
+// 배경지도 전환
+document.getElementById('map-layer').addEventListener('change', function() {
+  const v = this.value;
+  if (v === 'sat') {
+    map.removeLayer(tileBase);
+    tileSat.addTo(map); tileHybrid.setOpacity(0);
+  } else if (v === 'hybrid') {
+    map.removeLayer(tileBase);
+    tileSat.addTo(map); tileHybrid.setOpacity(1);
+  } else {
+    if (map.hasLayer(tileSat)) map.removeLayer(tileSat);
+    tileHybrid.setOpacity(0);
+    tileBase.addTo(map);
+  }
+});
+
+// 스케일바
+scaleCtrl = L.control.scale({ position:'bottomleft', imperial:false, maxWidth:180 }).addTo(map);
+
+// 방위표 (커스텀 컨트롤)
+const NArrow = L.Control.extend({
+  options: { position:'bottomright' },
+  onAdd() {
+    const d = L.DomUtil.create('div', 'north-arrow-ctrl');
+    d.innerHTML = `
+      <svg width="42" height="52" viewBox="0 0 42 52" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="ng" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#1c1c1c"/>
+            <stop offset="100%" stop-color="#888"/>
+          </linearGradient>
+        </defs>
+        <polygon points="21,3 27,24 21,21 15,24" fill="url(#ng)"/>
+        <polygon points="21,49 15,28 21,31 27,28" fill="none" stroke="#888" stroke-width="1.2"/>
+        <circle cx="21" cy="26" r="3.5" fill="none" stroke="#888" stroke-width="1.4"/>
+        <text x="21" y="14" text-anchor="middle" font-family="DM Mono,monospace" font-size="8"
+              font-weight="700" fill="#1c1c1c" letter-spacing="0.5">N</text>
+      </svg>`;
+    return d;
+  }
+});
+northCtrl = new NArrow().addTo(map);
+
+/* ── 슬라이더 값 표시 ── */
+document.getElementById('line-weight').addEventListener('input', function() {
+  document.getElementById('lw-val').textContent = this.value + 'px';
+});
+document.getElementById('fill-opacity').addEventListener('input', function() {
+  document.getElementById('fo-val').textContent = Math.round(this.value * 100) + '%';
+});
+
+/* ── 토글 핸들러 ── */
+function toggleNorth() {
+  showNorth = document.getElementById('toggle-north').classList.contains('on');
+  if (showNorth) northCtrl.addTo(map); else map.removeControl(northCtrl);
+}
+function toggleScale() {
+  showScale = document.getElementById('toggle-scale').classList.contains('on');
+  if (showScale) scaleCtrl.addTo(map); else map.removeControl(scaleCtrl);
+}
+function toggleTitle() {
+  showTitle = document.getElementById('toggle-title').classList.contains('on');
+  const pto = document.getElementById('print-title-overlay');
+  if (showTitle) pto.classList.add('show'); else pto.classList.remove('show');
+}
+
+/* ── 파일 업로드 ── */
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('dxf-input');
+
+dropzone.addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault(); dropzone.classList.remove('dragover');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+function handleFile(file) {
+  if (!file.name.toLowerCase().endsWith('.dxf')) {
+    toast('DXF 파일만 지원합니다.', 'error'); return;
+  }
+  document.getElementById('file-name').textContent = file.name;
+  document.getElementById('file-meta').textContent = `${(file.size/1024).toFixed(1)} KB`;
+  document.getElementById('file-chip').classList.add('show');
+  setStep(2); setProgress(true, 'DXF 파싱 중...', 25);
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      dxfData = parseDXF(e.target.result);
+      renderLayerList(dxfData.layers);
+      setProgress(true, '파싱 완료', 100);
+      setTimeout(() => setProgress(false), 500);
+      document.getElementById('btn-gen').disabled = false;
+      toast(`${dxfData.entities.length}개 엔티티, ${dxfData.layers.size}개 레이어 인식`, 'success');
+    } catch(err) {
+      setProgress(false);
+      toast('파싱 오류: ' + err.message, 'error');
+    }
+  };
+  reader.readAsText(file, 'euc-kr');
+}
+
+/* ── DXF 파서 ── */
+function parseDXF(text) {
+  const lines = text.split(/\r?\n/).map(l => l.trim());
+  const entities = [], layers = new Map();
+  let i = 0;
+
+  while (i < lines.length) {
+    if (lines[i] === '0' && lines[i+1] === 'SECTION') {
+      i += 2;
+      if (lines[i] === '2') { i++; const sn = lines[i++]; if (sn === 'ENTITIES') parseEntities(); else skipToEndsec(); }
+    } else i++;
+  }
+
+  function skipToEndsec() {
+    while (i < lines.length) { if (lines[i]==='0' && lines[i+1]==='ENDSEC') { i+=2; break; } i++; }
+  }
+
+  function parseEntities() {
+    while (i < lines.length) {
+      if (lines[i]==='0' && lines[i+1]==='ENDSEC') { i+=2; break; }
+      if (lines[i]==='0') { i++; const et=lines[i++];
+        if (et==='LWPOLYLINE') parseLWP();
+        else if (et==='POLYLINE') parsePOLY();
+        else if (et==='LINE') parseLINE();
+        else if (et==='SPLINE') parseSPLINE();
+        else skipEnt();
+      } else i++;
+    }
+  }
+
+  function collectAttribs() {
+    const a = { layer:'0', flags:0, pts:[] };
+    while (i < lines.length && lines[i] !== '0') {
+      const code = parseInt(lines[i++]), val = lines[i++];
+      if (code===8) a.layer=val;
+      else if (code===10) a.pts.push({x:parseFloat(val), y:null});
+      else if (code===20) { if (a.pts.length) a.pts[a.pts.length-1].y=parseFloat(val); }
+      else if (code===11) a.pts.push({x:parseFloat(val), y:null});
+      else if (code===21) { if (a.pts.length) a.pts[a.pts.length-1].y=parseFloat(val); }
+      else if (code===70) a.flags=parseInt(val);
+    }
+    return a;
+  }
+
+  function addEnt(type, layer, pts) {
+    const e = { type, layer: layer||'0', pts };
+    entities.push(e);
+    if (!layers.has(e.layer)) layers.set(e.layer, []);
+    layers.get(e.layer).push(e);
+  }
+
+  function parseLWP() {
+    const a = collectAttribs();
+    const pts = a.pts.filter(p=>p.y!==null);
+    if (pts.length < 2) return;
+    if ((a.flags&1)===1 && pts.length>2) pts.push({...pts[0]});
+    addEnt('LWPOLYLINE', a.layer, pts);
+  }
+
+  function parsePOLY() {
+    const a = collectAttribs();
+    const pts = [];
+    while (i < lines.length) {
+      if (lines[i]==='0' && lines[i+1]==='SEQEND') { i+=2; skipEnt(); break; }
+      if (lines[i]==='0' && lines[i+1]==='ENDSEC') break;
+      if (lines[i]==='0' && lines[i+1]==='VERTEX') { i+=2; const va=collectAttribs(); if (va.pts[0]) pts.push(va.pts[0]); }
+      else i++;
+    }
+    if (pts.length >= 2) { if ((a.flags&1)===1 && pts.length>2) pts.push({...pts[0]}); addEnt('POLYLINE', a.layer, pts); }
+  }
+
+  function parseLINE() {
+    const a = collectAttribs();
+    if (a.pts.length >= 2) addEnt('LINE', a.layer, [a.pts[0], a.pts[1]]);
+  }
+
+  function parseSPLINE() {
+    const a = collectAttribs();
+    const pts = a.pts.filter(p=>p.y!==null);
+    if (pts.length >= 2) addEnt('SPLINE', a.layer, pts);
+  }
+
+  function skipEnt() { while (i<lines.length && lines[i]!=='0') i++; }
+
+  return { entities, layers };
+}
+
+/* ── 좌표 변환 ── */
+function toLatLng(x, y, epsg) {
+  if (epsg === '4326') return [parseFloat(y), parseFloat(x)];
+  const [lng, lat] = proj4(`EPSG:${epsg}`, 'EPSG:4326', [x, y]);
+  return [lat, lng];
+}
+
+/* ── 레이어 목록 렌더링 ── */
+const LAYER_COLORS = ['#e03030','#1a6abb','#16a34a','#b45309','#7c3aed','#0f766e','#be185d','#334155'];
+
+function renderLayerList(layers) {
+  document.getElementById('layer-empty').style.display = 'none';
+  const list = document.getElementById('layer-list');
+  list.innerHTML = '';
+  let ci = 0;
+  layers.forEach((ents, name) => {
+    const color = LAYER_COLORS[ci++ % LAYER_COLORS.length];
+    selectedLayers.add(name);
+    const item = document.createElement('div');
+    item.className = 'layer-item selected';
+    item.dataset.layer = name;
+    item.innerHTML = `
+      <div class="layer-swatch" style="background:${color}"></div>
+      <div class="layer-name">${name}</div>
+      <div class="layer-cnt">${ents.length}</div>`;
+    item.addEventListener('click', () => {
+      if (selectedLayers.has(name)) { selectedLayers.delete(name); item.classList.remove('selected'); }
+      else { selectedLayers.add(name); item.classList.add('selected'); }
+    });
+    list.appendChild(item);
+  });
+}
+
+/* ── 위치도 생성 ── */
+async function generateMap() {
+  if (!dxfData) { toast('DXF 파일을 먼저 업로드하세요.', 'error'); return; }
+  setStep(3); setProgress(true, '좌표 변환 중...', 30);
+
+  const epsg = document.getElementById('src-crs').value;
+  const lineColor = document.getElementById('line-color').value;
+  const lineWeight = parseFloat(document.getElementById('line-weight').value);
+  const fillOpacity = parseFloat(document.getElementById('fill-opacity').value);
+
+  drawnLayers.forEach(l => map.removeLayer(l));
+  drawnLayers = [];
+
+  const allLL = [];
+  await new Promise(r => setTimeout(r, 30)); // UI 업데이트
+
+  dxfData.entities.forEach(ent => {
+    if (!selectedLayers.has(ent.layer)) return;
+    const latlngs = ent.pts
+      .filter(p => p.y !== null && !isNaN(p.x) && !isNaN(p.y))
+      .map(p => toLatLng(p.x, p.y, epsg))
+      .filter(([la, ln]) => la > 32 && la < 40 && ln > 122 && ln < 132);
+
+    if (latlngs.length < 2) return;
+    allLL.push(...latlngs);
+
+    const isClosed = latlngs[0][0] === latlngs[latlngs.length-1][0];
+    let layer;
+    if (isClosed && fillOpacity > 0) {
+      layer = L.polygon(latlngs, { color:lineColor, weight:lineWeight, fillColor:lineColor, fillOpacity, opacity:1 });
+    } else {
+      layer = L.polyline(latlngs, { color:lineColor, weight:lineWeight, opacity:1 });
+    }
+    layer.addTo(map);
+    drawnLayers.push(layer);
+  });
+
+  if (allLL.length === 0) {
+    setProgress(false);
+    toast('좌표 변환 결과가 없습니다. 좌표계를 확인하세요.', 'error');
+    return;
+  }
+
+  map.fitBounds(L.latLngBounds(allLL), { padding:[60, 60] });
+  tileHybrid.bringToFront();
+
+  // 출력 제목 오버레이 업데이트
+  const pname = document.getElementById('project-name').value;
+  const titleEl = document.getElementById('print-title-overlay');
+  titleEl.textContent = pname ? pname + ' 위치도' : '위치도';
+  if (showTitle) titleEl.classList.add('show'); else titleEl.classList.remove('show');
+
+  setProgress(true, '완료!', 100);
+  setTimeout(() => setProgress(false), 500);
+  document.getElementById('map-empty').classList.add('hidden');
+  document.getElementById('export-btns').style.display = 'block';
+  setStep(4);
+  toast('위치도가 생성되었습니다!', 'success');
+}
+
+function fitAll() {
+  if (drawnLayers.length === 0) return;
+  map.fitBounds(L.featureGroup(drawnLayers).getBounds(), { padding:[60,60] });
+}
+
+/* ── 출력 ── */
+function getPaperMM() {
+  const s = { a3l:{w:420,h:297}, a3p:{w:297,h:420}, a4l:{w:297,h:210}, a4p:{w:210,h:297} };
+  return s[document.getElementById('paper-size').value];
+}
+
+async function captureMap() {
+  return html2canvas(document.getElementById('map'), { useCORS:true, allowTaint:true, logging:false, scale:2 });
+}
+
+async function exportPNG() {
+  toast('PNG 캡처 중...', '');
+  setProgress(true, 'PNG 렌더링 중...', 50);
+  try {
+    const canvas = await captureMap();
+    setProgress(true, '저장 중...', 90);
+    const a = document.createElement('a');
+    const pn = document.getElementById('project-name').value || '위치도';
+    a.download = `${pn}_위치도_${new Date().toISOString().slice(0,10)}.png`;
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+    setProgress(false);
+    toast('PNG 저장 완료!', 'success');
+  } catch(e) { setProgress(false); toast('오류: '+e.message, 'error'); }
+}
+
+async function exportPDF() {
+  toast('PDF 생성 중...', '');
+  setProgress(true, 'PDF 렌더링 중...', 40);
+  try {
+    const canvas = await captureMap();
+    const { jsPDF } = window.jspdf;
+    const ps = getPaperMM();
+    const pdf = new jsPDF({ orientation: ps.w > ps.h ? 'l':'p', unit:'mm', format:[ps.w, ps.h] });
+    const pn = document.getElementById('project-name').value || '위치도';
+
+    // 제목 영역
+    const TH = 11;
+    pdf.setFillColor(26, 92, 58);
+    pdf.rect(0, 0, ps.w, TH, 'F');
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(11);
+    pdf.setTextColor(255, 255, 255);
+    pdf.text(`${pn}  위치도`, 8, 7.5);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(8);
+    pdf.setTextColor(200, 230, 210);
+    pdf.text(new Date().toLocaleDateString('ko-KR'), ps.w - 8, 7.5, { align:'right' });
+
+    // 지도 이미지
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    pdf.addImage(imgData, 'JPEG', 2, TH + 1, ps.w - 4, ps.h - TH - 4);
+
+    // 하단 크레딧
+    pdf.setFontSize(6.5); pdf.setTextColor(120,120,120);
+    pdf.text('© Vworld 국토지리정보원', ps.w/2, ps.h - 1, { align:'center' });
+
+    setProgress(true, '다운로드...', 95);
+    pdf.save(`${pn}_위치도_${new Date().toISOString().slice(0,10)}.pdf`);
+    setProgress(false);
+    toast('PDF 저장 완료!', 'success');
+  } catch(e) { setProgress(false); toast('PDF 오류: '+e.message, 'error'); console.error(e); }
+}
+
+/* ── 초기화 ── */
+function resetAll() {
+  dxfData = null;
+  drawnLayers.forEach(l => map.removeLayer(l));
+  drawnLayers = []; selectedLayers.clear();
+  document.getElementById('layer-list').innerHTML = '';
+  document.getElementById('layer-empty').style.display = '';
+  document.getElementById('file-chip').classList.remove('show');
+  document.getElementById('btn-gen').disabled = true;
+  document.getElementById('export-btns').style.display = 'none';
+  document.getElementById('map-empty').classList.remove('hidden');
+  document.getElementById('project-name').value = '';
+  document.getElementById('print-title-overlay').textContent = '';
+  setStep(1);
+  map.setView([36.5,127.5], 7);
+  toast('초기화되었습니다.', '');
+}
+
+/* ── 헬퍼 ── */
+function setStep(n) {
+  ['s1','s2','s3','s4'].forEach((id, idx) => {
+    const el = document.getElementById(id);
+    el.classList.toggle('active', idx+1===n);
+    el.classList.toggle('done', idx+1<n);
+  });
+}
+function setProgress(show, label='', pct=0) {
+  document.getElementById('prog-wrap').classList.toggle('show', show);
+  document.getElementById('prog-fill').style.width = pct+'%';
+  document.getElementById('prog-label').textContent = label;
+}
+function toast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show' + (type?' '+type:'');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// 프로젝트명 변경 시 실시간 오버레이 업데이트
+document.getElementById('project-name').addEventListener('input', function() {
+  const el = document.getElementById('print-title-overlay');
+  el.textContent = this.value ? this.value + ' 위치도' : '위치도';
+});
+</script>
+</body>
+</html>
