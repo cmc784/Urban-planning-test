@@ -383,14 +383,24 @@ input[type="range"] {
       <div class="panel-title">좌표계 설정</div>
       <label class="field-label">원본 좌표계</label>
       <select id="src-crs">
-        <option value="5174" selected>EPSG:5174 — 중부원점 Bessel</option>
-        <option value="5186">EPSG:5186 — 중부원점 GRS80</option>
-        <option value="5185">EPSG:5185 — 서부원점 GRS80</option>
-        <option value="5187">EPSG:5187 — 동부원점 GRS80</option>
-        <option value="32652">EPSG:32652 — UTM Zone 52N</option>
-        <option value="4326">EPSG:4326 — WGS84 (위경도)</option>
+        <optgroup label="── Bessel 1841 (구 측량 원점) ──">
+          <option value="5173">EPSG:5173 — 서부원점 Bessel</option>
+          <option value="5174" selected>EPSG:5174 — 중부원점 Bessel ★</option>
+          <option value="5175">EPSG:5175 — 동부원점 Bessel</option>
+          <option value="5176">EPSG:5176 — 동해원점 Bessel</option>
+        </optgroup>
+        <optgroup label="── GRS80 (현행 측량 원점) ──">
+          <option value="5185">EPSG:5185 — 서부원점 GRS80</option>
+          <option value="5186">EPSG:5186 — 중부원점 GRS80</option>
+          <option value="5187">EPSG:5187 — 동부원점 GRS80</option>
+          <option value="5188">EPSG:5188 — 동해원점 GRS80</option>
+        </optgroup>
+        <optgroup label="── 기타 ──">
+          <option value="32652">EPSG:32652 — UTM Zone 52N</option>
+          <option value="4326">EPSG:4326 — WGS84 (위경도)</option>
+        </optgroup>
       </select>
-      <div class="coord-info show">→ WGS84 자동 변환 후 Vworld 위성지도 표시</div>
+      <div class="coord-info show">→ WGS84 자동 변환 후 위성지도 표시</div>
     </div>
 
     <!-- 3. 레이어 -->
@@ -437,10 +447,19 @@ input[type="range"] {
         <div>
           <label class="field-label">배경 지도</label>
           <select id="map-layer">
-            <option value="sat" selected>위성 (Vworld)</option>
-            <option value="hybrid">위성+지명</option>
-            <option value="base">일반 지도</option>
+            <option value="esri-sat" selected>위성 — Esri (기본, 키 불필요)</option>
+            <option value="esri-topo">지형도 — Esri</option>
+            <option value="osm">일반 — OpenStreetMap</option>
+            <option value="vworld-sat">위성 — Vworld (키 필요)</option>
+            <option value="vworld-hybrid">위성+지명 — Vworld (키 필요)</option>
           </select>
+        </div>
+      </div>
+      <div id="vworld-key-wrap" style="display:none; margin-top:4px;">
+        <label class="field-label">Vworld API 키</label>
+        <input type="text" id="vworld-key" placeholder="Vworld Open API 키 입력" style="font-family:'DM Mono',monospace;font-size:11px;">
+        <div style="font-size:10px;color:var(--ink3);margin-top:3px;">
+          🔗 <a href="https://www.vworld.kr/dev/v4dv_oadc012_s001.do" target="_blank" style="color:var(--teal);">Vworld 개발자센터</a>에서 무료 발급
         </div>
       </div>
       <div class="toggle-row">
@@ -507,10 +526,16 @@ input[type="range"] {
 <script>
 /* ── 좌표계 정의 ── */
 proj4.defs([
+  // ── Bessel 1841 (구 좌표계) ──
+  ['EPSG:5173', '+proj=tmerc +lat_0=38 +lon_0=125.0028902777778 +k=1 +x_0=200000 +y_0=500000 +ellps=bessel +towgs84=-115.80,474.99,674.11,1.16,-2.31,-1.63,6.43 +units=m +no_defs'],
   ['EPSG:5174', '+proj=tmerc +lat_0=38 +lon_0=127.0028902777778 +k=1 +x_0=200000 +y_0=500000 +ellps=bessel +towgs84=-115.80,474.99,674.11,1.16,-2.31,-1.63,6.43 +units=m +no_defs'],
-  ['EPSG:5186', '+proj=tmerc +lat_0=38 +lon_0=127 +k=1 +x_0=200000 +y_0=600000 +ellps=GRS80 +towgs84=0,0,0 +units=m +no_defs'],
+  ['EPSG:5175', '+proj=tmerc +lat_0=38 +lon_0=129.0028902777778 +k=1 +x_0=200000 +y_0=500000 +ellps=bessel +towgs84=-115.80,474.99,674.11,1.16,-2.31,-1.63,6.43 +units=m +no_defs'],
+  ['EPSG:5176', '+proj=tmerc +lat_0=38 +lon_0=131.0028902777778 +k=1 +x_0=200000 +y_0=500000 +ellps=bessel +towgs84=-115.80,474.99,674.11,1.16,-2.31,-1.63,6.43 +units=m +no_defs'],
+  // ── GRS80 (현행 좌표계) ──
   ['EPSG:5185', '+proj=tmerc +lat_0=38 +lon_0=125 +k=1 +x_0=200000 +y_0=600000 +ellps=GRS80 +towgs84=0,0,0 +units=m +no_defs'],
+  ['EPSG:5186', '+proj=tmerc +lat_0=38 +lon_0=127 +k=1 +x_0=200000 +y_0=600000 +ellps=GRS80 +towgs84=0,0,0 +units=m +no_defs'],
   ['EPSG:5187', '+proj=tmerc +lat_0=38 +lon_0=129 +k=1 +x_0=200000 +y_0=600000 +ellps=GRS80 +towgs84=0,0,0 +units=m +no_defs'],
+  ['EPSG:5188', '+proj=tmerc +lat_0=38 +lon_0=131 +k=1 +x_0=200000 +y_0=600000 +ellps=GRS80 +towgs84=0,0,0 +units=m +no_defs'],
   ['EPSG:32652', '+proj=utm +zone=52 +datum=WGS84 +units=m +no_defs']
 ]);
 
@@ -518,41 +543,53 @@ proj4.defs([
 let map, dxfData = null, drawnLayers = [], selectedLayers = new Set();
 let northCtrl = null, scaleCtrl = null;
 let showNorth = true, showScale = true, showTitle = true;
-let tileSat, tileHybrid, tileBase;
+let currentTileSat = null, currentTileLabel = null, currentTileBase = null;
+
+/* ── 상수 ── */
+const ESRI_SAT   = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+const ESRI_TOPO  = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
+const OSM_URL    = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+function buildVworldUrl(type, key) {
+  const ext = type === 'Satellite' ? 'jpeg' : 'png';
+  return `https://api.vworld.kr/req/wmts/1.0.0/${key}/${type}/{z}/{y}/{x}.${ext}`;
+}
 
 /* ── 지도 초기화 ── */
 map = L.map('map', { center:[36.5, 127.5], zoom:7, zoomControl:false, attributionControl:true });
 
-tileSat = L.tileLayer(
-  'https://api.vworld.kr/req/wmts/1.0.0/BB5AFCB1-3D61-3E9E-BB7C-9A4C2E3B8AB5/Satellite/{z}/{y}/{x}.jpeg',
-  { maxZoom:19, attribution:'© Vworld 국토지리정보원' }
-).addTo(map);
+// 기본: Esri World Imagery (API 키 불필요, 즉시 로딩)
+currentTileSat = L.tileLayer(ESRI_SAT, {
+  maxZoom:19,
+  attribution:'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics'
+}).addTo(map);
 
-tileHybrid = L.tileLayer(
-  'https://api.vworld.kr/req/wmts/1.0.0/BB5AFCB1-3D61-3E9E-BB7C-9A4C2E3B8AB5/Hybrid/{z}/{y}/{x}.png',
-  { maxZoom:19 }
-).addTo(map);
+/* ── 배경지도 전환 ── */
+function switchTiles() {
+  const v  = document.getElementById('map-layer').value;
+  const vk = (document.getElementById('vworld-key') || {}).value || '';
 
-tileBase = L.tileLayer(
-  'https://api.vworld.kr/req/wmts/1.0.0/BB5AFCB1-3D61-3E9E-BB7C-9A4C2E3B8AB5/Base/{z}/{y}/{x}.png',
-  { maxZoom:19, attribution:'© Vworld 국토지리정보원' }
-);
+  [currentTileSat, currentTileLabel, currentTileBase].forEach(l => { if (l && map.hasLayer(l)) map.removeLayer(l); });
+  currentTileSat = currentTileLabel = currentTileBase = null;
 
-// 배경지도 전환
-document.getElementById('map-layer').addEventListener('change', function() {
-  const v = this.value;
-  if (v === 'sat') {
-    map.removeLayer(tileBase);
-    tileSat.addTo(map); tileHybrid.setOpacity(0);
-  } else if (v === 'hybrid') {
-    map.removeLayer(tileBase);
-    tileSat.addTo(map); tileHybrid.setOpacity(1);
-  } else {
-    if (map.hasLayer(tileSat)) map.removeLayer(tileSat);
-    tileHybrid.setOpacity(0);
-    tileBase.addTo(map);
+  if (v === 'esri-sat') {
+    currentTileSat = L.tileLayer(ESRI_SAT, { maxZoom:19, attribution:'Tiles © Esri — Esri, Maxar' }).addTo(map);
+  } else if (v === 'esri-topo') {
+    currentTileBase = L.tileLayer(ESRI_TOPO, { maxZoom:19, attribution:'Tiles © Esri' }).addTo(map);
+  } else if (v === 'osm') {
+    currentTileBase = L.tileLayer(OSM_URL, { maxZoom:19, attribution:'© OpenStreetMap contributors' }).addTo(map);
+  } else if (v === 'vworld-sat' || v === 'vworld-hybrid') {
+    if (!vk) { toast('Vworld API 키를 입력하세요.', 'error'); document.getElementById('map-layer').value='esri-sat'; switchTiles(); return; }
+    currentTileSat = L.tileLayer(buildVworldUrl('Satellite', vk), { maxZoom:19, attribution:'© Vworld 국토지리정보원' }).addTo(map);
+    if (v === 'vworld-hybrid') currentTileLabel = L.tileLayer(buildVworldUrl('Hybrid', vk), { maxZoom:19 }).addTo(map);
   }
-});
+
+  // Vworld 키 입력창 표시 제어
+  const vkWrap = document.getElementById('vworld-key-wrap');
+  if (vkWrap) vkWrap.style.display = (v.startsWith('vworld')) ? 'block' : 'none';
+}
+
+document.getElementById('map-layer').addEventListener('change', switchTiles);
 
 // 스케일바
 scaleCtrl = L.control.scale({ position:'bottomleft', imperial:false, maxWidth:180 }).addTo(map);
@@ -807,7 +844,9 @@ async function generateMap() {
   }
 
   map.fitBounds(L.latLngBounds(allLL), { padding:[60, 60] });
-  tileHybrid.bringToFront();
+
+  // 라벨 레이어가 있으면 맨 위로
+  if (currentTileLabel && map.hasLayer(currentTileLabel)) currentTileLabel.bringToFront();
 
   // 출력 제목 오버레이 업데이트
   const pname = document.getElementById('project-name').value;
