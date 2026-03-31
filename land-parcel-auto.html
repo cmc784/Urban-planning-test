@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>편입토지조서 자동생성 시스템</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jsts@2.11.1/dist/jsts.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/shpjs@4.0.2/dist/shp.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
@@ -278,91 +279,131 @@ tbody.result-body td:last-child { border-right:none; }
   <!-- ═══════════════════════════════════════════════ -->
   <div class="shp-mode" id="shpMode">
 
-    <!-- ── 업로드 화면 ── -->
-    <div id="shpUploadSection">
-
-      <!-- 두 파일 업로드 나란히 -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
-
-        <!-- 연속지적도 -->
-        <div class="sec-card" style="margin-bottom:0">
-          <div class="sec-card-title"><div class="dot"></div>① 연속지적도 SHP</div>
-          <div class="alert alert-blue" style="margin-bottom:12px;font-size:11px">
-            <span class="alert-icon">ℹ️</span>
-            <div>.shp .dbf .prj .shx 파일을 <strong>ZIP으로 압축</strong>해서 올려주세요.<br>
-            좌표계: <strong>EPSG:5174</strong> (변환 없이 원본 그대로 사용)</div>
-          </div>
-          <div class="upload-box" id="jijukDropZone"
-            onclick="document.getElementById('jijukFile').click()"
-            ondragover="dragOver(event,'jijukDropZone')" ondragleave="dragLeave('jijukDropZone')" ondrop="dropShp(event,'jijuk')">
-            <div class="upload-icon" id="jijukIcon">🗺️</div>
-            <div class="upload-title" id="jijukTitle">연속지적도 ZIP 업로드</div>
-            <div class="upload-desc" id="jijukDesc">드래그&드롭 또는 클릭하여 선택</div>
-            <label class="upload-label">📎 파일 선택</label>
-            <input type="file" id="jijukFile" accept=".zip" onchange="handleShpJijuk(event)" style="display:none">
-          </div>
-          <div id="jijukResult" style="display:none;margin-top:10px">
-            <div class="alert alert-green" style="font-size:11px">
-              <span class="alert-icon">✅</span>
-              <div id="jijukSummary"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 구역계 -->
-        <div class="sec-card" style="margin-bottom:0">
-          <div class="sec-card-title"><div class="dot"></div>② 구역계 SHP</div>
-          <div class="alert alert-blue" style="margin-bottom:12px;font-size:11px">
-            <span class="alert-icon">ℹ️</span>
-            <div>사업대상지 구역계 SHP를 <strong>ZIP으로 압축</strong>해서 올려주세요.<br>
-            구역계 × 연속지적도 교차분석으로 편입면적이 자동 산출됩니다.</div>
-          </div>
-          <div class="upload-box" id="guyeokDropZone"
-            onclick="document.getElementById('guyeokFile').click()"
-            ondragover="dragOver(event,'guyeokDropZone')" ondragleave="dragLeave('guyeokDropZone')" ondrop="dropShp(event,'guyeok')">
-            <div class="upload-icon" id="guyeokIcon">📐</div>
-            <div class="upload-title" id="guyeokTitle">구역계 ZIP 업로드</div>
-            <div class="upload-desc" id="guyeokDesc">드래그&드롭 또는 클릭하여 선택</div>
-            <label class="upload-label">📎 파일 선택</label>
-            <input type="file" id="guyeokFile" accept=".zip" onchange="handleShpGuyeok(event)" style="display:none">
-          </div>
-          <div id="guyeokResult" style="display:none;margin-top:10px">
-            <div class="alert alert-green" style="font-size:11px">
-              <span class="alert-icon">✅</span>
-              <div id="guyeokSummary"></div>
-            </div>
-          </div>
-        </div>
-
+    <!-- SHP 스텝 프로그레스 -->
+    <div class="step-progress">
+      <div class="sp-item active" id="shp-sp1">
+        <div class="sp-circle">1</div>
+        <div class="sp-label">연속지적도 업로드</div>
       </div>
-
-      <!-- 실행 버튼 -->
-      <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
-        <button class="btn-next" id="btnShpRun" onclick="runShpAnalysis()" disabled
-          style="padding:12px 32px;font-size:14px">
-          ▶ 자동 산출 실행
-        </button>
-        <span style="font-size:11px;color:var(--ink3)" id="shpRunHint">연속지적도 + 구역계 두 파일을 모두 업로드하면 실행할 수 있습니다.</span>
+      <div class="sp-line" id="shp-spl1"></div>
+      <div class="sp-item" id="shp-sp2">
+        <div class="sp-circle">2</div>
+        <div class="sp-label">구역계 업로드 · 편입면적 산출</div>
       </div>
-
-      <!-- 처리 진행 로그 -->
-      <div id="shpProgress" style="display:none;margin-bottom:16px">
-        <div class="sec-card" style="padding:16px 20px">
-          <div class="sec-card-title"><div class="dot"></div>처리 진행 상황</div>
-          <div id="shpLogArea" style="font-size:11px;font-family:'DM Mono',monospace;line-height:1.9;color:var(--ink2);max-height:160px;overflow-y:auto"></div>
-          <div style="margin-top:10px;background:var(--border);border-radius:4px;height:6px;overflow:hidden">
-            <div id="shpProgressBar" style="height:100%;background:var(--green);width:0%;transition:width 0.3s;border-radius:4px"></div>
-          </div>
-        </div>
+      <div class="sp-line" id="shp-spl2"></div>
+      <div class="sp-item" id="shp-sp3">
+        <div class="sp-circle">3</div>
+        <div class="sp-label">결과 확인 · 엑셀 다운로드</div>
       </div>
-
     </div>
 
-    <!-- ── 결과 화면 ── -->
-    <div id="shpResultSection" style="display:none">
+    <!-- ── SHP STEP 1: 연속지적도 업로드 → 필지면적·행정구역·지번·지목 산출 ── -->
+    <div class="step-panel active" id="shp-panel1">
+      <div class="sec-card">
+        <div class="sec-card-title"><div class="dot"></div>연속지적도 SHP 업로드</div>
+        <div class="alert alert-blue" style="margin-bottom:14px">
+          <span class="alert-icon">ℹ️</span>
+          <div>
+            SHP 파일 묶음(.shp .dbf .prj .shx)을 <strong>.zip으로 압축</strong>해서 올려주세요.<br>
+            업로드 후 자동으로 처리됩니다:<br>
+            <span style="font-size:11px;color:var(--blue)">
+              ① EPSG:5174 → 면적 계산 &nbsp;|&nbsp;
+              ② PNU → 시도/시군구/읍면동/대장구분 분리 &nbsp;|&nbsp;
+              ③ 지번·지목 분리
+            </span>
+          </div>
+        </div>
+        <div class="upload-box" id="jijukDropZone"
+          onclick="document.getElementById('jijukFile').click()"
+          ondragover="dragOver(event,'jijukDropZone')" ondragleave="dragLeave('jijukDropZone')" ondrop="dropShp(event,'jijuk')">
+          <div class="upload-icon" id="jijukIcon">🗺️</div>
+          <div class="upload-title" id="jijukTitle">연속지적도 ZIP 업로드</div>
+          <div class="upload-desc" id="jijukDesc">SHP 파일을 ZIP으로 압축해서 올려주세요<br>드래그&드롭도 가능합니다</div>
+          <label class="upload-label">📎 파일 선택</label>
+          <input type="file" id="jijukFile" accept=".zip" onchange="handleShpJijuk(event)" style="display:none">
+        </div>
+        <div id="jijukResult" style="display:none;margin-top:14px">
+          <div class="alert alert-green" style="margin-bottom:12px">
+            <span class="alert-icon">✅</span>
+            <div id="jijukSummary"></div>
+          </div>
+          <!-- Step1 미리보기 테이블 -->
+          <div style="font-size:12px;font-weight:700;color:var(--ink3);margin-bottom:6px">산출 결과 미리보기 (상위 5건)</div>
+          <div class="preview-wrap"><table class="preview-table" id="jijukPreviewTable"></table></div>
+        </div>
+      </div>
+
+      <!-- 진행 로그 -->
+      <div id="shp1Progress" style="display:none;margin-bottom:14px">
+        <div class="sec-card" style="padding:14px 18px">
+          <div id="shp1LogArea" style="font-size:11px;font-family:'DM Mono',monospace;line-height:1.9;color:var(--ink2)"></div>
+          <div style="margin-top:8px;background:var(--border);border-radius:4px;height:5px;overflow:hidden">
+            <div id="shp1Bar" style="height:100%;background:var(--green);width:0%;transition:width 0.3s;border-radius:4px"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="nav-btns">
+        <div></div>
+        <button class="btn-next" id="shpBtn1Next" onclick="shpGoStep(2)" disabled>다음: 구역계 업로드 →</button>
+      </div>
+    </div>
+
+    <!-- ── SHP STEP 2: 구역계 업로드 → Clip → 편입면적·편입구분 산출 ── -->
+    <div class="step-panel" id="shp-panel2">
+      <div class="sec-card">
+        <div class="sec-card-title"><div class="dot"></div>구역계 SHP 업로드</div>
+        <div class="alert alert-blue" style="margin-bottom:14px">
+          <span class="alert-icon">ℹ️</span>
+          <div>
+            사업대상지 구역계 SHP를 <strong>.zip으로 압축</strong>해서 올려주세요.<br>
+            업로드 후 자동으로 처리됩니다:<br>
+            <span style="font-size:11px;color:var(--blue)">
+              ① 구역계 × 연속지적도 교차분석(Clip) &nbsp;|&nbsp;
+              ② 편입면적 산출 &nbsp;|&nbsp;
+              ③ 0.5㎡ 미만 자동 제거 &nbsp;|&nbsp;
+              ④ 완전편입/부분편입 자동 분류
+            </span>
+          </div>
+        </div>
+        <div class="upload-box" id="guyeokDropZone"
+          onclick="document.getElementById('guyeokFile').click()"
+          ondragover="dragOver(event,'guyeokDropZone')" ondragleave="dragLeave('guyeokDropZone')" ondrop="dropShp(event,'guyeok')">
+          <div class="upload-icon" id="guyeokIcon">📐</div>
+          <div class="upload-title" id="guyeokTitle">구역계 ZIP 업로드</div>
+          <div class="upload-desc" id="guyeokDesc">구역계 SHP를 ZIP으로 압축해서 올려주세요<br>드래그&드롭도 가능합니다</div>
+          <label class="upload-label">📎 파일 선택</label>
+          <input type="file" id="guyeokFile" accept=".zip" onchange="handleShpGuyeok(event)" style="display:none">
+        </div>
+        <div id="guyeokResult" style="display:none;margin-top:14px">
+          <div class="alert alert-green" style="margin-bottom:8px">
+            <span class="alert-icon">✅</span>
+            <div id="guyeokSummary"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 진행 로그 -->
+      <div id="shp2Progress" style="display:none;margin-bottom:14px">
+        <div class="sec-card" style="padding:14px 18px">
+          <div id="shp2LogArea" style="font-size:11px;font-family:'DM Mono',monospace;line-height:1.9;color:var(--ink2)"></div>
+          <div style="margin-top:8px;background:var(--border);border-radius:4px;height:5px;overflow:hidden">
+            <div id="shp2Bar" style="height:100%;background:var(--green);width:0%;transition:width 0.3s;border-radius:4px"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="nav-btns">
+        <button class="btn-prev" onclick="shpGoStep(1)">← 이전</button>
+        <button class="btn-next" id="shpBtn2Next" onclick="shpGoStep(3)" disabled>다음: 결과 확인 →</button>
+      </div>
+    </div>
+
+    <!-- ── SHP STEP 3: 결과 확인 · 엑셀 다운로드 ── -->
+    <div class="step-panel" id="shp-panel3">
 
       <!-- 통계 카드 -->
-      <div class="shp-stats" style="margin-bottom:16px">
+      <div class="shp-stats">
         <div class="stat-card">
           <div class="stat-label">총 필지수</div>
           <div class="stat-val"><span id="sr-count">0</span><span class="stat-unit">필지</span></div>
@@ -399,7 +440,6 @@ tbody.result-body td:last-child { border-right:none; }
           </select>
           <button class="btn-sm primary" onclick="exportShpExcel()">📥 엑셀 다운로드</button>
           <button class="btn-sm" onclick="sendShpToJoseo()" style="background:var(--blue);color:white;border-color:var(--blue)">📋 조서로 보내기</button>
-          <button class="btn-sm" onclick="resetShp()" style="margin-left:auto">🔄 다시 업로드</button>
         </div>
         <div class="table-wrap">
           <table class="result" style="min-width:1100px">
@@ -423,6 +463,10 @@ tbody.result-body td:last-child { border-right:none; }
         </div>
       </div>
 
+      <div class="nav-btns">
+        <button class="btn-prev" onclick="shpGoStep(2)">← 이전</button>
+        <button class="btn-next" onclick="exportShpExcel()">📥 엑셀 저장</button>
+      </div>
     </div>
 
   </div><!-- /shpMode -->
@@ -691,63 +735,25 @@ tbody.result-body td:last-child { border-right:none; }
 <div class="toast" id="toast"></div>
 
 <script>
+// ═══════════════════════════════════════════════════════
+// EPSG:5174 좌표계 정의 (한국 중부원점 구 좌표계)
+// ═══════════════════════════════════════════════════════
+proj4.defs("EPSG:5174",
+  "+proj=tmerc +lat_0=38 +lon_0=127.0028902777778 +k=1 " +
+  "+x_0=200000 +y_0=500000 +ellps=bessel " +
+  "+towgs84=-115.80,474.99,674.11,1.16,-2.31,-1.63,6.43 " +
+  "+units=m +no_defs"
+);
+proj4.defs("EPSG:4326", "+proj=longlat +datum=WGS84 +no_defs");
+
 // ─── SHP 모드 상태 ─────────────────────────────────────
-let shpJijukGeo   = null;
-let shpGuyeokGeo  = null;
-let shpResultRows = [];
+let shpJijukGeo   = null;  // 연속지적도 GeoJSON (WGS84 변환 후)
+let shpGuyeokGeo  = null;  // 구역계 GeoJSON (WGS84 변환 후)
+let shpStep1Rows  = [];    // Step1 산출: 필지면적·행정구역·지번·지목
+let shpResultRows = [];    // Step2 산출: 편입면적·편입구분 포함 최종
 
+// 지목 문자 집합
 const JIMOK_CHARS = '전답대도임잡구목묘철사창종천학유장과주차수체공양원염광제하용';
-
-// ─── JSTS 초기화 ───────────────────────────────────────
-// JSTS: 좌표계 무관 순수 기하 연산 라이브러리
-// EPSG:5174 미터 좌표 그대로 처리 가능
-let jstsReader, jstsWriter, jstsFactory;
-
-function initJSTS() {
-  if (jstsReader) return; // 이미 초기화됨
-  jstsFactory = new jsts.geom.GeometryFactory();
-  jstsReader  = new jsts.io.GeoJSONReader(jstsFactory);
-  jstsWriter  = new jsts.io.GeoJSONWriter();
-}
-
-// GeoJSON feature → JSTS Geometry 변환
-function toJSTS(feature) {
-  return jstsReader.read(feature.geometry);
-}
-
-// JSTS Geometry → GeoJSON geometry 변환
-function fromJSTS(jstsGeom) {
-  return jstsWriter.write(jstsGeom);
-}
-
-// ─── 슈레이스 공식: EPSG:5174 미터 좌표 → ㎡ ──────────
-function ringArea(coords) {
-  let s = 0;
-  const n = coords.length;
-  for (let i = 0; i < n; i++) {
-    const j = (i + 1) % n;
-    s += coords[i][0] * coords[j][1];
-    s -= coords[j][0] * coords[i][1];
-  }
-  return Math.abs(s) / 2;
-}
-
-function geomArea5174(geom) {
-  if (!geom) return 0;
-  if (geom.type === 'Polygon') {
-    let a = ringArea(geom.coordinates[0]);
-    for (let i = 1; i < geom.coordinates.length; i++) a -= ringArea(geom.coordinates[i]);
-    return Math.max(a, 0);
-  }
-  if (geom.type === 'MultiPolygon') {
-    return geom.coordinates.reduce((sum, poly) => {
-      let a = ringArea(poly[0]);
-      for (let i = 1; i < poly.length; i++) a -= ringArea(poly[i]);
-      return sum + Math.max(a, 0);
-    }, 0);
-  }
-  return 0;
-}
 
 // ─── 모드 전환 ─────────────────────────────────────────
 function switchMode(mode) {
@@ -757,47 +763,80 @@ function switchMode(mode) {
   document.getElementById('xlsxMode').classList.toggle('hidden', mode === 'shp');
 }
 
-// ─── 슈레이스 공식: 폴리곤 링 면적 계산 ───────────────
-// EPSG:5174은 미터 단위 직교좌표계 → 변환 없이 정확한 ㎡ 산출
-function ringArea(coords) {
-  let s = 0;
-  const n = coords.length;
-  for (let i = 0; i < n; i++) {
-    const j = (i + 1) % n;
-    s += coords[i][0] * coords[j][1];
-    s -= coords[j][0] * coords[i][1];
+// ─── SHP 스텝 이동 ─────────────────────────────────────
+function shpGoStep(n) {
+  for (let i = 1; i <= 3; i++) {
+    const panel = document.getElementById(`shp-panel${i}`);
+    const sp    = document.getElementById(`shp-sp${i}`);
+    panel.classList.toggle('active', i === n);
+    sp.className = 'sp-item' + (i === n ? ' active' : i < n ? ' done' : '');
+    if (i < 3) {
+      document.getElementById(`shp-spl${i}`).className = 'sp-line' + (i < n ? ' done' : '');
+    }
   }
-  return Math.abs(s) / 2;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function geomArea5174(geom) {
-  if (!geom) return 0;
-  if (geom.type === 'Polygon') {
-    // 외부링 면적 - 내부링(홀) 면적
-    let a = ringArea(geom.coordinates[0]);
-    for (let i = 1; i < geom.coordinates.length; i++) a -= ringArea(geom.coordinates[i]);
-    return Math.max(a, 0);
-  }
-  if (geom.type === 'MultiPolygon') {
-    return geom.coordinates.reduce((sum, poly) => {
-      let a = ringArea(poly[0]);
-      for (let i = 1; i < poly.length; i++) a -= ringArea(poly[i]);
-      return sum + Math.max(a, 0);
-    }, 0);
-  }
-  return 0;
+// ─── 드래그앤드롭 ──────────────────────────────────────
+function dropShp(e, type) {
+  e.preventDefault();
+  dragLeave(type === 'jijuk' ? 'jijukDropZone' : 'guyeokDropZone');
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  if (type === 'jijuk') processJijukShp(file);
+  else processGuyeokShp(file);
+}
+
+function handleShpJijuk(e) {
+  const file = e.target.files[0];
+  if (file) processJijukShp(file);
+  e.target.value = '';
+}
+
+function handleShpGuyeok(e) {
+  const file = e.target.files[0];
+  if (file) processGuyeokShp(file);
+  e.target.value = '';
+}
+
+// ─── 좌표계 변환 (EPSG:5174 → WGS84) ──────────────────
+function convertCRS(geojson) {
+  const from = proj4.defs('EPSG:5174');
+  const to   = proj4.defs('EPSG:4326');
+  const cvtC = (c) => {
+    if (Math.abs(c[0]) <= 180 && Math.abs(c[1]) <= 90) return c;
+    const [lng, lat] = proj4(from, to, [c[0], c[1]]);
+    return c.length === 3 ? [lng, lat, c[2]] : [lng, lat];
+  };
+  const cvtRing  = r  => r.map(cvtC);
+  const cvtPoly  = p  => p.map(cvtRing);
+  const cvtMulti = m  => m.map(cvtPoly);
+  const cvtGeom  = g  => {
+    if (!g) return g;
+    switch (g.type) {
+      case 'Point':           return { ...g, coordinates: cvtC(g.coordinates) };
+      case 'MultiPoint':      return { ...g, coordinates: g.coordinates.map(cvtC) };
+      case 'LineString':      return { ...g, coordinates: cvtRing(g.coordinates) };
+      case 'MultiLineString': return { ...g, coordinates: g.coordinates.map(cvtRing) };
+      case 'Polygon':         return { ...g, coordinates: cvtPoly(g.coordinates) };
+      case 'MultiPolygon':    return { ...g, coordinates: cvtMulti(g.coordinates) };
+      default: return g;
+    }
+  };
+  return { ...geojson, features: geojson.features.map(f => ({ ...f, geometry: cvtGeom(f.geometry) })) };
 }
 
 // ─── PNU 파싱 → 행정구역·대장구분·지번 ────────────────
 function parsePNUInfo(pnu) {
-  const s       = String(pnu || '').replace(/[^0-9]/g, '').padStart(19, '0');
-  const bjdCode = s.slice(0, 10);
-  const dCd     = s[10];
-  const daejang = dCd === '2' ? '산' : '일반';
-  const bon     = parseInt(s.slice(11, 15)) || 0;
-  const bu      = parseInt(s.slice(15, 19)) || 0;
-  const jibunPNU = (dCd === '2' ? '산' : '') + bon + (bu > 0 ? `-${bu}` : '');
+  const s = String(pnu || '').replace(/[^0-9]/g, '').padStart(19, '0');
+  const bjdCode   = s.slice(0, 10);
+  const daejangCd = s[10];
+  const daejang   = daejangCd === '2' ? '산' : '일반';
+  const bon       = parseInt(s.slice(11, 15)) || 0;
+  const bu        = parseInt(s.slice(15, 19)) || 0;
+  const jibunPNU  = (daejangCd === '2' ? '산' : '') + bon + (bu > 0 ? `-${bu}` : '');
 
+  // bjd_data.js (window.BJD) 활용
   let sido = '', sigungu = '', emd = '';
   if (window.BJD && window.BJD.map && window.BJD.map[bjdCode]) {
     const [si, sg, em] = window.BJD.map[bjdCode];
@@ -805,246 +844,232 @@ function parsePNUInfo(pnu) {
     sigungu = sg >= 0 ? window.BJD.sigungus[sg] : '';
     emd     = em >= 0 ? window.BJD.emds[em]     : '';
   } else {
-    const FB = {'11':'서울특별시','26':'부산광역시','27':'대구광역시','28':'인천광역시',
+    // fallback: 시도코드만
+    const SIDO_FB = {'11':'서울특별시','26':'부산광역시','27':'대구광역시','28':'인천광역시',
       '29':'광주광역시','30':'대전광역시','31':'울산광역시','36':'세종특별자치시',
       '41':'경기도','42':'강원특별자치도','43':'충청북도','44':'충청남도',
       '45':'전라북도','46':'전라남도','47':'경상북도','48':'경상남도','50':'제주특별자치도'};
-    sido = FB[s.slice(0, 2)] || '';
+    sido = SIDO_FB[s.slice(0, 2)] || '';
   }
-  return { pnu: s, sido, sigungu, emd, daejang, jibunPNU };
+  return { pnu: s, bjdCode, sido, sigungu, emd, daejang, jibunPNU };
 }
 
-// ─── 파일 업로드 핸들러 ────────────────────────────────
-function handleShpJijuk(e) {
-  const file = e.target.files[0];
-  if (file) loadShpFile(file, 'jijuk');
-  e.target.value = '';
-}
-function handleShpGuyeok(e) {
-  const file = e.target.files[0];
-  if (file) loadShpFile(file, 'guyeok');
-  e.target.value = '';
-}
-function dropShp(e, type) {
-  e.preventDefault();
-  dragLeave(type === 'jijuk' ? 'jijukDropZone' : 'guyeokDropZone');
-  const file = e.dataTransfer.files[0];
-  if (file) loadShpFile(file, type);
-}
-
-async function loadShpFile(file, type) {
-  const isJijuk  = type === 'jijuk';
-  const iconEl   = document.getElementById(isJijuk ? 'jijukIcon'    : 'guyeokIcon');
-  const titleEl  = document.getElementById(isJijuk ? 'jijukTitle'   : 'guyeokTitle');
-  const zoneEl   = document.getElementById(isJijuk ? 'jijukDropZone': 'guyeokDropZone');
-  const resultEl = document.getElementById(isJijuk ? 'jijukResult'  : 'guyeokResult');
-  const summaryEl= document.getElementById(isJijuk ? 'jijukSummary' : 'guyeokSummary');
-
-  titleEl.textContent = '⏳ 로딩 중...';
-  try {
-    const buf     = await file.arrayBuffer();
-    const geojson = await shp(buf);
-    const cnt     = geojson.features.length;
-
-    if (isJijuk) {
-      shpJijukGeo = geojson;
-      summaryEl.innerHTML = `<strong>${cnt.toLocaleString()}개 필지</strong> 로드 완료`;
-    } else {
-      shpGuyeokGeo = geojson;
-      summaryEl.innerHTML = `<strong>${cnt.toLocaleString()}개 구역계</strong> 로드 완료`;
-    }
-
-    iconEl.textContent  = '✅';
-    titleEl.textContent = `${cnt.toLocaleString()}개 피처 로드 완료`;
-    zoneEl.classList.add('done');
-    resultEl.style.display = 'block';
-    checkShpRunReady();
-    showToast(`✅ ${file.name} 로드 완료`);
-  } catch(err) {
-    titleEl.textContent = isJijuk ? '연속지적도 ZIP 업로드' : '구역계 ZIP 업로드';
-    showToast('❌ SHP 로드 실패: ' + err.message);
-    console.error(err);
-  }
-}
-
-function checkShpRunReady() {
-  const ready = shpJijukGeo !== null && shpGuyeokGeo !== null;
-  document.getElementById('btnShpRun').disabled = !ready;
-  if (ready) {
-    document.getElementById('shpRunHint').textContent = '두 파일이 모두 준비됐습니다. 실행 버튼을 눌러주세요.';
-  }
-}
-
-// ─── 자동 산출 실행 ────────────────────────────────────
-async function runShpAnalysis() {
-  if (!shpJijukGeo || !shpGuyeokGeo) { showToast('⚠️ 두 파일을 모두 업로드해주세요'); return; }
-
-  document.getElementById('shpProgress').style.display     = 'block';
-  document.getElementById('shpResultSection').style.display = 'none';
-  shpResultRows = [];
-
-  const logEl = document.getElementById('shpLogArea');
-  const barEl = document.getElementById('shpProgressBar');
+// ─── STEP 1: 연속지적도 SHP 처리 ──────────────────────
+async function processJijukShp(file) {
+  const logEl = document.getElementById('shp1LogArea');
+  const barEl = document.getElementById('shp1Bar');
+  document.getElementById('shp1Progress').style.display = 'block';
+  document.getElementById('jijukResult').style.display  = 'none';
   logEl.innerHTML = '';
   barEl.style.width = '0%';
 
-  const log = (msg) => { logEl.innerHTML += msg + '<br>'; logEl.scrollTop = logEl.scrollHeight; };
+  const log = (msg) => { logEl.innerHTML += msg + '<br>'; };
   const bar = (pct) => { barEl.style.width = pct + '%'; };
 
   try {
-    // ── JSTS 초기화 ──────────────────────────────────────
-    log('▸ JSTS 공간연산 엔진 초기화 중...');
-    initJSTS();
-    log('  ✅ JSTS 초기화 완료');
-    bar(3);
+    log('▸ SHP ZIP 파일 읽는 중...');
+    bar(10);
+    const arrayBuffer = await file.arrayBuffer();
+    const geojson = await shp(arrayBuffer);
+    log(`  ✅ ${geojson.features.length.toLocaleString()}개 피처 로드`);
+    bar(30);
 
-    // ── STEP 1: 연속지적도 파싱 (속성 + 필지면적) ────────
-    log('▸ STEP 1  연속지적도 파싱 중...');
-    const jijukFeats = shpJijukGeo.features;
-    const totalJijuk = jijukFeats.length;
-    const jijukRows  = [];
+    log('▸ EPSG:5174 → WGS84 좌표 변환 중...');
+    const converted = convertCRS(geojson);
+    shpJijukGeo = converted;
+    bar(50);
+    log('  ✅ 좌표 변환 완료');
 
-    for (let i = 0; i < totalJijuk; i++) {
-      if (i % 300 === 0) {
-        bar(3 + Math.round(i / totalJijuk * 27));
+    log('▸ PNU 기반 행정구역·지번·지목·필지면적 산출 중...');
+    shpStep1Rows = [];
+    const total = converted.features.length;
+
+    for (let i = 0; i < total; i++) {
+      if (i % 200 === 0) {
+        bar(50 + Math.round(i / total * 40));
         await new Promise(r => setTimeout(r, 0));
       }
-      const feat  = jijukFeats[i];
+      const feat  = converted.features[i];
       const props = feat.properties || {};
 
       // PNU 추출 (컬럼명 자동 탐지)
       const pnuRaw = String(
         props['PNU'] || props['pnu'] || props['PNUCD'] || props['필지고유'] || props['BPCD'] || ''
       ).replace(/[^0-9]/g, '');
+
       const info = parsePNUInfo(pnuRaw);
 
-      // 지번·지목 분리
+      // 지번·지목: JIBUN 컬럼 파싱 우선, 없으면 PNU 지번 사용
       const jibunRaw = String(props['JIBUN'] || props['jibun'] || props['지번'] || '').trim();
       let jibun = info.jibunPNU, jimok = '';
       if (jibunRaw) {
-        const last = jibunRaw[jibunRaw.length - 1];
-        if (JIMOK_CHARS.includes(last)) { jimok = last; jibun = jibunRaw.slice(0, -1).trim(); }
-        else { jibun = jibunRaw; }
+        if (JIMOK_CHARS.includes(jibunRaw[jibunRaw.length - 1])) {
+          jimok  = jibunRaw[jibunRaw.length - 1];
+          jibun  = jibunRaw.slice(0, -1).trim();
+        } else {
+          jibun = jibunRaw;
+        }
       }
+      // 지목 별도 컬럼
       if (!jimok) jimok = String(props['JMCD'] || props['지목'] || props['JIMOK'] || '');
 
-      // 필지면적: 슈레이스 공식 (EPSG:5174 미터 단위 → 정확한 ㎡)
-      const jijuArea = Math.round(geomArea5174(feat.geometry) * 10) / 10;
+      // 필지면적 (turf.area → ㎡, 소수점 1자리)
+      let jijuArea = 0;
+      try { jijuArea = Math.round(turf.area(feat) * 10) / 10; } catch(e) {}
 
-      jijukRows.push({
-        pnu: info.pnu, sido: info.sido, sigungu: info.sigungu,
-        emd: info.emd, daejang: info.daejang, jibun, jimok, jijuArea,
-        geometry: feat.geometry,  // 원본 geometry 보관
+      shpStep1Rows.push({
+        pnu: info.pnu, bjdCode: info.bjdCode,
+        sido: info.sido, sigungu: info.sigungu, emd: info.emd,
+        daejang: info.daejang,
+        jibun, jimok, jijuArea,
+        feature: feat,
+        // Step2에서 채워질 값
+        pyeonipArea: null, gubun: null,
       });
     }
-    log(`  ✅ ${jijukRows.length.toLocaleString()}필지 파싱 완료`);
-    bar(30);
 
-    // ── STEP 2: 구역계 → JSTS Union ──────────────────────
-    log('▸ STEP 2  구역계 Union 생성 중 (JSTS)...');
-    await new Promise(r => setTimeout(r, 0));
+    bar(100);
+    log(`  ✅ 산출 완료: ${shpStep1Rows.length.toLocaleString()}필지`);
 
-    let guyeokUnion = null;
-    for (const feat of shpGuyeokGeo.features) {
-      try {
-        const g = toJSTS(feat);
-        if (!g || !g.isValid()) continue;
-        guyeokUnion = guyeokUnion ? guyeokUnion.union(g) : g;
-      } catch(e) { /* 개별 오류 무시 */ }
+    // 미리보기 (5건)
+    const preview = shpStep1Rows.slice(0, 5);
+    const th = `<tr><th>PNU</th><th>시도</th><th>시군구</th><th>읍면동</th><th>대장구분</th><th>지번</th><th>지목</th><th>필지면적(㎡)</th></tr>`;
+    const trs = preview.map(r =>
+      `<tr>
+        <td class="td-mono" style="font-size:10px">${r.pnu}</td>
+        <td>${escHtml(r.sido)}</td><td>${escHtml(r.sigungu)}</td><td>${escHtml(r.emd)}</td>
+        <td>${escHtml(r.daejang)}</td><td class="td-mono">${escHtml(r.jibun)}</td>
+        <td>${escHtml(r.jimok)}</td>
+        <td class="td-mono">${r.jijuArea.toLocaleString()}</td>
+      </tr>`
+    ).join('');
+    document.getElementById('jijukPreviewTable').innerHTML = `<thead>${th}</thead><tbody>${trs}</tbody>`;
+    document.getElementById('jijukSummary').innerHTML =
+      `<strong>${shpStep1Rows.length.toLocaleString()}개 필지</strong> 산출 완료 &nbsp;|&nbsp;
+       필지면적 합계: <strong>${Math.round(shpStep1Rows.reduce((s,r)=>s+r.jijuArea,0)).toLocaleString()} ㎡</strong>`;
+    document.getElementById('jijukResult').style.display = 'block';
+    document.getElementById('jijukDropZone').classList.add('done');
+    document.getElementById('jijukIcon').textContent  = '✅';
+    document.getElementById('jijukTitle').textContent = `${shpStep1Rows.length.toLocaleString()}필지 산출 완료`;
+    document.getElementById('shpBtn1Next').disabled = false;
+    showToast(`✅ ${shpStep1Rows.length.toLocaleString()}필지 필지면적 산출 완료`);
+
+  } catch(err) {
+    log(`❌ 오류: ${err.message}`);
+    showToast('❌ SHP 처리 실패: ' + err.message);
+    console.error(err);
+  }
+}
+
+// ─── STEP 2: 구역계 SHP → Clip → 편입면적·편입구분 ───
+async function processGuyeokShp(file) {
+  if (shpStep1Rows.length === 0) { showToast('⚠️ 먼저 연속지적도 SHP를 업로드해주세요'); return; }
+
+  const logEl = document.getElementById('shp2LogArea');
+  const barEl = document.getElementById('shp2Bar');
+  document.getElementById('shp2Progress').style.display = 'block';
+  document.getElementById('guyeokResult').style.display = 'none';
+  logEl.innerHTML = '';
+  barEl.style.width = '0%';
+
+  const log = (msg) => { logEl.innerHTML += msg + '<br>'; };
+  const bar = (pct) => { barEl.style.width = pct + '%'; };
+
+  try {
+    log('▸ 구역계 SHP ZIP 읽는 중...');
+    bar(5);
+    const arrayBuffer = await file.arrayBuffer();
+    const geojson = await shp(arrayBuffer);
+    const converted = convertCRS(geojson);
+    shpGuyeokGeo = converted;
+    log(`  ✅ 구역계 ${converted.features.length}개 피처 로드`);
+    bar(15);
+
+    log('▸ 구역계 Union 생성 중...');
+    let guyeokUnion = converted.features[0];
+    for (let i = 1; i < converted.features.length; i++) {
+      try { guyeokUnion = turf.union(guyeokUnion, converted.features[i]); } catch(e) {}
     }
+    log(`  ✅ Union 완료`);
+    bar(25);
 
-    if (!guyeokUnion) {
-      log('❌ 구역계 Union 실패: 유효한 구역계 피처가 없습니다');
-      showToast('❌ 구역계 처리 실패');
-      return;
-    }
-
-    // 구역계 BBox (교차 사전 필터링용)
-    const gEnv = guyeokUnion.getEnvelopeInternal();
-    log(`  ✅ Union 완료 | 범위: X(${Math.round(gEnv.getMinX())}~${Math.round(gEnv.getMaxX())}) Y(${Math.round(gEnv.getMinY())}~${Math.round(gEnv.getMaxY())})`);
-    bar(45);
-
-    // ── STEP 3: Clip → 편입면적 · 편입구분 ───────────────
-    log('▸ STEP 3  교차분석(Clip) 및 편입면적 산출 중 (JSTS)...');
-    const total = jijukRows.length;
+    log('▸ 교차분석(Clip) 및 편입면적 산출 중...');
+    const total = shpStep1Rows.length;
+    shpResultRows = [];
 
     for (let i = 0; i < total; i++) {
       if (i % 100 === 0) {
-        bar(45 + Math.round(i / total * 50));
-        if (i > 0) log(`  처리 중... ${i.toLocaleString()} / ${total.toLocaleString()}`);
+        bar(25 + Math.round(i / total * 60));
+        log(`  처리 중... ${i.toLocaleString()} / ${total.toLocaleString()}`);
         await new Promise(r => setTimeout(r, 0));
       }
-      const row = jijukRows[i];
+      const row  = shpStep1Rows[i];
+      const feat = row.feature;
 
       try {
-        // 1차 BBox 필터: 구역계 범위 안에 있는 필지만 처리 (성능 최적화)
-        const geom  = row.geometry;
-        const coords = geom.type === 'Polygon'
-          ? geom.coordinates[0]
-          : geom.coordinates[0][0];
-        const xs = coords.map(c => c[0]);
-        const ys = coords.map(c => c[1]);
-        const minX = Math.min(...xs), maxX = Math.max(...xs);
-        const minY = Math.min(...ys), maxY = Math.max(...ys);
+        if (!turf.booleanIntersects(feat, guyeokUnion)) continue;
+        const intersection = turf.intersect(feat, guyeokUnion);
+        if (!intersection) continue;
 
-        // BBox가 구역계 범위 밖이면 스킵
-        if (maxX < gEnv.getMinX() || minX > gEnv.getMaxX() ||
-            maxY < gEnv.getMinY() || minY > gEnv.getMaxY()) continue;
-
-        // 2차: JSTS 교차 연산
-        const jijukGeom = jstsReader.read(geom);
-        if (!jijukGeom || !jijukGeom.isValid()) continue;
-        if (!jijukGeom.intersects(guyeokUnion)) continue;
-
-        const inter = jijukGeom.intersection(guyeokUnion);
-        if (!inter || inter.isEmpty()) continue;
-
-        // 편입면적: 교차 결과 geometry를 GeoJSON으로 변환 후 슈레이스 공식
-        const interGeoJSON = fromJSTS(inter);
-        const pyeonipArea  = Math.round(geomArea5174(interGeoJSON) * 10) / 10;
+        const pyeonipArea = Math.round(turf.area(intersection) * 10) / 10;
         if (pyeonipArea < 0.5) continue; // 0.5㎡ 미만 제거
 
         const gubun = Math.abs(row.jijuArea - pyeonipArea) < 0.05 ? '완전편입' : '부분편입';
 
         shpResultRows.push({
-          pnu: row.pnu, sido: row.sido, sigungu: row.sigungu, emd: row.emd,
-          daejang: row.daejang, jibun: row.jibun, jimok: row.jimok,
-          jijuArea: row.jijuArea, pyeonipArea, gubun,
+          pnu:        row.pnu,
+          sido:       row.sido,
+          sigungu:    row.sigungu,
+          emd:        row.emd,
+          daejang:    row.daejang,
+          jibun:      row.jibun,
+          jimok:      row.jimok,
+          jijuArea:   row.jijuArea,
+          pyeonipArea,
+          gubun,
         });
       } catch(e) { /* 개별 피처 오류 무시 */ }
     }
 
-    bar(100);
-
-    // ── 통계 ─────────────────────────────────────────────
+    bar(90);
     const cntFull  = shpResultRows.filter(r => r.gubun === '완전편입').length;
     const cntPart  = shpResultRows.filter(r => r.gubun === '부분편입').length;
-    const sumArea  = shpResultRows.reduce((s, r) => s + r.jijuArea,    0);
-    const sumPyeon = shpResultRows.reduce((s, r) => s + r.pyeonipArea, 0);
+    const sumArea  = shpResultRows.reduce((s,r) => s + r.jijuArea,   0);
+    const sumPyeon = shpResultRows.reduce((s,r) => s + r.pyeonipArea, 0);
 
-    log(`  ✅ Clip 완료: ${shpResultRows.length.toLocaleString()}필지`);
-    log(`<span style="color:var(--green);font-weight:700">🎉 완료! 완전편입 ${cntFull} / 부분편입 ${cntPart}</span>`);
+    log(`  ✅ Clip 완료: ${shpResultRows.length.toLocaleString()}필지 편입`);
+    log(`  완전편입: ${cntFull} / 부분편입: ${cntPart}`);
+    bar(100);
 
+    // 통계 카드 업데이트
     document.getElementById('sr-count').textContent   = shpResultRows.length.toLocaleString();
     document.getElementById('sr-area').textContent    = Math.round(sumArea).toLocaleString();
     document.getElementById('sr-pyeonip').textContent = Math.round(sumPyeon).toLocaleString();
     document.getElementById('sr-full').textContent    = cntFull.toLocaleString();
     document.getElementById('sr-part').textContent    = cntPart.toLocaleString();
 
-    document.getElementById('shpResultSection').style.display = 'block';
+    document.getElementById('guyeokSummary').innerHTML =
+      `<strong>${shpResultRows.length.toLocaleString()}필지</strong> 편입 산출 완료 &nbsp;|&nbsp;
+       완전편입 <strong>${cntFull}</strong> / 부분편입 <strong>${cntPart}</strong>`;
+    document.getElementById('guyeokResult').style.display = 'block';
+    document.getElementById('guyeokDropZone').classList.add('done');
+    document.getElementById('guyeokIcon').textContent  = '✅';
+    document.getElementById('guyeokTitle').textContent = `${shpResultRows.length.toLocaleString()}필지 편입 산출 완료`;
+    document.getElementById('shpBtn2Next').disabled = false;
+
     renderShpResult();
-    showToast(`✅ 산출 완료! ${shpResultRows.length}필지`);
+    showToast(`✅ 편입면적 산출 완료! ${shpResultRows.length}필지`);
 
   } catch(err) {
     log(`❌ 오류: ${err.message}`);
-    showToast('❌ 분석 실패: ' + err.message);
+    showToast('❌ 구역계 처리 실패: ' + err.message);
     console.error(err);
   }
 }
 
-// ─── 결과 테이블 렌더 ──────────────────────────────────
+// ─── STEP 3: 결과 테이블 렌더 ─────────────────────────
 function renderShpResult() {
-  const q  = (document.getElementById('shpSearch')?.value || '').toLowerCase();
+  const q  = (document.getElementById('shpSearch')?.value  || '').toLowerCase();
   const fg = (document.getElementById('shpFilterGubun')?.value || '');
 
   const list = shpResultRows.filter(r => {
@@ -1058,8 +1083,9 @@ function renderShpResult() {
     tbody.innerHTML = `<tr><td colspan="11" style="padding:40px;text-align:center;color:var(--ink3)">결과 없음</td></tr>`;
     return;
   }
+
   tbody.innerHTML = list.map((r, i) => {
-    const badge = r.gubun === '완전편입'
+    const gubunBadge = r.gubun === '완전편입'
       ? `<span class="status-badge s-완편">완전편입</span>`
       : `<span class="status-badge s-일편">부분편입</span>`;
     return `<tr>
@@ -1073,7 +1099,7 @@ function renderShpResult() {
       <td>${escHtml(r.jimok)}</td>
       <td class="td-mono">${r.jijuArea.toLocaleString()}</td>
       <td class="td-mono">${r.pyeonipArea.toLocaleString()}</td>
-      <td>${badge}</td>
+      <td>${gubunBadge}</td>
     </tr>`;
   }).join('');
 }
@@ -1081,17 +1107,27 @@ function renderShpResult() {
 // ─── 엑셀 다운로드 ─────────────────────────────────────
 function exportShpExcel() {
   if (shpResultRows.length === 0) { showToast('⚠️ 데이터가 없습니다'); return; }
+
   const header = ['pnu','연번','시도','시군구','읍면동','대장구분','지번','지목','필지면적(㎡)','편입면적(㎡)','편입구분'];
   const data   = [header, ...shpResultRows.map((r, i) => [
-    r.pnu, i+1, r.sido, r.sigungu, r.emd,
+    r.pnu, i + 1, r.sido, r.sigungu, r.emd,
     r.daejang, r.jibun, r.jimok,
     r.jijuArea, r.pyeonipArea, r.gubun,
   ])];
+
   const ws = XLSX.utils.aoa_to_sheet(data);
-  ws['!cols'] = [22,6,12,14,14,8,12,6,14,14,10].map(w => ({wch:w}));
+  ws['!cols'] = [22, 6, 12, 14, 14, 8, 12, 6, 14, 14, 10].map(w => ({ wch: w }));
+
+  // 헤더 스타일 (굵게)
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  for (let c = range.s.c; c <= range.e.c; c++) {
+    const cell = ws[XLSX.utils.encode_cell({ r: 0, c })];
+    if (cell) cell.s = { font: { bold: true }, alignment: { horizontal: 'center' } };
+  }
+
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, '편입토지조서');
-  const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   XLSX.writeFile(wb, `편입토지조서_${today}.xlsx`);
   showToast('📥 엑셀 다운로드 완료!');
 }
@@ -1100,11 +1136,13 @@ function exportShpExcel() {
 function sendShpToJoseo() {
   if (shpResultRows.length === 0) { showToast('⚠️ 산출 결과가 없습니다'); return; }
   resultRows = shpResultRows.map((r, i) => ({
-    id: i+1, pnu: r.pnu,
+    id: i + 1, pnu: r.pnu,
     haengjeong: [r.sido, r.sigungu, r.emd].filter(Boolean).join(' '),
-    daejang: r.daejang, sidoName: r.sido, sigunguName: r.sigungu, emdName: r.emd,
-    jibun: r.jibun, jimok: r.jimok, area: r.jijuArea, pyeonip: r.pyeonipArea,
-    ownerType: '사유지', owners: [{name:'', addr:''}],
+    daejang: r.daejang,
+    sidoName: r.sido, sigunguName: r.sigungu, emdName: r.emd,
+    jibun: r.jibun, jimok: r.jimok,
+    area: r.jijuArea, pyeonip: r.pyeonipArea,
+    ownerType: '사유지', owners: [{ name: '', addr: '' }],
     price: 0, status: r.gubun === '완전편입' ? '완편' : '일편', matched: true,
   }));
   document.getElementById('r-count').textContent     = resultRows.length;
@@ -1116,23 +1154,6 @@ function sendShpToJoseo() {
   goStep(3);
   renderResult();
   showToast(`✅ ${resultRows.length}필지를 조서로 전송했습니다`);
-}
-
-// ─── 다시 업로드 ───────────────────────────────────────
-function resetShp() {
-  shpJijukGeo = null; shpGuyeokGeo = null; shpResultRows = [];
-  ['jijuk','guyeok'].forEach(t => {
-    document.getElementById(`${t}Icon`).textContent  = t === 'jijuk' ? '🗺️' : '📐';
-    document.getElementById(`${t}Title`).textContent = t === 'jijuk' ? '연속지적도 ZIP 업로드' : '구역계 ZIP 업로드';
-    document.getElementById(`${t}DropZone`).classList.remove('done');
-    document.getElementById(`${t}Result`).style.display = 'none';
-  });
-  document.getElementById('btnShpRun').disabled = true;
-  document.getElementById('shpRunHint').textContent = '연속지적도 + 구역계 두 파일을 모두 업로드하면 실행할 수 있습니다.';
-  document.getElementById('shpProgress').style.display    = 'none';
-  document.getElementById('shpResultSection').style.display = 'none';
-  document.getElementById('shpLogArea').innerHTML = '';
-  document.getElementById('shpProgressBar').style.width = '0%';
 }
 </script>
 
