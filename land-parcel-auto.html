@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>편입토지조서 자동생성 시스템</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/shpjs@4.0.2/dist/shp.min.js"></script>
 <style>
@@ -307,7 +306,7 @@ tbody.result-body td:last-child { border-right:none; }
             SHP 파일 묶음(.shp .dbf .prj .shx)을 <strong>.zip으로 압축</strong>해서 올려주세요.<br>
             업로드 후 자동으로 처리됩니다:<br>
             <span style="font-size:11px;color:var(--blue)">
-              ① EPSG:5174 → 면적 계산 &nbsp;|&nbsp;
+              ① 원본 좌표 그대로 평면 면적 계산 (좌표 변환 없음) &nbsp;|&nbsp;
               ② PNU → 시도/시군구/읍면동/대장구분 분리 &nbsp;|&nbsp;
               ③ 지번·지목 분리
             </span>
@@ -736,21 +735,72 @@ tbody.result-body td:last-child { border-right:none; }
 
 <script>
 // ═══════════════════════════════════════════════════════
-// EPSG:5174 좌표계 정의 (한국 중부원점 구 좌표계)
+// 좌표계 변환 없이 원본 좌표 그대로 사용
+// - 투영좌표계(m 단위): Shoelace 공식으로 평면 면적 계산 → QGIS 결과와 일치
+// - 지리좌표계(도 단위, |x|≤180 && |y|≤90): turf.area() geodesic 면적 계산
 // ═══════════════════════════════════════════════════════
-proj4.defs("EPSG:5174",
-  "+proj=tmerc +lat_0=38 +lon_0=127.0028902777778 +k=1 " +
-  "+x_0=200000 +y_0=500000 +ellps=bessel " +
-  "+towgs84=-115.80,474.99,674.11,1.16,-2.31,-1.63,6.43 " +
-  "+units=m +no_defs"
-);
-proj4.defs("EPSG:4326", "+proj=longlat +datum=WGS84 +no_defs");
 
 // ─── SHP 모드 상태 ─────────────────────────────────────
-let shpJijukGeo   = null;  // 연속지적도 GeoJSON (WGS84 변환 후)
-let shpGuyeokGeo  = null;  // 구역계 GeoJSON (WGS84 변환 후)
+let shpJijukGeo   = null;  // 연속지적도 GeoJSON (원본 좌표 그대로)
+let shpGuyeokGeo  = null;  // 구역계 GeoJSON (원본 좌표 그대로)
 let shpStep1Rows  = [];    // Step1 산출: 필지면적·행정구역·지번·지목
 let shpResultRows = [];    // Step2 산출: 편입면적·편입구분 포함 최종
+
+// ─── 투영좌표계 판별 ────────────────────────────────────
+// 첫 좌표의 절댓값이 180 초과이면 투영좌표계(m 단위)로 판단
+function isProjected(geojson) {
+  try {
+    const coords = geojson.features[0].geometry.coordinates;
+    // Polygon/MultiPolygon 모두 처리
+    const c = Array.isArray(coords[0][0]) ? coords[0][0] : coords[0][0][0];
+    return Math.abs(c[0]) > 180 || Math.abs(c[1]) > 90;
+  } catch(e) { return false; }
+}
+
+// ─── Shoelace 공식: 평면 면적(㎡) ───────────────────────
+// 투영좌표계(m 단위)일 때 QGIS 와 동일한 평면 면적 반환
+function shoelaceArea(ring) {
+  let area = 0;
+  const n = ring.length;
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    area += (ring[j][0] + ring[i][0]) * (ring[j][1] - ring[i][1]);
+  }
+  return Math.abs(area) / 2;
+}
+
+function planarArea(geometry) {
+  if (!geometry) return 0;
+  let total = 0;
+  if (geometry.type === 'Polygon') {
+    // 외곽 링 면적 - 내부 홀 면적
+    total = shoelaceArea(geometry.coordinates[0]);
+    for (let i = 1; i < geometry.coordinates.length; i++) {
+      total -= shoelaceArea(geometry.coordinates[i]);
+    }
+  } else if (geometry.type === 'MultiPolygon') {
+    for (const poly of geometry.coordinates) {
+      total += shoelaceArea(poly[0]);
+      for (let i = 1; i < poly.length; i++) {
+        total -= shoelaceArea(poly[i]);
+      }
+    }
+  }
+  return Math.max(total, 0);
+}
+
+// ─── 면적 계산 통합 함수 ────────────────────────────────
+// 투영좌표계 → Shoelace(평면), 지리좌표계 → turf.area(geodesic)
+function calcArea(feature) {
+  try {
+    if (_shpIsProjected) {
+      return planarArea(feature.geometry);
+    } else {
+      return turf.area(feature);
+    }
+  } catch(e) { return 0; }
+}
+
+let _shpIsProjected = false; // 연속지적도 업로드 시 설정됨
 
 // 지목 문자 집합
 const JIMOK_CHARS = '전답대도임잡구목묘철사창종천학유장과주차수체공양원염광제하용';
@@ -799,32 +849,10 @@ function handleShpGuyeok(e) {
   e.target.value = '';
 }
 
-// ─── 좌표계 변환 (EPSG:5174 → WGS84) ──────────────────
-function convertCRS(geojson) {
-  const from = proj4.defs('EPSG:5174');
-  const to   = proj4.defs('EPSG:4326');
-  const cvtC = (c) => {
-    if (Math.abs(c[0]) <= 180 && Math.abs(c[1]) <= 90) return c;
-    const [lng, lat] = proj4(from, to, [c[0], c[1]]);
-    return c.length === 3 ? [lng, lat, c[2]] : [lng, lat];
-  };
-  const cvtRing  = r  => r.map(cvtC);
-  const cvtPoly  = p  => p.map(cvtRing);
-  const cvtMulti = m  => m.map(cvtPoly);
-  const cvtGeom  = g  => {
-    if (!g) return g;
-    switch (g.type) {
-      case 'Point':           return { ...g, coordinates: cvtC(g.coordinates) };
-      case 'MultiPoint':      return { ...g, coordinates: g.coordinates.map(cvtC) };
-      case 'LineString':      return { ...g, coordinates: cvtRing(g.coordinates) };
-      case 'MultiLineString': return { ...g, coordinates: g.coordinates.map(cvtRing) };
-      case 'Polygon':         return { ...g, coordinates: cvtPoly(g.coordinates) };
-      case 'MultiPolygon':    return { ...g, coordinates: cvtMulti(g.coordinates) };
-      default: return g;
-    }
-  };
-  return { ...geojson, features: geojson.features.map(f => ({ ...f, geometry: cvtGeom(f.geometry) })) };
-}
+// convertCRS 제거됨 — 원본 좌표 그대로 사용
+// (하위 호환을 위해 identity 함수로 유지)
+function convertCRS(geojson) { return geojson; }
+
 
 // ─── PNU 파싱 → 행정구역·대장구분·지번 ────────────────
 function parsePNUInfo(pnu) {
@@ -874,11 +902,13 @@ async function processJijukShp(file) {
     log(`  ✅ ${geojson.features.length.toLocaleString()}개 피처 로드`);
     bar(30);
 
-    log('▸ EPSG:5174 → WGS84 좌표 변환 중...');
-    const converted = convertCRS(geojson);
+    // 좌표계 판별 (투영좌표계 여부 확인)
+    _shpIsProjected = isProjected(geojson);
+    log(`▸ 좌표계 감지: ${_shpIsProjected ? '투영좌표계(m 단위) — Shoelace 평면 면적 계산' : '지리좌표계(도 단위) — geodesic 면적 계산'}`);
+    const converted = geojson; // 좌표 변환 없이 원본 그대로 사용
     shpJijukGeo = converted;
     bar(50);
-    log('  ✅ 좌표 변환 완료');
+    log('  ✅ 원본 좌표 그대로 로드 완료');
 
     log('▸ PNU 기반 행정구역·지번·지목·필지면적 산출 중...');
     shpStep1Rows = [];
@@ -915,7 +945,7 @@ async function processJijukShp(file) {
 
       // 필지면적 (turf.area → ㎡, 소수점 1자리)
       let jijuArea = 0;
-      try { jijuArea = Math.round(turf.area(feat) * 10) / 10; } catch(e) {}
+      try { jijuArea = Math.round(calcArea(feat) * 10) / 10; } catch(e) {}
 
       shpStep1Rows.push({
         pnu: info.pnu, bjdCode: info.bjdCode,
@@ -946,7 +976,8 @@ async function processJijukShp(file) {
     document.getElementById('jijukPreviewTable').innerHTML = `<thead>${th}</thead><tbody>${trs}</tbody>`;
     document.getElementById('jijukSummary').innerHTML =
       `<strong>${shpStep1Rows.length.toLocaleString()}개 필지</strong> 산출 완료 &nbsp;|&nbsp;
-       필지면적 합계: <strong>${Math.round(shpStep1Rows.reduce((s,r)=>s+r.jijuArea,0)).toLocaleString()} ㎡</strong>`;
+       필지면적 합계: <strong>${Math.round(shpStep1Rows.reduce((s,r)=>s+r.jijuArea,0)).toLocaleString()} ㎡</strong>
+       &nbsp;|&nbsp; <span style="color:var(--blue);font-size:11px">${_shpIsProjected ? '📐 평면 면적(Shoelace)' : '🌐 geodesic 면적'}</span>`;
     document.getElementById('jijukResult').style.display = 'block';
     document.getElementById('jijukDropZone').classList.add('done');
     document.getElementById('jijukIcon').textContent  = '✅';
@@ -980,9 +1011,17 @@ async function processGuyeokShp(file) {
     bar(5);
     const arrayBuffer = await file.arrayBuffer();
     const geojson = await shp(arrayBuffer);
-    const converted = convertCRS(geojson);
+    const converted = geojson; // 좌표 변환 없이 원본 그대로 사용
     shpGuyeokGeo = converted;
-    log(`  ✅ 구역계 ${converted.features.length}개 피처 로드`);
+    log(`  ✅ 구역계 ${converted.features.length}개 피처 로드 (원본 좌표 그대로)`);
+
+    // 연속지적도와 구역계 좌표계 일치 여부 경고
+    const guyeokIsProjected = isProjected(converted);
+    if (guyeokIsProjected !== _shpIsProjected) {
+      log(`  ⚠️ 경고: 연속지적도(${_shpIsProjected ? '투영' : '지리'}좌표계)와 구역계(${guyeokIsProjected ? '투영' : '지리'}좌표계)의 좌표계가 다릅니다. 교차분석 결과가 정확하지 않을 수 있습니다.`);
+    } else {
+      log(`  ✅ 좌표계 일치: ${guyeokIsProjected ? '투영좌표계(m 단위)' : '지리좌표계(도 단위)'}`);
+    }
     bar(15);
 
     log('▸ 구역계 Union 생성 중...');
@@ -1011,7 +1050,7 @@ async function processGuyeokShp(file) {
         const intersection = turf.intersect(feat, guyeokUnion);
         if (!intersection) continue;
 
-        const pyeonipArea = Math.round(turf.area(intersection) * 10) / 10;
+        const pyeonipArea = Math.round(calcArea(intersection) * 10) / 10;
         if (pyeonipArea < 0.5) continue; // 0.5㎡ 미만 제거
 
         const gubun = Math.abs(row.jijuArea - pyeonipArea) < 0.05 ? '완전편입' : '부분편입';
