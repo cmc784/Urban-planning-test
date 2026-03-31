@@ -740,6 +740,46 @@ tbody.result-body td:last-child { border-right:none; }
 // - 지리좌표계(도 단위, |x|≤180 && |y|≤90): turf.area() geodesic 면적 계산
 // ═══════════════════════════════════════════════════════
 
+// ─── ZIP에서 .prj 파일 추출 (Store/Deflate 모두 지원) ──
+async function extractPrjFromZip(arrayBuffer) {
+  const bytes = new Uint8Array(arrayBuffer);
+  const sig = [0x50, 0x4B, 0x03, 0x04]; // ZIP 로컬 파일 헤더 시그니처
+  for (let i = 0; i < bytes.length - 30; i++) {
+    if (bytes[i]!==sig[0]||bytes[i+1]!==sig[1]||bytes[i+2]!==sig[2]||bytes[i+3]!==sig[3]) continue;
+    const compMethod = bytes[i+8]  | (bytes[i+9]  << 8);
+    const compSize   = bytes[i+18] | (bytes[i+19] << 8) | (bytes[i+20] << 16) | (bytes[i+21] << 24);
+    const uncompSize = bytes[i+22] | (bytes[i+23] << 8) | (bytes[i+24] << 16) | (bytes[i+25] << 24);
+    const fnLen      = bytes[i+26] | (bytes[i+27] << 8);
+    const exLen      = bytes[i+28] | (bytes[i+29] << 8);
+    const fname      = new TextDecoder().decode(bytes.slice(i+30, i+30+fnLen));
+    if (!fname.toLowerCase().endsWith('.prj')) continue;
+    const dataStart  = i + 30 + fnLen + exLen;
+    const rawData    = bytes.slice(dataStart, dataStart + compSize);
+    if (compMethod === 0) {
+      // Store: 비압축 그대로 읽기
+      return new TextDecoder('utf-8').decode(rawData);
+    } else if (compMethod === 8) {
+      // Deflate: 브라우저 내장 DecompressionStream으로 해제
+      const ds = new DecompressionStream('deflate-raw');
+      const writer = ds.writable.getWriter();
+      writer.write(rawData);
+      writer.close();
+      const reader = ds.readable.getReader();
+      const chunks = [];
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+      }
+      const decompressed = new Uint8Array(chunks.reduce((a, c) => a + c.length, 0));
+      let offset = 0;
+      for (const chunk of chunks) { decompressed.set(chunk, offset); offset += chunk.length; }
+      return new TextDecoder('utf-8').decode(decompressed);
+    }
+  }
+  return null; // .prj 없음
+}
+
 // ─── SHP 모드 상태 ─────────────────────────────────────
 let shpJijukGeo   = null;  // 연속지적도 GeoJSON (원본 좌표 그대로)
 let shpGuyeokGeo  = null;  // 구역계 GeoJSON (원본 좌표 그대로)
@@ -918,35 +958,15 @@ async function processJijukShp(file) {
 
     // .prj 파일 좌표계 확인 (ZIP 내 직접 탐색)
     try {
-      const bytes = new Uint8Array(arrayBuffer);
-      // ZIP 로컬 파일 헤더 시그니처(PK\x03\x04) 기반으로 .prj 항목 탐색
-      let prjText = '';
-      const sig = [0x50, 0x4B, 0x03, 0x04];
-      for (let i = 0; i < bytes.length - 30; i++) {
-        if (bytes[i]===sig[0] && bytes[i+1]===sig[1] && bytes[i+2]===sig[2] && bytes[i+3]===sig[3]) {
-          const fnLen = bytes[i+26] | (bytes[i+27] << 8);
-          const exLen = bytes[i+28] | (bytes[i+29] << 8);
-          const fnBytes = bytes.slice(i+30, i+30+fnLen);
-          const fname = new TextDecoder().decode(fnBytes);
-          if (fname.toLowerCase().endsWith('.prj')) {
-            const compMethod = bytes[i+8] | (bytes[i+9] << 8);
-            const compSize   = bytes[i+18] | (bytes[i+19]<<8) | (bytes[i+20]<<16) | (bytes[i+21]<<24);
-            const dataStart  = i + 30 + fnLen + exLen;
-            if (compMethod === 0) { // 비압축(Store)
-              prjText = new TextDecoder('utf-8').decode(bytes.slice(dataStart, dataStart + compSize));
-            }
-            break;
-          }
-        }
-      }
+      const prjText = await extractPrjFromZip(arrayBuffer);
       if (prjText) {
         const nameMatch = prjText.match(/PROJCS\["([^"]+)"/i) || prjText.match(/GEOGCS\["([^"]+)"/i);
         log(`▸ .prj 좌표계: <strong>${nameMatch ? nameMatch[1] : prjText.slice(0, 100)}</strong>`);
       } else {
-        log('▸ .prj: 파일 없거나 압축됨 — 좌표값으로 판별');
+        log('▸ .prj: 파일 없음 — 좌표값으로 좌표계 판별');
       }
     } catch(e) {
-      log(`▸ .prj 읽기 건너뜀`);
+      log(`▸ .prj 읽기 건너뜀: ${e.message}`);
     }
 
     // 좌표계 판별 — 첫 좌표값 직접 출력해서 확인
@@ -1072,26 +1092,12 @@ async function processGuyeokShp(file) {
 
     // .prj 좌표계 확인
     try {
-      const bytes = new Uint8Array(arrayBuffer);
-      let prjText = '';
-      const sig = [0x50, 0x4B, 0x03, 0x04];
-      for (let i = 0; i < bytes.length - 30; i++) {
-        if (bytes[i]===sig[0]&&bytes[i+1]===sig[1]&&bytes[i+2]===sig[2]&&bytes[i+3]===sig[3]) {
-          const fnLen = bytes[i+26]|(bytes[i+27]<<8);
-          const exLen = bytes[i+28]|(bytes[i+29]<<8);
-          const fname = new TextDecoder().decode(bytes.slice(i+30, i+30+fnLen));
-          if (fname.toLowerCase().endsWith('.prj')) {
-            const compMethod = bytes[i+8]|(bytes[i+9]<<8);
-            const compSize   = bytes[i+18]|(bytes[i+19]<<8)|(bytes[i+20]<<16)|(bytes[i+21]<<24);
-            const dataStart  = i+30+fnLen+exLen;
-            if (compMethod === 0) prjText = new TextDecoder().decode(bytes.slice(dataStart, dataStart+compSize));
-            break;
-          }
-        }
-      }
+      const prjText = await extractPrjFromZip(arrayBuffer);
       if (prjText) {
-        const nm = prjText.match(/PROJCS\["([^"]+)"/i)||prjText.match(/GEOGCS\["([^"]+)"/i);
+        const nm = prjText.match(/PROJCS\["([^"]+)"/i) || prjText.match(/GEOGCS\["([^"]+)"/i);
         log(`▸ 구역계 .prj 좌표계: <strong>${nm ? nm[1] : prjText.slice(0,100)}</strong>`);
+      } else {
+        log('▸ 구역계 .prj: 파일 없음 — 좌표값으로 판별');
       }
     } catch(e) {}
 
