@@ -6,7 +6,160 @@
 <title>편입토지조서 자동생성 시스템</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/shpjs@3.6.3/dist/shp.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════
+// 순수 JS SHP/DBF 파서 — shpjs 완전 대체
+// 좌표 변환 없이 원본 좌표를 그대로 반환
+// ═══════════════════════════════════════════════════════
+
+// ── ZIP 파일 항목 목록 추출 ───────────────────────────
+function listZipFiles(buffer) {
+  const bytes = new Uint8Array(buffer);
+  const entries = [];
+  const sig = [0x50,0x4B,0x03,0x04];
+  let i = 0;
+  while (i < bytes.length - 30) {
+    if (bytes[i]===sig[0]&&bytes[i+1]===sig[1]&&bytes[i+2]===sig[2]&&bytes[i+3]===sig[3]) {
+      const compMethod = bytes[i+8]|(bytes[i+9]<<8);
+      const compSize   = bytes[i+18]|(bytes[i+19]<<8)|(bytes[i+20]<<16)|(bytes[i+21]<<24);
+      const uncompSize = bytes[i+22]|(bytes[i+23]<<8)|(bytes[i+24]<<16)|(bytes[i+25]<<24);
+      const fnLen      = bytes[i+26]|(bytes[i+27]<<8);
+      const exLen      = bytes[i+28]|(bytes[i+29]<<8);
+      const fname      = new TextDecoder('utf-8').decode(bytes.slice(i+30, i+30+fnLen));
+      const dataStart  = i+30+fnLen+exLen;
+      entries.push({ name:fname, compMethod, compSize, uncompSize, dataStart });
+      i = dataStart + compSize;
+    } else { i++; }
+  }
+  return entries;
+}
+
+// ── ZIP 항목 압축 해제 (Store/Deflate) ───────────────
+async function extractZipEntry(buffer, entry) {
+  const raw = new Uint8Array(buffer, entry.dataStart, entry.compSize);
+  if (entry.compMethod === 0) {
+    const out = new Uint8Array(entry.compSize);
+    out.set(raw); return out.buffer;
+  }
+  if (entry.compMethod === 8) {
+    const ds = new DecompressionStream('deflate-raw');
+    const w = ds.writable.getWriter(); w.write(raw); w.close();
+    const r = ds.readable.getReader();
+    const chunks = []; let total = 0;
+    while(true){const{done,value}=await r.read();if(done)break;chunks.push(value);total+=value.length;}
+    const out = new Uint8Array(total); let off=0;
+    for(const c of chunks){out.set(c,off);off+=c.length;}
+    return out.buffer;
+  }
+  throw new Error('지원하지 않는 ZIP 압축 방식: '+entry.compMethod);
+}
+
+// ── 링 면적 부호 (양수=외곽CCW, 음수=홀CW) ──────────
+function shoelaceSigned(ring) {
+  let a=0; const n=ring.length;
+  for(let i=0,j=n-1;i<n;j=i++) a+=(ring[j][0]+ring[i][0])*(ring[j][1]-ring[i][1]);
+  return a/2;
+}
+
+// ── SHP 바이너리 파싱 (좌표 변환 전혀 없음) ──────────
+function parseShp(buffer) {
+  const view = new DataView(buffer);
+  const geometries = [];
+  let offset = 100; // SHP 헤더 100 bytes
+  while (offset + 8 <= buffer.byteLength) {
+    const contentLen = view.getInt32(offset+4, false) * 2;
+    offset += 8;
+    if (offset + contentLen > buffer.byteLength) break;
+    const type = view.getInt32(offset, true);
+    if (type === 0) { geometries.push(null); offset += contentLen; continue; }
+    // Polygon(5), PolygonZ(15), PolygonM(25)
+    if (type===5||type===15||type===25) {
+      let pos = offset+4+32; // type(4) + bbox(32)
+      const numParts  = view.getInt32(pos, true); pos+=4;
+      const numPoints = view.getInt32(pos, true); pos+=4;
+      const parts = [];
+      for(let p=0;p<numParts;p++){parts.push(view.getInt32(pos,true));pos+=4;}
+      const pts = [];
+      for(let p=0;p<numPoints;p++){
+        const x=view.getFloat64(pos,true);pos+=8;
+        const y=view.getFloat64(pos,true);pos+=8;
+        pts.push([x,y]);
+      }
+      // 링 분리 후 외곽/홀 판별
+      const rings=[];
+      for(let p=0;p<numParts;p++){
+        const s=parts[p],e=p+1<numParts?parts[p+1]:numPoints;
+        rings.push(pts.slice(s,e));
+      }
+      // 외곽링(면적 양수) / 홀(면적 음수) 그룹핑 → MultiPolygon
+      const polys=[];
+      for(const ring of rings){
+        if(shoelaceSigned(ring)>=0) polys.push([ring]);
+        else if(polys.length>0) polys[polys.length-1].push(ring);
+      }
+      if(polys.length===0) polys.push([rings[0]||[]]);
+      if(polys.length===1) geometries.push({type:'Polygon',coordinates:polys[0]});
+      else geometries.push({type:'MultiPolygon',coordinates:polys});
+    } else {
+      geometries.push(null);
+    }
+    offset += contentLen;
+  }
+  return geometries;
+}
+
+// ── DBF 바이너리 파싱 (EUC-KR 한글 지원) ────────────
+function parseDbf(buffer) {
+  const view  = new DataView(buffer);
+  const nRec  = view.getInt32(4, true);
+  const hLen  = view.getInt16(8, true);
+  const rLen  = view.getInt16(10, true);
+  const fields=[];
+  let pos=32;
+  while(pos<hLen-1){
+    const nb=new Uint8Array(buffer,pos,11);
+    const name=new TextDecoder('ascii').decode(nb).replace(/\0/g,'').trim();
+    if(!name)break;
+    const type=String.fromCharCode(new Uint8Array(buffer,pos+11,1)[0]);
+    const len =new Uint8Array(buffer,pos+16,1)[0];
+    fields.push({name,type,len});
+    pos+=32;
+  }
+  const records=[];
+  let rOff=hLen;
+  const decKr=new TextDecoder('euc-kr');
+  for(let r=0;r<nRec;r++){
+    const del=new Uint8Array(buffer,rOff,1)[0]; rOff++;
+    const rec={};
+    for(const f of fields){
+      const raw=new Uint8Array(buffer,rOff,f.len); rOff+=f.len;
+      let val;
+      try{val=decKr.decode(raw).trim();}catch(e){val=new TextDecoder('utf-8').decode(raw).trim();}
+      if(f.type==='N'||f.type==='F')val=val===''?null:Number(val);
+      rec[f.name]=val;
+    }
+    if(del!==0x2A)records.push(rec);
+  }
+  return records;
+}
+
+// ── parseShpZip: shp() 대체 메인 함수 ───────────────
+async function parseShpZip(buffer) {
+  const entries = listZipFiles(buffer);
+  const find = ext => entries.find(e=>e.name.toLowerCase().endsWith(ext));
+  const shpE = find('.shp');
+  const dbfE = find('.dbf');
+  if(!shpE) throw new Error('.shp 파일을 찾을 수 없습니다. ZIP 구조를 확인해주세요.');
+  const shpBuf = await extractZipEntry(buffer, shpE);
+  const geoms  = parseShp(shpBuf);
+  let recs = [];
+  if(dbfE){ const dbfBuf=await extractZipEntry(buffer,dbfE); recs=parseDbf(dbfBuf); }
+  const features = geoms
+    .map((g,i)=>({type:'Feature',geometry:g,properties:recs[i]||{}}))
+    .filter(f=>f.geometry);
+  return {type:'FeatureCollection',features};
+}
+</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
 
@@ -742,42 +895,12 @@ tbody.result-body td:last-child { border-right:none; }
 
 // ─── ZIP에서 .prj 파일 추출 (Store/Deflate 모두 지원) ──
 async function extractPrjFromZip(arrayBuffer) {
-  const bytes = new Uint8Array(arrayBuffer);
-  const sig = [0x50, 0x4B, 0x03, 0x04]; // ZIP 로컬 파일 헤더 시그니처
-  for (let i = 0; i < bytes.length - 30; i++) {
-    if (bytes[i]!==sig[0]||bytes[i+1]!==sig[1]||bytes[i+2]!==sig[2]||bytes[i+3]!==sig[3]) continue;
-    const compMethod = bytes[i+8]  | (bytes[i+9]  << 8);
-    const compSize   = bytes[i+18] | (bytes[i+19] << 8) | (bytes[i+20] << 16) | (bytes[i+21] << 24);
-    const uncompSize = bytes[i+22] | (bytes[i+23] << 8) | (bytes[i+24] << 16) | (bytes[i+25] << 24);
-    const fnLen      = bytes[i+26] | (bytes[i+27] << 8);
-    const exLen      = bytes[i+28] | (bytes[i+29] << 8);
-    const fname      = new TextDecoder().decode(bytes.slice(i+30, i+30+fnLen));
-    if (!fname.toLowerCase().endsWith('.prj')) continue;
-    const dataStart  = i + 30 + fnLen + exLen;
-    const rawData    = bytes.slice(dataStart, dataStart + compSize);
-    if (compMethod === 0) {
-      // Store: 비압축 그대로 읽기
-      return new TextDecoder('utf-8').decode(rawData);
-    } else if (compMethod === 8) {
-      // Deflate: 브라우저 내장 DecompressionStream으로 해제
-      const ds = new DecompressionStream('deflate-raw');
-      const writer = ds.writable.getWriter();
-      writer.write(rawData);
-      writer.close();
-      const reader = ds.readable.getReader();
-      const chunks = [];
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value);
-      }
-      const decompressed = new Uint8Array(chunks.reduce((a, c) => a + c.length, 0));
-      let offset = 0;
-      for (const chunk of chunks) { decompressed.set(chunk, offset); offset += chunk.length; }
-      return new TextDecoder('utf-8').decode(decompressed);
-    }
-  }
-  return null; // .prj 없음
+  // listZipFiles/extractZipEntry 재사용
+  const entries = listZipFiles(arrayBuffer);
+  const prjE = entries.find(e=>e.name.toLowerCase().endsWith('.prj'));
+  if (!prjE) return null;
+  const buf = await extractZipEntry(arrayBuffer, prjE);
+  return new TextDecoder('utf-8').decode(buf);
 }
 
 // ─── SHP 모드 상태 ─────────────────────────────────────
@@ -952,7 +1075,7 @@ async function processJijukShp(file) {
     log('▸ SHP ZIP 파일 읽는 중...');
     bar(10);
     const arrayBuffer = await file.arrayBuffer();
-    const geojson = await shp(arrayBuffer.slice(0)); // slice(0)으로 복사본 전달
+    const geojson = await parseShpZip(arrayBuffer);
     log(`  ✅ ${geojson.features.length.toLocaleString()}개 피처 로드`);
     bar(30);
 
@@ -1086,7 +1209,7 @@ async function processGuyeokShp(file) {
     log('▸ 구역계 SHP ZIP 읽는 중...');
     bar(5);
     const arrayBuffer = await file.arrayBuffer();
-    const geojson = await shp(arrayBuffer.slice(0));
+    const geojson = await parseShpZip(arrayBuffer);
     const converted = geojson; // 좌표 변환 없이 원본 그대로 사용
     shpGuyeokGeo = converted;
 
