@@ -6,7 +6,7 @@
 <title>편입토지조서 자동생성 시스템</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/shpjs@4.0.2/dist/shp.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/shpjs@3.6.3/dist/shp.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
 
@@ -747,14 +747,28 @@ let shpStep1Rows  = [];    // Step1 산출: 필지면적·행정구역·지번·
 let shpResultRows = [];    // Step2 산출: 편입면적·편입구분 포함 최종
 
 // ─── 투영좌표계 판별 ────────────────────────────────────
-// 첫 좌표의 절댓값이 180 초과이면 투영좌표계(m 단위)로 판단
+// 첫 번째 좌표의 절댓값이 180 초과이면 투영좌표계(m 단위)로 판단
 function isProjected(geojson) {
   try {
-    const coords = geojson.features[0].geometry.coordinates;
-    // Polygon/MultiPolygon 모두 처리
-    const c = Array.isArray(coords[0][0]) ? coords[0][0] : coords[0][0][0];
-    return Math.abs(c[0]) > 180 || Math.abs(c[1]) > 90;
-  } catch(e) { return false; }
+    for (const feat of geojson.features) {
+      const g = feat.geometry;
+      if (!g) continue;
+      let c;
+      switch (g.type) {
+        case 'Point':           c = g.coordinates; break;
+        case 'MultiPoint':
+        case 'LineString':      c = g.coordinates[0]; break;
+        case 'MultiLineString':
+        case 'Polygon':         c = g.coordinates[0][0]; break;
+        case 'MultiPolygon':    c = g.coordinates[0][0][0]; break;
+        default: continue;
+      }
+      if (c && c.length >= 2) {
+        return Math.abs(c[0]) > 180 || Math.abs(c[1]) > 90;
+      }
+    }
+  } catch(e) {}
+  return false;
 }
 
 // ─── Shoelace 공식: 평면 면적(㎡) ───────────────────────
@@ -898,13 +912,55 @@ async function processJijukShp(file) {
     log('▸ SHP ZIP 파일 읽는 중...');
     bar(10);
     const arrayBuffer = await file.arrayBuffer();
-    const geojson = await shp(arrayBuffer);
+    const geojson = await shp(arrayBuffer.slice(0)); // slice(0)으로 복사본 전달
     log(`  ✅ ${geojson.features.length.toLocaleString()}개 피처 로드`);
     bar(30);
 
-    // 좌표계 판별 (투영좌표계 여부 확인)
+    // .prj 파일 좌표계 확인 (ZIP 내 직접 탐색)
+    try {
+      const bytes = new Uint8Array(arrayBuffer);
+      // ZIP 로컬 파일 헤더 시그니처(PK\x03\x04) 기반으로 .prj 항목 탐색
+      let prjText = '';
+      const sig = [0x50, 0x4B, 0x03, 0x04];
+      for (let i = 0; i < bytes.length - 30; i++) {
+        if (bytes[i]===sig[0] && bytes[i+1]===sig[1] && bytes[i+2]===sig[2] && bytes[i+3]===sig[3]) {
+          const fnLen = bytes[i+26] | (bytes[i+27] << 8);
+          const exLen = bytes[i+28] | (bytes[i+29] << 8);
+          const fnBytes = bytes.slice(i+30, i+30+fnLen);
+          const fname = new TextDecoder().decode(fnBytes);
+          if (fname.toLowerCase().endsWith('.prj')) {
+            const compMethod = bytes[i+8] | (bytes[i+9] << 8);
+            const compSize   = bytes[i+18] | (bytes[i+19]<<8) | (bytes[i+20]<<16) | (bytes[i+21]<<24);
+            const dataStart  = i + 30 + fnLen + exLen;
+            if (compMethod === 0) { // 비압축(Store)
+              prjText = new TextDecoder('utf-8').decode(bytes.slice(dataStart, dataStart + compSize));
+            }
+            break;
+          }
+        }
+      }
+      if (prjText) {
+        const nameMatch = prjText.match(/PROJCS\["([^"]+)"/i) || prjText.match(/GEOGCS\["([^"]+)"/i);
+        log(`▸ .prj 좌표계: <strong>${nameMatch ? nameMatch[1] : prjText.slice(0, 100)}</strong>`);
+      } else {
+        log('▸ .prj: 파일 없거나 압축됨 — 좌표값으로 판별');
+      }
+    } catch(e) {
+      log(`▸ .prj 읽기 건너뜀`);
+    }
+
+    // 좌표계 판별 — 첫 좌표값 직접 출력해서 확인
     _shpIsProjected = isProjected(geojson);
-    log(`▸ 좌표계 감지: ${_shpIsProjected ? '투영좌표계(m 단위) — Shoelace 평면 면적 계산' : '지리좌표계(도 단위) — geodesic 면적 계산'}`);
+    try {
+      const firstCoords = geojson.features[0].geometry.coordinates;
+      const sampleCoord = Array.isArray(firstCoords[0][0])
+        ? firstCoords[0][0]
+        : firstCoords[0][0][0];
+      log(`▸ 첫 번째 좌표값: X=${sampleCoord[0].toFixed(3)}, Y=${sampleCoord[1].toFixed(3)}`);
+    } catch(e) {}
+    log(`▸ 좌표계 감지: ${_shpIsProjected
+      ? '✅ 투영좌표계(m 단위) — Shoelace 평면 면적 계산 (QGIS 동일 방식)'
+      : '⚠️ 지리좌표계(도 단위) — geodesic 면적 계산'}`);
     const converted = geojson; // 좌표 변환 없이 원본 그대로 사용
     shpJijukGeo = converted;
     bar(50);
@@ -1010,9 +1066,42 @@ async function processGuyeokShp(file) {
     log('▸ 구역계 SHP ZIP 읽는 중...');
     bar(5);
     const arrayBuffer = await file.arrayBuffer();
-    const geojson = await shp(arrayBuffer);
+    const geojson = await shp(arrayBuffer.slice(0));
     const converted = geojson; // 좌표 변환 없이 원본 그대로 사용
     shpGuyeokGeo = converted;
+
+    // .prj 좌표계 확인
+    try {
+      const bytes = new Uint8Array(arrayBuffer);
+      let prjText = '';
+      const sig = [0x50, 0x4B, 0x03, 0x04];
+      for (let i = 0; i < bytes.length - 30; i++) {
+        if (bytes[i]===sig[0]&&bytes[i+1]===sig[1]&&bytes[i+2]===sig[2]&&bytes[i+3]===sig[3]) {
+          const fnLen = bytes[i+26]|(bytes[i+27]<<8);
+          const exLen = bytes[i+28]|(bytes[i+29]<<8);
+          const fname = new TextDecoder().decode(bytes.slice(i+30, i+30+fnLen));
+          if (fname.toLowerCase().endsWith('.prj')) {
+            const compMethod = bytes[i+8]|(bytes[i+9]<<8);
+            const compSize   = bytes[i+18]|(bytes[i+19]<<8)|(bytes[i+20]<<16)|(bytes[i+21]<<24);
+            const dataStart  = i+30+fnLen+exLen;
+            if (compMethod === 0) prjText = new TextDecoder().decode(bytes.slice(dataStart, dataStart+compSize));
+            break;
+          }
+        }
+      }
+      if (prjText) {
+        const nm = prjText.match(/PROJCS\["([^"]+)"/i)||prjText.match(/GEOGCS\["([^"]+)"/i);
+        log(`▸ 구역계 .prj 좌표계: <strong>${nm ? nm[1] : prjText.slice(0,100)}</strong>`);
+      }
+    } catch(e) {}
+
+    // 첫 좌표값 출력
+    try {
+      const gc = converted.features[0].geometry.coordinates;
+      const sc = Array.isArray(gc[0][0]) ? gc[0][0] : gc[0][0][0];
+      log(`▸ 구역계 첫 좌표값: X=${sc[0].toFixed(3)}, Y=${sc[1].toFixed(3)}`);
+    } catch(e) {}
+
     log(`  ✅ 구역계 ${converted.features.length}개 피처 로드 (원본 좌표 그대로)`);
 
     // 연속지적도와 구역계 좌표계 일치 여부 경고
