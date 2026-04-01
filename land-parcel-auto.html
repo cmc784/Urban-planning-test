@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>편입토지조서 자동생성 시스템</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 <script>
 // ═══════════════════════════════════════════════════════
 // 순수 JS SHP/DBF 파서 — shpjs 완전 대체
@@ -890,7 +889,7 @@ tbody.result-body td:last-child { border-right:none; }
 // ═══════════════════════════════════════════════════════
 // 좌표계 변환 없이 원본 좌표 그대로 사용
 // - 투영좌표계(m 단위): Shoelace 공식으로 평면 면적 계산 → QGIS 결과와 일치
-// - 지리좌표계(도 단위, |x|≤180 && |y|≤90): turf.area() geodesic 면적 계산
+// - EPSG:5174 (투영좌표계, 미터 단위): Shoelace 공식으로 평면 면적 계산
 // ═══════════════════════════════════════════════════════
 
 // ─── ZIP에서 .prj 파일 추출 (Store/Deflate 모두 지원) ──
@@ -937,10 +936,12 @@ function isProjected(geojson) {
 // ─── Shoelace 공식: 평면 면적(㎡) ───────────────────────
 // 투영좌표계(m 단위)일 때 QGIS 와 동일한 평면 면적 반환
 function shoelaceArea(ring) {
+  // 올바른 슈레이스 공식 (Shoelace / Gauss's area formula)
+  // EPSG:5174 미터 단위 좌표 → 정확한 ㎡ 반환
   let area = 0;
   const n = ring.length;
   for (let i = 0, j = n - 1; i < n; j = i++) {
-    area += (ring[j][0] + ring[i][0]) * (ring[j][1] - ring[i][1]);
+    area += ring[i][0] * ring[j][1] - ring[j][0] * ring[i][1];
   }
   return Math.abs(area) / 2;
 }
@@ -966,7 +967,7 @@ function planarArea(geometry) {
 }
 
 // ─── 면적 계산 통합 함수 ────────────────────────────────
-// 투영좌표계 → Shoelace(평면), 지리좌표계 → turf.area(geodesic)
+// ─── 면적 계산: EPSG:5174 투영좌표계 → Shoelace 평면 면적 ──────────────────
 // ─── Bounding Box 유틸 ────────────────────────────────
 function ringBbox(ring) {
   let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
@@ -1049,16 +1050,14 @@ function subtractHole(ring, holeRing) {
 }
 
 function calcArea(feature) {
+  // EPSG:5174은 항상 투영좌표계(미터 단위)
+  // → 좌표계 감지 조건 없이 슈레이스 공식(planarArea) 직접 적용
   try {
-    if (_shpIsProjected) {
-      return planarArea(feature.geometry);
-    } else {
-      return turf.area(feature);
-    }
+    return planarArea(feature.geometry);
   } catch(e) { return 0; }
 }
 
-let _shpIsProjected = false; // 연속지적도 업로드 시 설정됨
+let _shpIsProjected = true; // EPSG:5174 고정 — 항상 투영좌표계
 
 // 지목 문자 집합
 const JIMOK_CHARS = '전답대도임잡구목묘철사창종천학유장과주차수체공양원염광제하용';
@@ -1223,7 +1222,7 @@ async function processJijukShp(file) {
       // 지목 별도 컬럼
       if (!jimok) jimok = String(props['JMCD'] || props['지목'] || props['JIMOK'] || '');
 
-      // 필지면적 (turf.area → ㎡, 소수점 1자리)
+      // 필지면적: 슈레이스 공식으로 직접 계산 (EPSG:5174 미터 단위 → 정확한 ㎡)
       let jijuArea = 0;
       try { jijuArea = Math.round(calcArea(feat) * 10) / 10; } catch(e) {}
 
