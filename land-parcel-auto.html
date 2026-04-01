@@ -904,24 +904,35 @@ function shpGoStep(n) {
 
 // ─── 슈레이스 공식: EPSG:5174 미터 → ㎡ ───────────────
 function shoelaceArea(ring) {
+  if (!ring || ring.length < 3) return 0;
   let area = 0;
   const n = ring.length;
-  for (let i = 0, j = n - 1; i < n; j = i++) {
-    area += ring[i][0] * ring[j][1] - ring[j][0] * ring[i][1];
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    area += ring[i][0] * ring[j][1];
+    area -= ring[j][0] * ring[i][1];
   }
   return Math.abs(area) / 2;
 }
 
 function planarArea(geometry) {
   if (!geometry) return 0;
-  try {
-    // JSTS의 getArea()는 평면 좌표(미터) 기반의 면적을 반환합니다.
-    const g = reader.read(geometry);
-    return g.getArea();
-  } catch (e) {
-    console.error("Area calculation error:", e);
-    return 0;
+  let total = 0;
+  if (geometry.type === 'Polygon') {
+    total = shoelaceArea(geometry.coordinates[0]);
+    // Hole(구멍) 면적 차감
+    for (let i = 1; i < geometry.coordinates.length; i++) {
+      total -= shoelaceArea(geometry.coordinates[i]);
+    }
+  } else if (geometry.type === 'MultiPolygon') {
+    for (const poly of geometry.coordinates) {
+      total += shoelaceArea(poly[0]);
+      for (let i = 1; i < poly.length; i++) {
+        total -= shoelaceArea(poly[i]);
+      }
+    }
   }
+  return Math.max(total, 0);
 }
 
 // ─── PNU 파싱 ──────────────────────────────────────────
@@ -1141,8 +1152,11 @@ async function processGuyeokShp(file) {
 
         if (intersectionJsts.isEmpty()) continue;
 
-        // 편입면적 산출 (평면 좌표계이므로 getArea() 사용)
-        let pyeonipArea = intersectionJsts.getArea();
+        // 지도 표시용 링 추출 (JSTS 결과물에서 GeoJSON으로 변환)
+        const intersectionGeo = writer.write(intersectionJsts);
+        
+        // 편입면적 산출 (필지면적과 동일한 planarArea 함수 사용으로 일관성 확보)
+        let pyeonipArea = planarArea(intersectionGeo);
         pyeonipArea = Math.round(pyeonipArea * 10) / 10;
 
         // 0.5㎡ 미만 필지 제외
@@ -1151,8 +1165,6 @@ async function processGuyeokShp(file) {
         const diffRatio = Math.abs(row.jijuArea - pyeonipArea) / (row.jijuArea || 1);
         const gubun = diffRatio < 0.01 ? '완전편입' : '부분편입';
 
-        // 지도 표시용 링 추출 (JSTS 결과물에서 GeoJSON으로 변환)
-        const intersectionGeo = writer.write(intersectionJsts);
         const clippedRings = [];
         if (intersectionGeo.type === 'Polygon') {
           clippedRings.push(...intersectionGeo.coordinates);
