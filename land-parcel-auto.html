@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>편입토지조서 자동생성 시스템</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/polybooljs@1.0.2/build/polybool.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -914,17 +914,13 @@ function shoelaceArea(ring) {
 
 function planarArea(geometry) {
   if (!geometry) return 0;
-  let total = 0;
-  if (geometry.type === 'Polygon') {
-    total = shoelaceArea(geometry.coordinates[0]);
-    for (let i = 1; i < geometry.coordinates.length; i++) total -= shoelaceArea(geometry.coordinates[i]);
-  } else if (geometry.type === 'MultiPolygon') {
-    for (const poly of geometry.coordinates) {
-      total += shoelaceArea(poly[0]);
-      for (let i = 1; i < poly.length; i++) total -= shoelaceArea(poly[i]);
-    }
+  try {
+    // Turf.js의 area 함수는 항상 m² 단위의 면적을 반환합니다.
+    return turf.area(turf.feature(geometry));
+  } catch (e) {
+    console.error("Area calculation error:", e);
+    return 0;
   }
-  return Math.max(total, 0);
 }
 
 // ─── PNU 파싱 ──────────────────────────────────────────
@@ -987,30 +983,14 @@ function ring5174toLatLng(ring) {
 
 // ─── 폴리곤 교차: polybool.js 기반 ────────────────────
 // polybool은 볼록/오목 모두 처리 가능
-function polyIntersect(subjectRings, clipRings) {
+// Turf.js를 사용하여 GeoJSON 객체 간의 교차 영역(Clip)을 계산합니다.
+function turfIntersect(poly1, poly2) {
   try {
-    // PolyBool.js는 부동소수점 정밀도에 취약하므로 좌표를 정수화(Scaling)하여 처리
-    const SCALE = 1000; 
-    const toRegion = (rings) => ({
-      regions: rings.map(ring => 
-        ring.slice(0, -1).map(pt => [Math.round(pt[0] * SCALE), Math.round(pt[1] * SCALE)])
-      ),
-      inverted: false
-    });
-
-    const s = toRegion(subjectRings);
-    const c = toRegion(clipRings);
-    const result = PolyBool.intersect(s, c);
-
-    if (!result || !result.regions || result.regions.length === 0) return null;
-
-    // 결과 좌표를 다시 원래 스케일로 복구하고 마지막 점 닫기
-    return result.regions.map(ring => {
-      const restored = ring.map(pt => [pt[0] / SCALE, pt[1] / SCALE]);
-      return [...restored, restored[0]];
-    });
-  } catch(e) {
-    console.error("Clip Error:", e);
+    // turf.intersect는 두 Polygon/MultiPolygon의 교차 영역을 Feature로 반환합니다.
+    const intersection = turf.intersect(poly1, poly2);
+    return intersection;
+  } catch (e) {
+    console.error("Turf Intersect Error:", e);
     return null;
   }
 }
@@ -1114,15 +1094,22 @@ async function processGuyeokShp(file) {
     log(`  ✅ 구역계 ${geojson.features.length}개 피처 로드`);
     bar(15);
 
-    // 구역계 링 추출
-    log('▸ 구역계 폴리곤 준비 중...');
-    const guyeokRings = [];
+    // 구역계 통합 (Union)
+    log('▸ 구역계 폴리곤 통합 중...');
+    let guyeokPoly = null;
     for (const feat of geojson.features) {
-      const g = feat.geometry;
-      if (!g) continue;
-      const polys = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
-      for (const poly of polys) guyeokRings.push(...poly); // outer + holes 모두
+      if (!feat.geometry) continue;
+      if (!guyeokPoly) {
+        guyeokPoly = feat;
+      } else {
+        try {
+          guyeokPoly = turf.union(guyeokPoly, feat);
+        } catch (e) {
+          console.warn("Union error, skipping feature:", e);
+        }
+      }
     }
+    if (!guyeokPoly) throw new Error("유효한 구역계 폴리곤이 없습니다.");
     log(`  ✅ 구역계 준비 완료`);
     bar(25);
 
@@ -1141,42 +1128,41 @@ async function processGuyeokShp(file) {
       if (!g) continue;
 
       try {
-        // 필지 rings (MultiPolygon 대응: 각 Polygon별로 Clip 수행)
-        const jijukPolys = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
-        if (jijukPolys.length === 0) continue;
+        // Turf.js를 사용하여 필지와 구역계의 교차 영역 계산
+        const parcelFeat = turf.feature(g);
+        const intersection = turf.intersect(parcelFeat, guyeokPoly);
 
-        let pyeonipArea = 0;
-        let allClippedRings = [];
+        if (!intersection) continue;
 
-        for (const polyRings of jijukPolys) {
-          const clipped = polyIntersect(polyRings, guyeokRings);
-          if (clipped && clipped.length > 0) {
-            allClippedRings.push(...clipped);
-            for (const ring of clipped) {
-              // shoelaceArea는 절대값을 반환하므로, 첫 번째 링(외곽)은 더하고 나머지는 뺌 (Hole 처리)
-              // 단, polyIntersect 결과는 모두 외곽링으로 반환될 수 있으므로 shoelaceSigned로 판별 필요
-              const sArea = shoelaceSigned(ring);
-              pyeonipArea += sArea; 
-            }
-          }
-        }
+        // 편입면적 산출
+        let pyeonipArea = turf.area(intersection);
+        pyeonipArea = Math.round(pyeonipArea * 10) / 10;
 
-        pyeonipArea = Math.abs(Math.round(pyeonipArea * 10) / 10);
-        if (pyeonipArea < 0.1) continue; // 아주 작은 면적 제외
-
-        const clippedRings = allClippedRings;
+        // 0.5㎡ 미만 필지 제외
+        if (pyeonipArea < 0.5) continue;
 
         const diffRatio = Math.abs(row.jijuArea - pyeonipArea) / (row.jijuArea || 1);
         const gubun = diffRatio < 0.01 ? '완전편입' : '부분편입';
+
+        // 지도 표시용 링 추출 (Turf 결과물에서)
+        const clippedRings = [];
+        const geom = intersection.geometry;
+        if (geom.type === 'Polygon') {
+          clippedRings.push(...geom.coordinates);
+        } else if (geom.type === 'MultiPolygon') {
+          geom.coordinates.forEach(poly => clippedRings.push(...poly));
+        }
 
         shpResultRows.push({
           pnu: row.pnu, sido: row.sido, sigungu: row.sigungu, emd: row.emd,
           daejang: row.daejang, jibun: row.jibun, jimok: row.jimok,
           jijuArea: row.jijuArea, pyeonipArea, gubun,
           clippedRings, // 지도 표시용
-          origRings: jijukRings,
+          origRings: g.type === 'Polygon' ? g.coordinates : g.coordinates.flat(1),
         });
-      } catch(e) { /* 개별 피처 오류 무시 */ }
+      } catch(e) { 
+        console.error("Clip Error for parcel:", row.pnu, e);
+      }
     }
 
     bar(100);
