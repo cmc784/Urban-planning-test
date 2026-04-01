@@ -310,6 +310,7 @@ body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--
 table.result { width:100%; border-collapse:collapse; background:var(--white); font-size:11px; min-width:1100px; }
 .th-main { background:var(--ink); color:white; }
 .th-main th { padding:8px 10px; text-align:center; font-size:10px; font-weight:700; letter-spacing:0.3px; border-right:1px solid rgba(255,255,255,0.1); white-space:nowrap; font-family:'DM Mono',monospace; }
+.th-main th[onclick]:hover { background:#2a2a2a; }
 .th-sub2 { background:#2a2a2a; color:rgba(255,255,255,0.75); }
 .th-sub2 th { padding:6px 10px; text-align:center; font-size:10px; font-weight:600; border-right:1px solid rgba(255,255,255,0.08); font-family:'DM Mono',monospace; }
 .tr-sum { background:#f0f7f3; }
@@ -615,17 +616,17 @@ tbody.result-body td:last-child { border-right:none; }
           <table class="result" style="min-width:1100px">
             <thead>
               <tr class="th-main">
-                <th>PNU</th>
+                <th onclick="shpSort('pnu')" style="cursor:pointer;user-select:none">PNU <span id="shp-sort-pnu"></span></th>
                 <th>연번</th>
-                <th>시도</th>
-                <th>시군구</th>
-                <th>읍면동</th>
-                <th>대장구분</th>
-                <th>지번</th>
-                <th>지목</th>
-                <th>필지면적(㎡)</th>
-                <th>편입면적(㎡)</th>
-                <th>편입구분</th>
+                <th onclick="shpSort('sido')" style="cursor:pointer;user-select:none">시도 <span id="shp-sort-sido"></span></th>
+                <th onclick="shpSort('sigungu')" style="cursor:pointer;user-select:none">시군구 <span id="shp-sort-sigungu"></span></th>
+                <th onclick="shpSort('emd')" style="cursor:pointer;user-select:none">읍면동 <span id="shp-sort-emd"></span></th>
+                <th onclick="shpSort('daejang')" style="cursor:pointer;user-select:none">대장구분 <span id="shp-sort-daejang"></span></th>
+                <th onclick="shpSort('jibun')" style="cursor:pointer;user-select:none">지번 <span id="shp-sort-jibun"></span></th>
+                <th onclick="shpSort('jimok')" style="cursor:pointer;user-select:none">지목 <span id="shp-sort-jimok"></span></th>
+                <th onclick="shpSort('jijuArea')" style="cursor:pointer;user-select:none">필지면적(㎡) <span id="shp-sort-jijuArea"></span></th>
+                <th onclick="shpSort('pyeonipArea')" style="cursor:pointer;user-select:none">편입면적(㎡) <span id="shp-sort-pyeonipArea"></span></th>
+                <th onclick="shpSort('gubun')" style="cursor:pointer;user-select:none">편입구분 <span id="shp-sort-gubun"></span></th>
               </tr>
             </thead>
             <tbody id="shpResultBody"></tbody>
@@ -926,6 +927,8 @@ let shpJijukGeo   = null;  // 연속지적도 GeoJSON (원본 좌표 그대로)
 let shpGuyeokGeo  = null;  // 구역계 GeoJSON (원본 좌표 그대로)
 let shpStep1Rows  = [];    // Step1 산출: 필지면적·행정구역·지번·지목
 let shpResultRows = [];    // Step2 산출: 편입면적·편입구분 포함 최종
+let shpSortKey    = null;  // 현재 정렬 컬럼
+let shpSortAsc    = true;  // 오름차순 여부
 
 // ─── 투영좌표계 판별 ────────────────────────────────────
 // 첫 번째 좌표의 절댓값이 180 초과이면 투영좌표계(m 단위)로 판단
@@ -1107,44 +1110,16 @@ async function processJijukShp(file) {
   const bar = (pct) => { barEl.style.width = pct + '%'; };
 
   try {
-    log('▸ SHP ZIP 파일 읽는 중...');
+    log('▸ STEP 1  연속지적도 파일 읽는 중...');
     bar(10);
     const arrayBuffer = await file.arrayBuffer();
     const geojson = await parseShpZip(arrayBuffer);
-    log(`  ✅ ${geojson.features.length.toLocaleString()}개 피처 로드`);
     bar(30);
-
-    // .prj 파일 좌표계 확인 (ZIP 내 직접 탐색)
-    try {
-      const prjText = await extractPrjFromZip(arrayBuffer);
-      if (prjText) {
-        const nameMatch = prjText.match(/PROJCS\["([^"]+)"/i) || prjText.match(/GEOGCS\["([^"]+)"/i);
-        log(`▸ .prj 좌표계: <strong>${nameMatch ? nameMatch[1] : prjText.slice(0, 100)}</strong>`);
-      } else {
-        log('▸ .prj: 파일 없음 — 좌표값으로 좌표계 판별');
-      }
-    } catch(e) {
-      log(`▸ .prj 읽기 건너뜀: ${e.message}`);
-    }
-
-    // 좌표계 판별 — 첫 좌표값 직접 출력해서 확인
     _shpIsProjected = isProjected(geojson);
-    try {
-      const firstCoords = geojson.features[0].geometry.coordinates;
-      const sampleCoord = Array.isArray(firstCoords[0][0])
-        ? firstCoords[0][0]
-        : firstCoords[0][0][0];
-      log(`▸ 첫 번째 좌표값: X=${sampleCoord[0].toFixed(3)}, Y=${sampleCoord[1].toFixed(3)}`);
-    } catch(e) {}
-    log(`▸ 좌표계 감지: ${_shpIsProjected
-      ? '✅ 투영좌표계(m 단위) — Shoelace 평면 면적 계산 (QGIS 동일 방식)'
-      : '⚠️ 지리좌표계(도 단위) — geodesic 면적 계산'}`);
-    const converted = geojson; // 좌표 변환 없이 원본 그대로 사용
+    const converted = geojson;
     shpJijukGeo = converted;
     bar(50);
-    log('  ✅ 원본 좌표 그대로 로드 완료');
-
-    log('▸ PNU 기반 행정구역·지번·지목·필지면적 산출 중...');
+    log('▸ STEP 2  PNU 기반 행정구역·지번·지목·필지면적 산출 중...');
     shpStep1Rows = [];
     const total = converted.features.length;
 
@@ -1193,7 +1168,7 @@ async function processJijukShp(file) {
     }
 
     bar(100);
-    log(`  ✅ 산출 완료: ${shpStep1Rows.length.toLocaleString()}필지`);
+    log(`  ✅ 완료: ${shpStep1Rows.length.toLocaleString()}필지 | 필지면적 합계 ${Math.round(shpStep1Rows.reduce((s,r)=>s+r.jijuArea,0)).toLocaleString()} ㎡`);
 
     // 미리보기 (5건)
     const preview = shpStep1Rows.slice(0, 5);
@@ -1245,48 +1220,13 @@ async function processGuyeokShp(file) {
     if (typeof jsts === 'undefined') {
       throw new Error('JSTS 라이브러리 로드 실패! 인터넷 연결 상태를 확인해주세요.');
     }
-    log('▸ JSTS 라이브러리 확인 완료');
 
-    log('▸ 구역계 SHP ZIP 읽는 중...');
+    log('▸ STEP 1  구역계 파일 읽는 중...');
     bar(5);
     const arrayBuffer = await file.arrayBuffer();
     const geojson = await parseShpZip(arrayBuffer);
     const converted = geojson;
     shpGuyeokGeo = converted;
-
-    log(`  ✅ 구역계 ${converted.features.length}개 피처 로드`);
-
-    // .prj 좌표계 확인
-    try {
-      const prjText = await extractPrjFromZip(arrayBuffer);
-      if (prjText) {
-        const nm = prjText.match(/PROJCS\["([^"]+)"/i) || prjText.match(/GEOGCS\["([^"]+)"/i);
-        log(`▸ 구역계 .prj: <strong>${nm ? nm[1] : prjText.slice(0,100)}</strong>`);
-      } else {
-        log('▸ 구역계 .prj: 없음 — 좌표값으로 판별');
-      }
-    } catch(e) {}
-
-    // 첫 좌표값 + 연속지적도 첫 좌표값 함께 출력 (좌표계 불일치 시각 비교)
-    try {
-      const gc = converted.features[0].geometry.coordinates;
-      const sc = Array.isArray(gc[0][0]) ? gc[0][0] : gc[0][0][0];
-      log(`▸ 구역계 첫 좌표: X=${sc[0].toFixed(2)}, Y=${sc[1].toFixed(2)}`);
-    } catch(e) {}
-    try {
-      const jc = shpStep1Rows[0].geometry.coordinates;
-      const fc = Array.isArray(jc[0][0]) ? jc[0][0] : jc[0][0][0];
-      log(`▸ 연속지적도 첫 좌표: X=${fc[0].toFixed(2)}, Y=${fc[1].toFixed(2)}`);
-    } catch(e) {}
-
-    // 좌표계 일치 여부
-    const guyeokIsProjected = isProjected(converted);
-    if (guyeokIsProjected !== _shpIsProjected) {
-      log(`  ⚠️ <strong style="color:#b45309">좌표계 불일치: 연속지적도(${_shpIsProjected?'투영':'지리'}) ≠ 구역계(${guyeokIsProjected?'투영':'지리'})</strong>`);
-      log(`  ⚠️ 좌표 범위가 달라도 JSTS가 처리를 시도합니다. 결과가 0이면 두 파일의 좌표계를 통일해주세요.`);
-    } else {
-      log(`  ✅ 좌표계 일치: ${guyeokIsProjected ? '투영(m단위)' : '지리(도단위)'}`);
-    }
     bar(15);
 
     // ── JSTS Reader/Writer 초기화 ──
@@ -1294,13 +1234,12 @@ async function processGuyeokShp(file) {
     try {
       jstsReader = new jsts.io.GeoJSONReader();
       jstsWriter = new jsts.io.GeoJSONWriter();
-      log('▸ JSTS Reader/Writer 초기화 완료');
     } catch(e) {
       throw new Error('JSTS 초기화 실패: ' + e.message);
     }
 
     // ── 구역계 전체를 Union → 단일 JSTS geometry ──
-    log('▸ 구역계 Union 중...');
+    log('▸ STEP 2  구역계 폴리곤 준비 중...');
     _guyeokJsts = null;
     let guyeokReadOk = 0, guyeokReadFail = 0;
     for (const feat of converted.features) {
@@ -1308,32 +1247,22 @@ async function processGuyeokShp(file) {
       try {
         const g = jstsReader.read(feat.geometry);
         if (!g || g.isEmpty()) continue;
-        // union 대신 geometryFactory.createGeometryCollection으로 묶어서
-        // TopologyException 방지를 위해 buffer(0) 정규화 적용
         const gValid = g.buffer(0);
         _guyeokJsts = _guyeokJsts ? _guyeokJsts.union(gValid) : gValid;
         guyeokReadOk++;
       } catch(e) {
         guyeokReadFail++;
-        if (guyeokReadFail <= 3) log(`  ⚠️ 구역계 피처 파싱 오류: ${e.message}`);
       }
     }
-    log(`  구역계 읽기: 성공 ${guyeokReadOk}개, 실패 ${guyeokReadFail}개`);
 
     if (!_guyeokJsts || _guyeokJsts.isEmpty()) {
       throw new Error('구역계 Union 결과가 비어있습니다. SHP 파일 내용을 확인해주세요.');
     }
-    log(`  ✅ 구역계 Union 완료`);
-
-    // 구역계 bbox 출력 (좌표계 확인용)
-    try {
-      const env = _guyeokJsts.getEnvelopeInternal();
-      log(`  구역계 bbox: X=[${env.getMinX().toFixed(0)}, ${env.getMaxX().toFixed(0)}], Y=[${env.getMinY().toFixed(0)}, ${env.getMaxY().toFixed(0)}]`);
-    } catch(e) {}
+    log(`  ✅ 구역계 준비 완료 (${guyeokReadOk}개 피처)`);
     bar(25);
 
     // ── 교차분석(Clip) ──
-    log('▸ 교차분석(Clip) 시작...');
+    log('▸ STEP 3  교차분석(Clip) 및 편입면적 산출 중...');
     const total = shpStep1Rows.length;
     shpResultRows = [];
     let cntBboxPass = 0, cntIntersectPass = 0, cntClipOk = 0, cntClipFail = 0, cntAreaZero = 0;
@@ -1341,7 +1270,6 @@ async function processGuyeokShp(file) {
     for (let i = 0; i < total; i++) {
       if (i % 100 === 0) {
         bar(25 + Math.round(i / total * 60));
-        if (i > 0) log(`  ${i.toLocaleString()} / ${total.toLocaleString()} 처리 중... (편입확인: ${shpResultRows.length})`);
         await new Promise(r => setTimeout(r, 0));
       }
       const row = shpStep1Rows[i];
@@ -1409,32 +1337,15 @@ async function processGuyeokShp(file) {
         });
       } catch(e) {
         cntClipFail++;
-        if (cntClipFail <= 3) log(`  ⚠️ 개별 필지 오류: ${e.message}`);
       }
     }
 
-    // 상세 디버그 통계 출력
-    log(`━━━━━━ 처리 결과 ━━━━━━`);
-    log(`  전체 필지: ${total.toLocaleString()}`);
-    log(`  bbox 통과: ${cntBboxPass.toLocaleString()}`);
-    log(`  교차 확인: ${cntIntersectPass.toLocaleString()}`);
-    log(`  클립 성공: ${cntClipOk.toLocaleString()}`);
-    log(`  면적 0제외: ${cntAreaZero}`);
-    log(`  클립 오류: ${cntClipFail}`);
-    log(`  최종 편입: ${shpResultRows.length.toLocaleString()}필지`);
-    log(`━━━━━━━━━━━━━━━━━━━━━━`);
-
+    // 결과 요약
     if (shpResultRows.length === 0) {
-      if (cntBboxPass === 0) {
-        log(`  ❌ <strong style="color:red">bbox 통과 0건 → 두 파일의 좌표계(CRS)가 다를 가능성이 높습니다!</strong>`);
-        log(`  ❌ 연속지적도와 구역계를 동일한 좌표계로 변환한 뒤 다시 시도해주세요.`);
-      } else if (cntIntersectPass === 0) {
-        log(`  ❌ <strong style="color:red">bbox는 겹치나 실제 교차 없음 → 구역계가 필지 범위 밖에 있거나 좌표 오류</strong>`);
-      } else if (cntClipOk === 0) {
-        log(`  ❌ <strong style="color:red">교차는 확인되나 클립 실패 → 형상이 복잡하거나 위상 오류(TopologyException)</strong>`);
-      } else if (cntAreaZero > 0) {
-        log(`  ❌ <strong style="color:red">클립은 성공했으나 면적이 0 → 좌표계 단위 문제(도단위 vs 미터단위 혼용 가능성)</strong>`);
-      }
+      if (cntBboxPass === 0) log(`  ❌ 편입 필지 없음 — 두 파일의 좌표계가 다를 수 있습니다. 동일한 좌표계로 맞춰주세요.`);
+      else if (cntIntersectPass === 0) log(`  ❌ 편입 필지 없음 — 구역계가 연속지적도 범위 밖에 있습니다.`);
+      else if (cntClipOk === 0) log(`  ❌ 편입 필지 없음 — Clip 처리 실패. 형상 오류를 확인해주세요.`);
+      else log(`  ❌ 편입 필지 없음 — 면적이 0.5㎡ 미만이거나 좌표 단위 문제일 수 있습니다.`);
     }
 
     bar(90);
@@ -1443,8 +1354,7 @@ async function processGuyeokShp(file) {
     const sumArea  = shpResultRows.reduce((s,r) => s + r.jijuArea,   0);
     const sumPyeon = shpResultRows.reduce((s,r) => s + r.pyeonipArea, 0);
 
-    log(`  ✅ Clip 완료: ${shpResultRows.length.toLocaleString()}필지 편입`);
-    log(`  완전편입: ${cntFull} / 부분편입: ${cntPart}`);
+    log(`  ✅ 완료: ${shpResultRows.length.toLocaleString()}필지 편입 | 완전편입 ${cntFull} / 부분편입 ${cntPart}`);
     bar(100);
 
     // 통계 카드 업데이트
@@ -1474,15 +1384,46 @@ async function processGuyeokShp(file) {
 }
 
 // ─── STEP 3: 결과 테이블 렌더 ─────────────────────────
+// ─── 정렬 ──────────────────────────────────────────────
+function shpSort(key) {
+  if (shpSortKey === key) {
+    shpSortAsc = !shpSortAsc;
+  } else {
+    shpSortKey = key;
+    shpSortAsc = true;
+  }
+  // 모든 화살표 초기화
+  document.querySelectorAll('[id^="shp-sort-"]').forEach(el => el.textContent = '');
+  // 현재 컬럼 화살표 표시
+  const arrowEl = document.getElementById('shp-sort-' + key);
+  if (arrowEl) arrowEl.textContent = shpSortAsc ? ' ↑' : ' ↓';
+  renderShpResult();
+}
+
 function renderShpResult() {
   const q  = (document.getElementById('shpSearch')?.value  || '').toLowerCase();
   const fg = (document.getElementById('shpFilterGubun')?.value || '');
 
-  const list = shpResultRows.filter(r => {
+  let list = shpResultRows.filter(r => {
     const mQ  = !q  || r.pnu.includes(q) || r.jibun.toLowerCase().includes(q);
     const mFG = !fg || r.gubun === fg;
     return mQ && mFG;
   });
+
+  // 정렬 적용
+  if (shpSortKey) {
+    list = [...list].sort((a, b) => {
+      const va = a[shpSortKey] ?? '';
+      const vb = b[shpSortKey] ?? '';
+      let cmp;
+      if (typeof va === 'number' && typeof vb === 'number') {
+        cmp = va - vb;
+      } else {
+        cmp = String(va).localeCompare(String(vb), 'ko');
+      }
+      return shpSortAsc ? cmp : -cmp;
+    });
+  }
 
   const tbody = document.getElementById('shpResultBody');
   if (list.length === 0) {
