@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>편입토지조서 자동생성 시스템</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsts/2.11.0/jsts.min.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -915,8 +915,9 @@ function shoelaceArea(ring) {
 function planarArea(geometry) {
   if (!geometry) return 0;
   try {
-    // Turf.js의 area 함수는 항상 m² 단위의 면적을 반환합니다.
-    return turf.area(turf.feature(geometry));
+    // JSTS의 getArea()는 평면 좌표(미터) 기반의 면적을 반환합니다.
+    const g = reader.read(geometry);
+    return g.getArea();
   } catch (e) {
     console.error("Area calculation error:", e);
     return 0;
@@ -983,14 +984,19 @@ function ring5174toLatLng(ring) {
 
 // ─── 폴리곤 교차: polybool.js 기반 ────────────────────
 // polybool은 볼록/오목 모두 처리 가능
-// Turf.js를 사용하여 GeoJSON 객체 간의 교차 영역(Clip)을 계산합니다.
-function turfIntersect(poly1, poly2) {
+// JSTS를 사용하여 평면 좌표(미터 단위) 간의 교차 영역(Clip)을 계산합니다.
+const reader = new jsts.io.GeoJSONReader();
+const writer = new jsts.io.GeoJSONWriter();
+
+function jstsIntersect(geom1, geom2) {
   try {
-    // turf.intersect는 두 Polygon/MultiPolygon의 교차 영역을 Feature로 반환합니다.
-    const intersection = turf.intersect(poly1, poly2);
-    return intersection;
+    const g1 = reader.read(geom1);
+    const g2 = reader.read(geom2);
+    const intersection = g1.intersection(g2);
+    if (intersection.isEmpty()) return null;
+    return writer.write(intersection);
   } catch (e) {
-    console.error("Turf Intersect Error:", e);
+    console.error("JSTS Intersect Error:", e);
     return null;
   }
 }
@@ -1094,22 +1100,23 @@ async function processGuyeokShp(file) {
     log(`  ✅ 구역계 ${geojson.features.length}개 피처 로드`);
     bar(15);
 
-    // 구역계 통합 (Union)
+    // 구역계 통합 (JSTS Union)
     log('▸ 구역계 폴리곤 통합 중...');
-    let guyeokPoly = null;
+    let guyeokJsts = null;
     for (const feat of geojson.features) {
       if (!feat.geometry) continue;
-      if (!guyeokPoly) {
-        guyeokPoly = feat;
+      const g = reader.read(feat.geometry);
+      if (!guyeokJsts) {
+        guyeokJsts = g;
       } else {
         try {
-          guyeokPoly = turf.union(guyeokPoly, feat);
+          guyeokJsts = guyeokJsts.union(g);
         } catch (e) {
           console.warn("Union error, skipping feature:", e);
         }
       }
     }
-    if (!guyeokPoly) throw new Error("유효한 구역계 폴리곤이 없습니다.");
+    if (!guyeokJsts) throw new Error("유효한 구역계 폴리곤이 없습니다.");
     log(`  ✅ 구역계 준비 완료`);
     bar(25);
 
@@ -1128,14 +1135,14 @@ async function processGuyeokShp(file) {
       if (!g) continue;
 
       try {
-        // Turf.js를 사용하여 필지와 구역계의 교차 영역 계산
-        const parcelFeat = turf.feature(g);
-        const intersection = turf.intersect(parcelFeat, guyeokPoly);
+        // JSTS를 사용하여 필지와 구역계의 교차 영역 계산
+        const parcelJsts = reader.read(g);
+        const intersectionJsts = parcelJsts.intersection(guyeokJsts);
 
-        if (!intersection) continue;
+        if (intersectionJsts.isEmpty()) continue;
 
-        // 편입면적 산출
-        let pyeonipArea = turf.area(intersection);
+        // 편입면적 산출 (평면 좌표계이므로 getArea() 사용)
+        let pyeonipArea = intersectionJsts.getArea();
         pyeonipArea = Math.round(pyeonipArea * 10) / 10;
 
         // 0.5㎡ 미만 필지 제외
@@ -1144,13 +1151,13 @@ async function processGuyeokShp(file) {
         const diffRatio = Math.abs(row.jijuArea - pyeonipArea) / (row.jijuArea || 1);
         const gubun = diffRatio < 0.01 ? '완전편입' : '부분편입';
 
-        // 지도 표시용 링 추출 (Turf 결과물에서)
+        // 지도 표시용 링 추출 (JSTS 결과물에서 GeoJSON으로 변환)
+        const intersectionGeo = writer.write(intersectionJsts);
         const clippedRings = [];
-        const geom = intersection.geometry;
-        if (geom.type === 'Polygon') {
-          clippedRings.push(...geom.coordinates);
-        } else if (geom.type === 'MultiPolygon') {
-          geom.coordinates.forEach(poly => clippedRings.push(...poly));
+        if (intersectionGeo.type === 'Polygon') {
+          clippedRings.push(...intersectionGeo.coordinates);
+        } else if (intersectionGeo.type === 'MultiPolygon') {
+          intersectionGeo.coordinates.forEach(poly => clippedRings.push(...poly));
         }
 
         shpResultRows.push({
