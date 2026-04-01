@@ -58,14 +58,9 @@ async function extractZipEntry(buffer, entry) {
 
 // ── 링 면적 부호 (양수=외곽CCW, 음수=홀CW) ──────────
 function shoelaceSigned(ring) {
-  let a = 0;
-  const n = ring.length;
-  for (let i = 0; i < n; i++) {
-    const j = (i + 1) % n;
-    a += ring[i][0] * ring[j][1];
-    a -= ring[j][0] * ring[i][1];
-  }
-  return a / 2;
+  let a=0; const n=ring.length;
+  for(let i=0,j=n-1;i<n;j=i++) a+=(ring[j][0]+ring[i][0])*(ring[j][1]-ring[i][1]);
+  return a/2;
 }
 
 // ── SHP 바이너리 파싱 (좌표 변환 전혀 없음) ──────────
@@ -904,13 +899,10 @@ function shpGoStep(n) {
 
 // ─── 슈레이스 공식: EPSG:5174 미터 → ㎡ ───────────────
 function shoelaceArea(ring) {
-  if (!ring || ring.length < 3) return 0;
   let area = 0;
   const n = ring.length;
-  for (let i = 0; i < n; i++) {
-    const j = (i + 1) % n;
-    area += ring[i][0] * ring[j][1];
-    area -= ring[j][0] * ring[i][1];
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    area += ring[i][0] * ring[j][1] - ring[j][0] * ring[i][1];
   }
   return Math.abs(area) / 2;
 }
@@ -946,9 +938,9 @@ function parsePNUInfo(pnu) {
   let sido = '', sigungu = '', emd = '';
   if (window.BJD && window.BJD.map && window.BJD.map[bjdCode]) {
     const [si, sg, em] = window.BJD.map[bjdCode];
-    sido    = si >= 0 ? window.BJD.sidos[si]    : '';
-    sigungu = sg >= 0 ? window.BJD.sigungus[sg] : '';
-    emd     = em >= 0 ? window.BJD.emds[em]     : '';
+    sido    = si >= 0 ? window.BJD.s[si]    : '';
+    sigungu = sg >= 0 ? window.BJD.sg[sg]   : '';
+    emd     = em >= 0 ? window.BJD.e[em]    : '';
   } else {
     const FB = {'11':'서울특별시','26':'부산광역시','27':'대구광역시','28':'인천광역시',
       '29':'광주광역시','30':'대전광역시','31':'울산광역시','36':'세종특별자치시',
