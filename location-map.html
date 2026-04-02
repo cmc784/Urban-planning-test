@@ -334,6 +334,86 @@ input[type="range"] {
   display:none;
 }
 .coord-info.show { display:block; }
+
+/* ── 필지 스타일 패널 ── */
+.style-type-tabs {
+  display:flex; gap:4px; margin-bottom:10px; flex-wrap:wrap;
+}
+.style-type-tab {
+  flex:1; padding:5px 4px; border-radius:6px;
+  border:1px solid var(--border); background:var(--white);
+  font-size:10px; font-weight:700; cursor:pointer;
+  font-family:'Noto Sans KR',sans-serif; color:var(--ink3);
+  transition:all .15s; text-align:center; white-space:nowrap;
+}
+.style-type-tab:hover { background:var(--bg); color:var(--ink2); }
+.style-type-tab.active { background:var(--teal); color:white; border-color:var(--teal); }
+
+.color-row {
+  display:flex; align-items:center; gap:5px; margin-top:3px;
+}
+.color-swatch {
+  width:30px; height:26px; border:1px solid var(--border);
+  border-radius:5px; cursor:pointer; padding:2px; flex-shrink:0;
+}
+.color-hex {
+  flex:1; padding:5px 7px; border:1px solid var(--border);
+  border-radius:6px; font-size:10px; font-family:'DM Mono',monospace;
+  color:var(--ink); background:var(--white); outline:none;
+}
+.color-hex:focus { border-color:var(--teal); }
+
+.hatch-grid {
+  display:grid; grid-template-columns:repeat(5,1fr); gap:4px; margin-top:4px;
+}
+.hatch-opt {
+  border:1.5px solid var(--border); border-radius:5px;
+  padding:3px; cursor:pointer; display:flex;
+  flex-direction:column; align-items:center; gap:2px;
+  transition:all .12s; background:var(--white);
+}
+.hatch-opt:hover { border-color:var(--teal); }
+.hatch-opt.sel { border-color:var(--teal); background:var(--teal-light); }
+.hatch-opt svg { width:32px; height:32px; display:block; }
+.hatch-opt-lbl {
+  font-size:8px; font-family:'DM Mono',monospace;
+  color:var(--ink3); text-align:center; line-height:1.2;
+}
+.hatch-opt.sel .hatch-opt-lbl { color:var(--teal); font-weight:700; }
+
+.style-preview {
+  border:1px solid var(--border); border-radius:6px;
+  overflow:hidden; background:#e0ddd5; margin-top:8px;
+  height:68px; display:flex; align-items:center; justify-content:center;
+}
+
+.range-row {
+  display:flex; align-items:center; gap:6px; margin-top:3px;
+}
+.range-row input[type="range"] { flex:1; margin:0; }
+.range-num {
+  font-size:10px; font-family:'DM Mono',monospace;
+  color:var(--ink2); font-weight:700; min-width:28px; text-align:right;
+}
+
+.style-reset-btn {
+  font-size:10px; padding:4px 8px; border-radius:5px;
+  border:1px solid var(--border); background:var(--white);
+  cursor:pointer; color:var(--ink3); font-family:'Noto Sans KR',sans-serif;
+  transition:all .15s; margin-top:6px; width:100%;
+}
+.style-reset-btn:hover { background:var(--red-light); color:var(--red); border-color:var(--red); }
+
+.sub-label {
+  font-size:10px; font-weight:700; color:var(--ink3);
+  text-transform:uppercase; letter-spacing:.5px;
+  font-family:'DM Mono',monospace; margin:10px 0 5px;
+  display:flex; align-items:center; gap:5px;
+}
+.sub-label::before {
+  content:''; width:2px; height:10px;
+  background:var(--teal); border-radius:1px;
+}
 </style>
 </head>
 <body>
@@ -397,23 +477,103 @@ input[type="range"] {
         <div id="pyeonip-stats" style="font-size:12px;display:flex;flex-direction:column;gap:6px"></div>
       </div>
 
-      <!-- 구역계 스타일 -->
+      <!-- 필지 스타일 설정 (full panel) -->
       <div class="panel">
-        <div class="panel-title">구역계 스타일</div>
+        <div class="panel-title">🎨 필지 스타일 설정</div>
+
+        <!-- 편입구분 탭 -->
+        <div class="style-type-tabs">
+          <button class="style-type-tab active" id="stab-full" onclick="switchStab('full')">완전편입</button>
+          <button class="style-type-tab" id="stab-part" onclick="switchStab('part')">부분편입</button>
+          <button class="style-type-tab" id="stab-zone" onclick="switchStab('zone')">구역계</button>
+        </div>
+
+        <!-- 채우기 -->
+        <div class="sub-label">채우기</div>
         <div class="row2">
           <div>
-            <label class="field-label">선 색상</label>
-            <input type="color" id="line-color" value="#e03030">
+            <label class="field-label">색상</label>
+            <div class="color-row">
+              <input type="color" class="color-swatch" id="ps-fill-picker" oninput="psSyncHex('fill')">
+              <input type="text" class="color-hex" id="ps-fill-hex" maxlength="7" placeholder="#rrggbb" oninput="psSyncPicker('fill')">
+            </div>
           </div>
           <div>
-            <label class="field-label">선 두께</label>
-            <input type="range" id="line-weight-p" min="1" max="6" value="2" step="0.5">
-            <div class="range-val" id="lw-val-p">2px</div>
+            <label class="field-label">투명도 &nbsp;<span id="ps-fill-opa-val" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--teal)">35%</span></label>
+            <div class="range-row">
+              <input type="range" id="ps-fill-opa" min="0" max="1" step="0.05" value="0.35" oninput="psRangeLabel('ps-fill-opa','ps-fill-opa-val','%',100);psApply()">
+            </div>
           </div>
         </div>
-        <label class="field-label">채우기 투명도</label>
-        <input type="range" id="fill-opacity-p" min="0" max="0.5" value="0.35" step="0.01">
-        <div class="range-val" id="fo-val-p">35%</div>
+
+        <!-- 해치 패턴 -->
+        <div class="sub-label">해치 패턴</div>
+        <div class="hatch-grid" id="ps-hatch-grid"></div>
+
+        <!-- 외곽선 -->
+        <div class="sub-label">외곽선</div>
+        <div class="row2">
+          <div>
+            <label class="field-label">색상</label>
+            <div class="color-row">
+              <input type="color" class="color-swatch" id="ps-stroke-picker" oninput="psSyncHex('stroke')">
+              <input type="text" class="color-hex" id="ps-stroke-hex" maxlength="7" placeholder="#rrggbb" oninput="psSyncPicker('stroke')">
+            </div>
+          </div>
+          <div>
+            <label class="field-label">두께 &nbsp;<span id="ps-stroke-w-val" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--teal)">2px</span></label>
+            <div class="range-row">
+              <input type="range" id="ps-stroke-w" min="0.5" max="8" step="0.5" value="2" oninput="psRangeLabel('ps-stroke-w','ps-stroke-w-val','px',1);psApply()">
+            </div>
+          </div>
+        </div>
+        <label class="field-label" style="margin-top:6px">선 스타일</label>
+        <select id="ps-stroke-dash" onchange="psApply()" style="font-size:11px;padding:6px 8px">
+          <option value="none">실선</option>
+          <option value="6,3">짧은 점선</option>
+          <option value="10,4">긴 점선</option>
+          <option value="2,4">점점선</option>
+          <option value="12,4,3,4">1점쇄선</option>
+        </select>
+
+        <!-- 라벨 -->
+        <div class="sub-label">라벨</div>
+        <div class="row2">
+          <div>
+            <label class="field-label">표시 내용</label>
+            <select id="ps-label-content" onchange="psApply()" style="font-size:11px;padding:6px 8px">
+              <option value="none">표시 안함</option>
+              <option value="jibun" selected>지번</option>
+              <option value="jimok">지목</option>
+              <option value="jibun_jimok">지번+지목</option>
+              <option value="pyeonip">편입면적</option>
+              <option value="pnu">PNU</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label">크기 &nbsp;<span id="ps-label-sz-val" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--teal)">11px</span></label>
+            <div class="range-row">
+              <input type="range" id="ps-label-sz" min="7" max="18" step="1" value="11" oninput="psRangeLabel('ps-label-sz','ps-label-sz-val','px',1);psApply()">
+            </div>
+          </div>
+        </div>
+
+        <!-- 미리보기 -->
+        <div class="sub-label">미리보기</div>
+        <div class="style-preview">
+          <svg id="ps-preview-svg" width="264" height="60" xmlns="http://www.w3.org/2000/svg">
+            <defs id="ps-preview-defs"></defs>
+            <rect width="264" height="60" fill="#d8d4cb"/>
+            <path id="ps-prev-p1" d="M8,4 L100,6 L98,54 L6,52 Z" fill="#ccc" stroke="#888" stroke-width="1.5"/>
+            <path id="ps-prev-p2" d="M108,4 L200,4 L198,54 L106,54 Z" fill="#ccc" stroke="#888" stroke-width="1.5"/>
+            <path id="ps-prev-p3" d="M208,6 L256,4 L254,54 L206,52 Z" fill="#ccc" stroke="#888" stroke-width="1.5"/>
+            <text id="ps-prev-l1" x="53" y="30" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif" font-size="10" fill="#444">123-45</text>
+            <text id="ps-prev-l2" x="153" y="30" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif" font-size="10" fill="#444">678-9</text>
+            <text id="ps-prev-l3" x="231" y="30" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif" font-size="10" fill="#444">100</text>
+          </svg>
+        </div>
+
+        <button class="style-reset-btn" onclick="psReset()">↺ 기본값으로 초기화</button>
       </div>
 
       <!-- 지도 설정 -->
@@ -649,6 +809,30 @@ let map, dxfData = null, drawnLayers = [], selectedLayers = new Set();
 let northCtrl = null, scaleCtrl = null;
 let showNorth = true, showScale = true, showTitle = true;
 let currentTileSat = null, currentTileLabel = null, currentTileBase = null;
+
+/* ── 편입 필지 시각화 상태 ── */
+let pyeonipData = [], pyeonipLayers = [], pyeonipLabelLayers = [], colorMode = 'gubun';
+let psCurrentTab = 'full';
+
+const PS_DEFAULTS = {
+  full: { fillColor:'#dc2626', fillOpacity:0.35, hatch:'none', strokeColor:'#991b1b', strokeWidth:2, strokeDash:'none', labelContent:'jibun', labelSize:11 },
+  part: { fillColor:'#ea580c', fillOpacity:0.30, hatch:'diagonal', strokeColor:'#9a3412', strokeWidth:2, strokeDash:'none', labelContent:'jibun', labelSize:11 },
+  zone: { fillColor:'#1a5c3a', fillOpacity:0.08, hatch:'none', strokeColor:'#1a5c3a', strokeWidth:2.5, strokeDash:'8,4', labelContent:'none', labelSize:11 },
+};
+let psStyles = JSON.parse(JSON.stringify(PS_DEFAULTS));
+
+const PS_HATCHES = [
+  { id:'none',       lbl:'없음' },
+  { id:'diagonal',   lbl:'사선',   angle:45,  sp:6 },
+  { id:'diagonal2',  lbl:'역사선', angle:-45, sp:6 },
+  { id:'crosshatch', lbl:'격자',   cross:true,sp:6 },
+  { id:'horizontal', lbl:'수평',   angle:0,   sp:6 },
+  { id:'vertical',   lbl:'수직',   angle:90,  sp:6 },
+  { id:'dots',       lbl:'점',     dot:true,  sp:6 },
+  { id:'dense',      lbl:'촘촘',   angle:45,  sp:4 },
+  { id:'wide',       lbl:'넓은',   angle:45,  sp:10 },
+  { id:'zigzag',     lbl:'지그재그',zigzag:true,sp:8 },
+];
 
 /* ── 상수 ── */
 const ESRI_SAT   = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
@@ -1084,22 +1268,11 @@ document.getElementById('project-name-p').addEventListener('input', function() {
   el.textContent = this.value ? this.value + ' 위치도' : '위치도';
 });
 
-document.getElementById('line-weight-p').addEventListener('input', function() {
-  document.getElementById('lw-val-p').textContent = this.value + 'px';
-  if (pyeonipMode) renderPyeonipLayers();
-});
-document.getElementById('fill-opacity-p').addEventListener('input', function() {
-  document.getElementById('fo-val-p').textContent = Math.round(this.value * 100) + '%';
-  if (pyeonipMode) renderPyeonipLayers();
-});
-
 // ═══════════════════════════════════════════════════
 // 편입 필지 모드
 // ═══════════════════════════════════════════════════
 let pyeonipMode   = false;
-let pyeonipData   = [];
-let pyeonipLayers = [];
-let colorMode     = 'gubun'; // 'gubun' | 'jimok'
+// pyeonipData, pyeonipLayers, colorMode — 전역 선언부에서 정의됨
 
 // 지목별 색상 팔레트
 const JIMOK_COLORS = {
@@ -1122,23 +1295,25 @@ function getGubunColor(gubun) {
 function initPyeonipMode() {
   try {
     const raw = sessionStorage.getItem('pyeonipData');
-    if (!raw) {
-      console.warn('[pyeonip] sessionStorage에 데이터 없음');
-      return;
-    }
+    if (!raw) { console.warn('[pyeonip] sessionStorage에 데이터 없음'); return; }
     pyeonipData = JSON.parse(raw);
-    if (!pyeonipData || pyeonipData.length === 0) {
-      console.warn('[pyeonip] 파싱된 데이터 없음');
-      return;
-    }
-    // rings 없는 행 필터링
+    if (!pyeonipData || pyeonipData.length === 0) { console.warn('[pyeonip] 파싱된 데이터 없음'); return; }
     const withRings = pyeonipData.filter(r => r.rings && r.rings.length > 0);
     console.log(`[pyeonip] 전체 ${pyeonipData.length}건 / rings 있음 ${withRings.length}건`);
     pyeonipData = withRings.length > 0 ? withRings : pyeonipData;
-  } catch(e) {
-    console.error('[pyeonip] 데이터 파싱 오류:', e);
-    return;
-  }
+  } catch(e) { console.error('[pyeonip] 데이터 파싱 오류:', e); return; }
+
+  // 저장된 스타일 불러오기
+  try {
+    const rawStyle = sessionStorage.getItem('pyeonipStyle');
+    if (rawStyle) {
+      const saved = JSON.parse(rawStyle);
+      // 각 탭별로 안전하게 병합
+      ['full','part','zone'].forEach(tab => {
+        if (saved[tab]) psStyles[tab] = Object.assign({}, PS_DEFAULTS[tab], saved[tab]);
+      });
+    }
+  } catch(e) { console.warn('[pyeonip] 스타일 로드 실패, 기본값 사용'); }
 
   pyeonipMode = true;
 
@@ -1149,12 +1324,187 @@ function initPyeonipMode() {
   document.getElementById('topbar-badge').textContent      = '편입 필지 시각화';
   document.getElementById('map-empty').classList.add('hidden');
 
+  // 스타일 패널 초기화
+  psInitHatchGrid();
+  psLoadUI('full');
+
   // 통계 렌더
   renderPyeonipStats();
   // 지목 범례 생성
   buildJimokLegend();
   // 지도에 표시
   renderPyeonipLayers();
+}
+
+// ── 스타일 패널 함수들 ───────────────────────────────
+
+function psInitHatchGrid() {
+  const grid = document.getElementById('ps-hatch-grid');
+  if (!grid) return;
+  const cur = psStyles[psCurrentTab].hatch;
+  grid.innerHTML = PS_HATCHES.map(h => `
+    <button class="hatch-opt${h.id === cur ? ' sel' : ''}" id="ho-${h.id}" onclick="psSelectHatch('${h.id}')">
+      <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+        <rect width="32" height="32" fill="#f0ede6"/>
+        ${h.id === 'none'
+          ? '<text x="16" y="18" text-anchor="middle" font-size="8" fill="#bbb">없음</text>'
+          : psMiniHatch(h, '#666', '#e0ddd5')}
+      </svg>
+      <span class="hatch-opt-lbl">${h.lbl}</span>
+    </button>`).join('');
+}
+
+function psMiniHatch(h, color, bg) {
+  const sz = 32, sp = h.sp || 8;
+  let o = `<rect width="${sz}" height="${sz}" fill="${bg}"/>`;
+  if (h.dot) {
+    for (let y = sp/2; y < sz; y += sp)
+      for (let x = sp/2; x < sz; x += sp)
+        o += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.1" fill="${color}"/>`;
+  } else if (h.zigzag) {
+    let d = '';
+    for (let y = 0; y < sz + sp; y += sp) {
+      d += `M0,${y}`;
+      for (let x = 0; x < sz; x += sp) d += ` L${x+sp/2},${y-sp/2} L${x+sp},${y}`;
+    }
+    o += `<path d="${d}" stroke="${color}" stroke-width="1" fill="none"/>`;
+  } else if (h.cross) {
+    for (let i = -sz; i < sz*2; i += sp) {
+      o += `<line x1="${i}" y1="0" x2="${i+sz}" y2="${sz}" stroke="${color}" stroke-width="1"/>`;
+      o += `<line x1="${i+sz}" y1="0" x2="${i}" y2="${sz}" stroke="${color}" stroke-width="1"/>`;
+    }
+  } else if (h.angle === 0) {
+    for (let y = 0; y < sz; y += sp) o += `<line x1="0" y1="${y}" x2="${sz}" y2="${y}" stroke="${color}" stroke-width="1"/>`;
+  } else if (h.angle === 90) {
+    for (let x = 0; x < sz; x += sp) o += `<line x1="${x}" y1="0" x2="${x}" y2="${sz}" stroke="${color}" stroke-width="1"/>`;
+  } else if ((h.angle||0) > 0) {
+    for (let i = -sz; i < sz*2; i += sp) o += `<line x1="${i}" y1="0" x2="${i+sz}" y2="${sz}" stroke="${color}" stroke-width="1"/>`;
+  } else {
+    for (let i = -sz; i < sz*2; i += sp) o += `<line x1="${i+sz}" y1="0" x2="${i}" y2="${sz}" stroke="${color}" stroke-width="1"/>`;
+  }
+  o += `<rect width="${sz}" height="${sz}" fill="none" stroke="#ccc" stroke-width="0.5"/>`;
+  return o;
+}
+
+function psSelectHatch(id) {
+  psStyles[psCurrentTab].hatch = id;
+  document.querySelectorAll('.hatch-opt').forEach(b => b.classList.remove('sel'));
+  const btn = document.getElementById('ho-' + id);
+  if (btn) btn.classList.add('sel');
+  psUpdatePreview();
+  renderPyeonipLayers();
+}
+
+function switchStab(tab) {
+  psSaveUI();
+  psCurrentTab = tab;
+  document.querySelectorAll('.style-type-tab').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('stab-' + tab);
+  if (btn) btn.classList.add('active');
+  psLoadUI(tab);
+  psInitHatchGrid();
+}
+
+function psLoadUI(tab) {
+  const s = psStyles[tab];
+  document.getElementById('ps-fill-picker').value   = s.fillColor;
+  document.getElementById('ps-fill-hex').value      = s.fillColor;
+  document.getElementById('ps-fill-opa').value      = s.fillOpacity;
+  document.getElementById('ps-fill-opa-val').textContent = Math.round(s.fillOpacity * 100) + '%';
+  document.getElementById('ps-stroke-picker').value = s.strokeColor;
+  document.getElementById('ps-stroke-hex').value    = s.strokeColor;
+  document.getElementById('ps-stroke-w').value      = s.strokeWidth;
+  document.getElementById('ps-stroke-w-val').textContent = s.strokeWidth + 'px';
+  document.getElementById('ps-stroke-dash').value   = s.strokeDash;
+  document.getElementById('ps-label-content').value = s.labelContent;
+  document.getElementById('ps-label-sz').value      = s.labelSize;
+  document.getElementById('ps-label-sz-val').textContent = s.labelSize + 'px';
+  psUpdatePreview();
+}
+
+function psSaveUI() {
+  const s = psStyles[psCurrentTab];
+  const fhex = document.getElementById('ps-fill-hex').value;
+  const shex = document.getElementById('ps-stroke-hex').value;
+  if (/^#[0-9a-fA-F]{6}$/.test(fhex)) s.fillColor = fhex;
+  if (/^#[0-9a-fA-F]{6}$/.test(shex)) s.strokeColor = shex;
+  s.fillOpacity  = parseFloat(document.getElementById('ps-fill-opa').value);
+  s.strokeWidth  = parseFloat(document.getElementById('ps-stroke-w').value);
+  s.strokeDash   = document.getElementById('ps-stroke-dash').value;
+  s.labelContent = document.getElementById('ps-label-content').value;
+  s.labelSize    = parseInt(document.getElementById('ps-label-sz').value);
+}
+
+function psSyncHex(which) {
+  const v = document.getElementById('ps-' + which + '-picker').value;
+  document.getElementById('ps-' + which + '-hex').value = v;
+  psSaveUI(); psUpdatePreview(); psApply();
+}
+function psSyncPicker(which) {
+  const v = document.getElementById('ps-' + which + '-hex').value;
+  if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+    document.getElementById('ps-' + which + '-picker').value = v;
+    psSaveUI(); psUpdatePreview(); psApply();
+  }
+}
+function psRangeLabel(inputId, labelId, unit, mul) {
+  const v = document.getElementById(inputId).value;
+  document.getElementById(labelId).textContent = (parseFloat(v) * mul).toFixed(mul === 100 ? 0 : 1) + unit;
+}
+function psApply() {
+  psSaveUI();
+  psUpdatePreview();
+  renderPyeonipLayers();
+}
+function psReset() {
+  psStyles = JSON.parse(JSON.stringify(PS_DEFAULTS));
+  psLoadUI(psCurrentTab);
+  psInitHatchGrid();
+  renderPyeonipLayers();
+  toast('↺ 기본 스타일로 초기화되었습니다', 'success');
+}
+
+// 미리보기 업데이트
+function psUpdatePreview() {
+  const s = psStyles[psCurrentTab];
+  const defs = document.getElementById('ps-preview-defs');
+  if (!defs) return;
+
+  const pid = 'prev-pat';
+  const h = PS_HATCHES.find(h => h.id === s.hatch);
+
+  if (h && s.hatch !== 'none') {
+    const sp = h.sp || 8;
+    defs.innerHTML = `<pattern id="${pid}" patternUnits="userSpaceOnUse" width="${sp}" height="${sp}">${buildHatchInner(h, s.fillColor, sp)}</pattern>`;
+  } else {
+    defs.innerHTML = '';
+  }
+
+  const fillVal = (h && s.hatch !== 'none') ? `url(#${pid})` : s.fillColor;
+  const fillOpa = (h && s.hatch !== 'none') ? s.fillOpacity : s.fillOpacity;
+  const dash = s.strokeDash === 'none' ? '' : s.strokeDash;
+
+  const labels = ['123-45', '678-9', '100'];
+  [1,2,3].forEach(i => {
+    const p = document.getElementById('ps-prev-p' + i);
+    if (p) {
+      p.setAttribute('fill', fillVal);
+      p.setAttribute('fill-opacity', fillOpa);
+      p.setAttribute('stroke', s.strokeColor);
+      p.setAttribute('stroke-width', s.strokeWidth);
+      p.setAttribute('stroke-dasharray', dash);
+    }
+    const l = document.getElementById('ps-prev-l' + i);
+    if (l) {
+      if (s.labelContent !== 'none') {
+        l.setAttribute('font-size', Math.min(s.labelSize, 11));
+        l.setAttribute('fill', s.strokeColor);
+        l.textContent = labels[i-1];
+      } else {
+        l.textContent = '';
+      }
+    }
+  });
 }
 
 // 색상 모드 전환
@@ -1229,46 +1579,63 @@ function renderPyeonipStats() {
 
 // 편입 필지 지도 레이어 렌더
 function renderPyeonipLayers() {
+  // 기존 레이어 제거
   pyeonipLayers.forEach(l => map.removeLayer(l));
   pyeonipLayers = [];
+  pyeonipLabelLayers.forEach(l => map.removeLayer(l));
+  pyeonipLabelLayers = [];
 
-  const fillOpacity = parseFloat(document.getElementById('fill-opacity-p').value);
-  const lineWeight  = parseFloat(document.getElementById('line-weight-p').value);
   const allLL = [];
   let rendered = 0, skipped = 0;
 
   pyeonipData.forEach(row => {
     if (!row.rings || row.rings.length === 0) { skipped++; return; }
 
-    const color = colorMode === 'gubun'
-      ? getGubunColor(row.gubun)
-      : getJimokColor(row.jimok);
+    // 편입구분에 따른 스타일 선택
+    const sKey = row.gubun === '완전편입' ? 'full' : 'part';
+    const s = psStyles[sKey];
+
+    // 색상 모드: gubun=스타일설정 색상 / jimok=지목색상
+    const baseColor = colorMode === 'gubun' ? s.fillColor : getJimokColor(row.jimok);
+    const strokeColor = colorMode === 'gubun' ? s.strokeColor : baseColor;
 
     row.rings.forEach(ring => {
       if (!ring || ring.length < 3) return;
       try {
-        // EPSG:5174 → WGS84 변환
         const latlngs = [];
         for (const coord of ring) {
           const [x, y] = coord;
-          // 5174 좌표 범위 확인 (미터 단위)
           if (x < 50000 || x > 500000 || y < 100000 || y > 900000) continue;
           const [lng, lat] = proj4('EPSG:5174', 'EPSG:4326', [x, y]);
-          // 한국 범위 필터 (넉넉하게)
           if (lat < 33 || lat > 39 || lng < 124 || lng > 131) continue;
           latlngs.push([lat, lng]);
         }
-
         if (latlngs.length < 3) return;
         allLL.push(...latlngs);
 
+        // 해치 패턴 SVG icon (Leaflet DivIcon 방식)
+        let fillColor = baseColor;
+        let fillOpacity = s.fillOpacity;
+
+        const dashArray = (s.strokeDash === 'none' || !s.strokeDash) ? null : s.strokeDash;
+
         const layer = L.polygon(latlngs, {
-          color,
-          weight: lineWeight,
-          fillColor: color,
-          fillOpacity,
+          color: strokeColor,
+          weight: s.strokeWidth,
+          dashArray,
+          fillColor,
+          fillOpacity: s.hatch !== 'none' ? 0 : fillOpacity,
           opacity: 1,
         });
+
+        // 해치는 SVG 패턴 오버레이로 구현
+        if (s.hatch !== 'none') {
+          layer.on('add', function() {
+            const paths = layer.getElement ? [layer.getElement()] : [];
+            // Leaflet SVG path에 패턴 fill 적용
+            layer._path && applyHatchToPath(layer._path, s.hatch, baseColor, fillOpacity, sKey + row.pnu);
+          });
+        }
 
         layer.bindPopup(`
           <div style="font-family:'Noto Sans KR',sans-serif;font-size:12px;min-width:180px">
@@ -1279,13 +1646,41 @@ function renderPyeonipLayers() {
               <tr><td style="color:#888;padding:2px 4px">대장구분</td><td style="padding:2px 4px">${row.daejang || '-'}</td></tr>
               <tr><td style="color:#888;padding:2px 4px">필지면적</td><td style="padding:2px 4px;font-family:'DM Mono',monospace">${(row.jijuArea||0).toLocaleString()} ㎡</td></tr>
               <tr><td style="color:#888;padding:2px 4px">편입면적</td><td style="padding:2px 4px;font-family:'DM Mono',monospace">${(row.pyeonipArea||0).toLocaleString()} ㎡</td></tr>
-              <tr><td style="color:#888;padding:2px 4px">편입구분</td><td style="padding:2px 4px;font-weight:700;color:${color}">${row.gubun || '-'}</td></tr>
+              <tr><td style="color:#888;padding:2px 4px">편입구분</td><td style="padding:2px 4px;font-weight:700;color:${strokeColor}">${row.gubun || '-'}</td></tr>
             </table>
           </div>
         `, { maxWidth: 260 });
 
         layer.addTo(map);
         pyeonipLayers.push(layer);
+
+        // 해치 패턴: layer add 후 즉시 적용
+        if (s.hatch !== 'none') {
+          setTimeout(() => {
+            if (layer._path) applyHatchToPath(layer._path, s.hatch, baseColor, fillOpacity, sKey + '_' + row.pnu);
+          }, 0);
+        }
+
+        // 라벨 마커
+        if (s.labelContent && s.labelContent !== 'none') {
+          const center = latlngs.reduce((acc, ll) => [acc[0]+ll[0], acc[1]+ll[1]], [0,0]);
+          const cx = center[0] / latlngs.length;
+          const cy = center[1] / latlngs.length;
+          const labelText = getLabelText(row, s.labelContent);
+          if (labelText) {
+            const lbl = L.marker([cx, cy], {
+              icon: L.divIcon({
+                className: '',
+                html: `<div style="font-family:'Noto Sans KR',sans-serif;font-size:${s.labelSize}px;font-weight:700;color:${strokeColor};white-space:nowrap;text-shadow:0 0 3px rgba(255,255,255,0.9),0 0 3px rgba(255,255,255,0.9)">${labelText}</div>`,
+                iconAnchor: [0, 0],
+              }),
+              interactive: false,
+            });
+            lbl.addTo(map);
+            pyeonipLabelLayers.push(lbl);
+          }
+        }
+
         rendered++;
       } catch(e) { skipped++; }
     });
@@ -1293,17 +1688,61 @@ function renderPyeonipLayers() {
 
   console.log(`[pyeonip] 렌더 완료: ${rendered}개 표시 / ${skipped}개 스킵`);
 
-  // 전체 범위로 지도 맞춤
   if (allLL.length > 0) {
-    try {
-      map.fitBounds(L.latLngBounds(allLL), { padding: [50, 50] });
-    } catch(e) {}
+    try { map.fitBounds(L.latLngBounds(allLL), { padding:[50,50] }); } catch(e) {}
   } else {
-    console.warn('[pyeonip] 표시할 좌표가 없습니다. rings 데이터를 확인하세요.');
+    console.warn('[pyeonip] 표시할 좌표가 없습니다.');
   }
 
-  // 라벨 레이어 최상단
   if (currentTileLabel && map.hasLayer(currentTileLabel)) currentTileLabel.bringToFront();
+}
+
+// 라벨 텍스트 생성
+function getLabelText(row, content) {
+  switch(content) {
+    case 'jibun':       return row.jibun || '';
+    case 'jimok':       return row.jimok || '';
+    case 'jibun_jimok': return [row.jibun, row.jimok].filter(Boolean).join(' ');
+    case 'pyeonip':     return row.pyeonipArea ? row.pyeonipArea.toLocaleString() + '㎡' : '';
+    case 'pnu':         return row.pnu || '';
+    default: return '';
+  }
+}
+
+// SVG path에 해치 패턴 fill 적용
+function applyHatchToPath(pathEl, hatchId, color, opacity, uid) {
+  try {
+    const svgEl = pathEl.closest('svg') || pathEl.ownerSVGElement;
+    if (!svgEl) return;
+    let defs = svgEl.querySelector('defs');
+    if (!defs) { defs = document.createElementNS('http://www.w3.org/2000/svg','defs'); svgEl.prepend(defs); }
+
+    const patId = 'hatch-' + uid.replace(/[^a-zA-Z0-9]/g,'_');
+    if (!defs.querySelector('#' + patId)) {
+      const h = PS_HATCHES.find(h => h.id === hatchId);
+      if (!h || h.id === 'none') return;
+      const sp = h.sp || 8;
+      const pat = document.createElementNS('http://www.w3.org/2000/svg','pattern');
+      pat.setAttribute('id', patId);
+      pat.setAttribute('patternUnits','userSpaceOnUse');
+      pat.setAttribute('width', sp); pat.setAttribute('height', sp);
+      pat.innerHTML = buildHatchInner(h, color, sp);
+      defs.appendChild(pat);
+    }
+    pathEl.style.fill = `url(#${patId})`;
+    pathEl.style.fillOpacity = opacity;
+  } catch(e) {}
+}
+
+function buildHatchInner(h, color, sp) {
+  if (h.dot)    return `<circle cx="${sp/2}" cy="${sp/2}" r="1.2" fill="${color}"/>`;
+  if (h.zigzag) return `<path d="M0,${sp} L${sp/2},0 L${sp},${sp}" stroke="${color}" stroke-width="1" fill="none"/>`;
+  if (h.cross)  return `<line x1="0" y1="0" x2="${sp}" y2="${sp}" stroke="${color}" stroke-width="1"/>
+                         <line x1="${sp}" y1="0" x2="0" y2="${sp}" stroke="${color}" stroke-width="1"/>`;
+  if (h.angle === 0)  return `<line x1="0" y1="${sp/2}" x2="${sp}" y2="${sp/2}" stroke="${color}" stroke-width="1"/>`;
+  if (h.angle === 90) return `<line x1="${sp/2}" y1="0" x2="${sp/2}" y2="${sp}" stroke="${color}" stroke-width="1"/>`;
+  if ((h.angle||0) > 0) return `<line x1="0" y1="0" x2="${sp}" y2="${sp}" stroke="${color}" stroke-width="1"/>`;
+  return `<line x1="${sp}" y1="0" x2="0" y2="${sp}" stroke="${color}" stroke-width="1"/>`;
 }
 
 // 편입 모드용 타일 전환
