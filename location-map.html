@@ -1229,18 +1229,17 @@ function renderPyeonipStats() {
 
 // 편입 필지 지도 레이어 렌더
 function renderPyeonipLayers() {
-  // 기존 레이어 제거
   pyeonipLayers.forEach(l => map.removeLayer(l));
   pyeonipLayers = [];
 
   const fillOpacity = parseFloat(document.getElementById('fill-opacity-p').value);
   const lineWeight  = parseFloat(document.getElementById('line-weight-p').value);
-  const epsg = '5174';
-
   const allLL = [];
+  let rendered = 0, skipped = 0;
 
   pyeonipData.forEach(row => {
-    if (!row.rings || row.rings.length === 0) return;
+    if (!row.rings || row.rings.length === 0) { skipped++; return; }
+
     const color = colorMode === 'gubun'
       ? getGubunColor(row.gubun)
       : getJimokColor(row.jimok);
@@ -1248,12 +1247,17 @@ function renderPyeonipLayers() {
     row.rings.forEach(ring => {
       if (!ring || ring.length < 3) return;
       try {
-        const latlngs = ring
-          .map(([x, y]) => {
-            const [lng, lat] = proj4(`EPSG:${epsg}`, 'EPSG:4326', [x, y]);
-            return [lat, lng];
-          })
-          .filter(([la, ln]) => la > 32 && la < 40 && ln > 122 && ln < 132);
+        // EPSG:5174 → WGS84 변환
+        const latlngs = [];
+        for (const coord of ring) {
+          const [x, y] = coord;
+          // 5174 좌표 범위 확인 (미터 단위)
+          if (x < 50000 || x > 500000 || y < 100000 || y > 900000) continue;
+          const [lng, lat] = proj4('EPSG:5174', 'EPSG:4326', [x, y]);
+          // 한국 범위 필터 (넉넉하게)
+          if (lat < 33 || lat > 39 || lng < 124 || lng > 131) continue;
+          latlngs.push([lat, lng]);
+        }
 
         if (latlngs.length < 3) return;
         allLL.push(...latlngs);
@@ -1282,15 +1286,20 @@ function renderPyeonipLayers() {
 
         layer.addTo(map);
         pyeonipLayers.push(layer);
-      } catch(e) {}
+        rendered++;
+      } catch(e) { skipped++; }
     });
   });
+
+  console.log(`[pyeonip] 렌더 완료: ${rendered}개 표시 / ${skipped}개 스킵`);
 
   // 전체 범위로 지도 맞춤
   if (allLL.length > 0) {
     try {
       map.fitBounds(L.latLngBounds(allLL), { padding: [50, 50] });
     } catch(e) {}
+  } else {
+    console.warn('[pyeonip] 표시할 좌표가 없습니다. rings 데이터를 확인하세요.');
   }
 
   // 라벨 레이어 최상단

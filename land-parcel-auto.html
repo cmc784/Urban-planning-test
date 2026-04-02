@@ -965,16 +965,34 @@ function extractRings(geo) {
   if (!geo) return [];
   const round1 = c => [Math.round(c[0]*10)/10, Math.round(c[1]*10)/10];
   const rings = [];
-  if (geo.type === 'Polygon') {
-    if (geo.coordinates[0]) rings.push(geo.coordinates[0].map(round1));
-  } else if (geo.type === 'MultiPolygon') {
-    for (const poly of geo.coordinates) {
-      if (poly[0]) rings.push(poly[0].map(round1));
-    }
-  } else if (geo.type === 'GeometryCollection') {
-    for (const g of (geo.geometries || [])) {
-      rings.push(...extractRings(g));
-    }
+
+  switch (geo.type) {
+    case 'Polygon':
+      // 외부링 + 내부홀 모두 저장 (면적 계산에는 외부링만 쓰지만 표시용으로 외부링만)
+      if (geo.coordinates && geo.coordinates[0] && geo.coordinates[0].length >= 3)
+        rings.push(geo.coordinates[0].map(round1));
+      break;
+    case 'MultiPolygon':
+      for (const poly of (geo.coordinates || []))
+        if (poly && poly[0] && poly[0].length >= 3)
+          rings.push(poly[0].map(round1));
+      break;
+    case 'GeometryCollection':
+      for (const g of (geo.geometries || []))
+        rings.push(...extractRings(g));
+      break;
+    // JSTS가 간혹 LineString/LinearRing으로 반환하는 경우 대응
+    case 'LineString':
+      if (geo.coordinates && geo.coordinates.length >= 3)
+        rings.push(geo.coordinates.map(round1));
+      break;
+    case 'MultiLineString':
+      for (const line of (geo.coordinates || []))
+        if (line && line.length >= 3)
+          rings.push(line.map(round1));
+      break;
+    default:
+      break;
   }
   return rings;
 }
