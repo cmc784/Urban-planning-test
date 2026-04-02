@@ -7,8 +7,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsts/2.11.0/jsts.min.js"></script>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 // ═══════════════════════════════════════════════════════
 // 순수 JS SHP/DBF 파서 — shpjs 완전 대체
@@ -312,6 +310,7 @@ body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--
 table.result { width:100%; border-collapse:collapse; background:var(--white); font-size:11px; min-width:1100px; }
 .th-main { background:var(--ink); color:white; }
 .th-main th { padding:8px 10px; text-align:center; font-size:10px; font-weight:700; letter-spacing:0.3px; border-right:1px solid rgba(255,255,255,0.1); white-space:nowrap; font-family:'DM Mono',monospace; }
+.th-main th[onclick]:hover { background:#2a2a2a; }
 .th-sub2 { background:#2a2a2a; color:rgba(255,255,255,0.75); }
 .th-sub2 th { padding:6px 10px; text-align:center; font-size:10px; font-weight:600; border-right:1px solid rgba(255,255,255,0.08); font-family:'DM Mono',monospace; }
 .tr-sum { background:#f0f7f3; }
@@ -405,115 +404,6 @@ tbody.result-body td:last-child { border-right:none; }
 
 /* SHP RESULT STATS */
 .shp-stats { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:16px; }
-
-/* ── 지도 + 분석 패널 ── */
-.map-analysis-grid {
-  display:grid; grid-template-columns:1fr 340px; gap:14px; margin-bottom:16px;
-}
-.map-wrap {
-  background:var(--white); border:1px solid var(--border);
-  border-radius:12px; overflow:hidden; box-shadow:var(--shadow);
-  min-height:420px; position:relative;
-}
-#shpLeafletMap { width:100%; height:420px; }
-.map-legend {
-  position:absolute; bottom:12px; left:12px; z-index:800;
-  background:rgba(255,255,255,0.95); border:1px solid var(--border);
-  border-radius:8px; padding:10px 14px; font-size:11px;
-  font-family:'Noto Sans KR',sans-serif; box-shadow:var(--shadow-md);
-  pointer-events:none;
-}
-.map-legend-title { font-weight:700; margin-bottom:6px; color:var(--ink); font-size:11px; }
-.legend-item { display:flex; align-items:center; gap:6px; margin-bottom:3px; color:var(--ink2); }
-.legend-dot { width:12px; height:12px; border-radius:2px; flex-shrink:0; }
-.map-ctrl-bar {
-  display:flex; gap:6px; padding:10px 14px; border-bottom:1px solid var(--border2);
-  background:var(--gray); flex-wrap:wrap; align-items:center;
-}
-.map-ctrl-label { font-size:11px; font-weight:700; color:var(--ink3); font-family:'DM Mono',monospace; }
-.map-ctrl-btn {
-  padding:4px 10px; border-radius:5px; font-size:11px; font-weight:700;
-  cursor:pointer; border:1px solid var(--border); background:var(--white);
-  color:var(--ink2); font-family:'Noto Sans KR',sans-serif; transition:all 0.15s;
-}
-.map-ctrl-btn:hover { background:var(--green); color:white; border-color:var(--green); }
-.map-ctrl-btn.active { background:var(--green); color:white; border-color:var(--green); }
-
-/* 분석 패널 */
-.analysis-panel {
-  background:var(--white); border:1px solid var(--border);
-  border-radius:12px; box-shadow:var(--shadow);
-  display:flex; flex-direction:column; overflow:hidden;
-}
-.analysis-tab-row {
-  display:flex; border-bottom:1px solid var(--border); background:var(--gray);
-}
-.atab {
-  flex:1; padding:10px 8px; font-size:11px; font-weight:700;
-  cursor:pointer; border:none; background:none;
-  font-family:'Noto Sans KR',sans-serif; color:var(--ink3);
-  border-bottom:2px solid transparent; transition:all 0.15s;
-}
-.atab.active { color:var(--green); border-bottom-color:var(--green); background:var(--white); }
-.atab:hover:not(.active) { color:var(--ink2); }
-.atab-panel { display:none; padding:14px; flex:1; overflow-y:auto; }
-.atab-panel.active { display:block; }
-
-/* 차트 바 */
-.chart-row {
-  display:flex; align-items:center; gap:8px; margin-bottom:8px;
-}
-.chart-label { font-size:11px; color:var(--ink2); width:30px; text-align:right; flex-shrink:0; font-family:'DM Mono',monospace; font-weight:600; }
-.chart-bar-wrap { flex:1; background:var(--border2); border-radius:3px; height:14px; overflow:hidden; cursor:pointer; transition:opacity 0.15s; }
-.chart-bar-wrap:hover { opacity:0.8; }
-.chart-bar { height:100%; border-radius:3px; transition:width 0.5s ease; }
-.chart-count { font-size:10px; color:var(--ink3); width:50px; text-align:right; flex-shrink:0; font-family:'DM Mono',monospace; }
-
-/* 편입유형 도넛 */
-.donut-wrap { display:flex; justify-content:center; align-items:center; padding:10px 0 6px; }
-.donut-svg { filter:drop-shadow(0 2px 6px rgba(0,0,0,0.08)); }
-.type-stat-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
-.type-stat-card {
-  border-radius:8px; padding:10px 12px; text-align:center;
-}
-.type-stat-card.full { background:#e6f2eb; border:1px solid #b8dfc6; }
-.type-stat-card.part { background:#fef3cd; border:1px solid #f0d89a; }
-.type-stat-val { font-size:18px; font-weight:800; font-family:'DM Mono',monospace; }
-.type-stat-lbl { font-size:10px; color:var(--ink3); margin-top:2px; font-weight:600; }
-
-/* 위치도 패널 */
-.location-map-wrap {
-  background:var(--white); border:1px solid var(--border);
-  border-radius:12px; box-shadow:var(--shadow); margin-bottom:16px;
-  overflow:hidden;
-}
-.location-map-header {
-  display:flex; align-items:center; justify-content:space-between;
-  padding:12px 18px; border-bottom:1px solid var(--border2);
-  background:var(--gray);
-}
-.location-map-title { font-size:13px; font-weight:700; display:flex; align-items:center; gap:8px; }
-#shpLocationMap { width:100%; height:500px; }
-.location-info-bar {
-  display:flex; gap:16px; padding:10px 18px; font-size:11px;
-  color:var(--ink3); border-top:1px solid var(--border2); flex-wrap:wrap;
-  font-family:'DM Mono',monospace;
-}
-
-@media(max-width:1000px) {
-  .map-analysis-grid { grid-template-columns:1fr; }
-  .analysis-panel { min-height:320px; }
-}
-
-/* Leaflet 툴팁 커스텀 */
-.shp-tooltip {
-  font-family:'Noto Sans KR',sans-serif !important;
-  font-size:12px !important;
-  border-radius:6px !important;
-  border:1px solid var(--border) !important;
-  box-shadow:0 2px 8px rgba(0,0,0,0.12) !important;
-  padding:6px 10px !important;
-}
 
 @media(max-width:900px) {
   .shp-grid { grid-template-columns:1fr; }
@@ -707,136 +597,37 @@ tbody.result-body td:last-child { border-right:none; }
         </div>
       </div>
 
-      <!-- ── 지도 + 분석 패널 ── -->
-      <div class="map-analysis-grid">
-
-        <!-- 좌: 편입필지 지도 -->
-        <div class="map-wrap">
-          <div class="map-ctrl-bar">
-            <span class="map-ctrl-label">색상 기준</span>
-            <button class="map-ctrl-btn active" id="mapColorGubun" onclick="setMapColor('gubun')">편입유형</button>
-            <button class="map-ctrl-btn" id="mapColorJimok" onclick="setMapColor('jimok')">지목</button>
-            <div style="flex:1"></div>
-            <button class="map-ctrl-btn" onclick="fitMapBounds()" title="전체 보기">⊙ 전체보기</button>
-          </div>
-          <div id="shpLeafletMap"></div>
-          <div class="map-legend" id="mapLegend"></div>
-        </div>
-
-        <!-- 우: 분석 패널 -->
-        <div class="analysis-panel">
-          <div class="analysis-tab-row">
-            <button class="atab active" onclick="switchAtab('jimok')">지목별</button>
-            <button class="atab" onclick="switchAtab('gubun')">편입유형별</button>
-            <button class="atab" onclick="switchAtab('filter')">필터</button>
-          </div>
-
-          <!-- 지목별 탭 -->
-          <div class="atab-panel active" id="atab-jimok">
-            <div style="font-size:11px;font-weight:700;color:var(--ink3);margin-bottom:10px;font-family:'DM Mono',monospace">지목별 편입면적 (클릭→지도 필터)</div>
-            <div id="jimokChart"></div>
-          </div>
-
-          <!-- 편입유형별 탭 -->
-          <div class="atab-panel" id="atab-gubun">
-            <div class="donut-wrap">
-              <svg class="donut-svg" id="donutSvg" viewBox="0 0 140 140" width="140" height="140"></svg>
-            </div>
-            <div class="type-stat-row">
-              <div class="type-stat-card full">
-                <div class="type-stat-val" style="color:var(--green)" id="ds-full">0</div>
-                <div class="type-stat-lbl">완전편입</div>
-                <div style="font-size:10px;color:var(--ink3)" id="ds-full-area">0 ㎡</div>
-              </div>
-              <div class="type-stat-card part">
-                <div class="type-stat-val" style="color:var(--amber)" id="ds-part">0</div>
-                <div class="type-stat-lbl">부분편입</div>
-                <div style="font-size:10px;color:var(--ink3)" id="ds-part-area">0 ㎡</div>
-              </div>
-            </div>
-            <div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--border2)">
-              <div style="font-size:10px;font-weight:700;color:var(--ink3);margin-bottom:8px;font-family:'DM Mono',monospace">편입율 (편입면적/필지면적)</div>
-              <div id="pyeonipRateBar"></div>
-            </div>
-          </div>
-
-          <!-- 필터 탭 -->
-          <div class="atab-panel" id="atab-filter">
-            <div style="font-size:11px;font-weight:700;color:var(--ink3);margin-bottom:10px;font-family:'DM Mono',monospace">결과 필터</div>
-            <div style="margin-bottom:10px">
-              <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px">검색 (PNU/지번)</label>
-              <div class="search-wrap" style="min-width:unset">
-                <span class="search-icon">🔍</span>
-                <input type="text" id="shpSearch" placeholder="PNU, 지번..." oninput="renderShpResult(); updateMapFilter()">
-              </div>
-            </div>
-            <div style="margin-bottom:10px">
-              <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px">편입구분</label>
-              <select class="filter-sel" id="shpFilterGubun" onchange="renderShpResult(); updateMapFilter()" style="width:100%">
-                <option value="">전체</option>
-                <option value="완전편입">완전편입</option>
-                <option value="부분편입">부분편입</option>
-              </select>
-            </div>
-            <div style="margin-bottom:10px">
-              <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px">지목</label>
-              <select class="filter-sel" id="shpFilterJimok" onchange="renderShpResult(); updateMapFilter()" style="width:100%">
-                <option value="">전체</option>
-              </select>
-            </div>
-            <div style="margin-bottom:10px">
-              <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px">편입면적 최솟값 (㎡)</label>
-              <input type="number" id="shpFilterMinArea" placeholder="0" min="0" step="1"
-                style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:'DM Mono',monospace;outline:none"
-                oninput="renderShpResult(); updateMapFilter()">
-            </div>
-            <button class="btn-sm" style="width:100%;margin-top:4px" onclick="resetShpFilter()">필터 초기화</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── 위치도 생성 패널 ── -->
-      <div class="location-map-wrap">
-        <div class="location-map-header">
-          <div class="location-map-title">
-            <span style="font-size:16px">📍</span>
-            위치도
-            <span style="font-size:11px;font-weight:400;color:var(--ink3)">(편입필지 + 구역계 + 위성/지도 배경)</span>
-          </div>
-          <div style="display:flex;gap:6px">
-            <select id="locMapTile" class="filter-sel" onchange="changeLocMapTile()" style="font-size:11px">
-              <option value="osm">OpenStreetMap</option>
-              <option value="satellite">위성 (ESRI)</option>
-              <option value="carto">밝은 지도 (Carto)</option>
-            </select>
-            <button class="btn-sm primary" onclick="fitLocMapBounds()">⊙ 전체보기</button>
-            <button class="btn-sm" onclick="captureLocationMap()">🖼️ 이미지 저장</button>
-          </div>
-        </div>
-        <div id="shpLocationMap"></div>
-        <div class="location-info-bar" id="locInfoBar">
-          <span>📌 편입필지: <strong id="loc-count">0</strong>필지</span>
-          <span>📐 편입면적: <strong id="loc-area">0</strong> ㎡</span>
-          <span style="color:var(--green)">■ 완전편입 &nbsp; <span style="color:var(--amber)">■</span> 부분편입 &nbsp; <span style="color:#1a3a6e">■</span> 구역계</span>
-        </div>
-      </div>
-
       <!-- 결과 테이블 -->
       <div class="sec-card" style="padding:16px 20px">
-        <div class="sec-card-title"><div class="dot"></div>편입필지 목록</div>
         <div class="toolbar" style="margin-bottom:12px">
+          <div class="search-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="shpSearch" placeholder="PNU, 지번 검색..." oninput="renderShpResult()">
+          </div>
+          <select class="filter-sel" id="shpFilterGubun" onchange="renderShpResult()">
+            <option value="">편입구분 전체</option>
+            <option value="완전편입">완전편입</option>
+            <option value="부분편입">부분편입</option>
+          </select>
           <button class="btn-sm primary" onclick="exportShpExcel()">📥 엑셀 다운로드</button>
           <button class="btn-sm" onclick="sendShpToJoseo()" style="background:var(--blue);color:white;border-color:var(--blue)">📋 조서로 보내기</button>
-          <div style="flex:1"></div>
-          <span id="shpTableCount" style="font-size:11px;color:var(--ink3);font-family:'DM Mono',monospace"></span>
+          <button class="btn-sm" onclick="sendToLocationMap()" style="background:var(--teal,#0f766e);color:white;border-color:var(--teal,#0f766e)">🗺️ 위치도에서 보기</button>
         </div>
         <div class="table-wrap">
           <table class="result" style="min-width:1100px">
             <thead>
               <tr class="th-main">
-                <th>PNU</th><th>연번</th><th>시도</th><th>시군구</th><th>읍면동</th>
-                <th>대장구분</th><th>지번</th><th>지목</th>
-                <th>필지면적(㎡)</th><th>편입면적(㎡)</th><th>편입율</th><th>편입구분</th>
+                <th onclick="shpSort('pnu')" style="cursor:pointer;user-select:none">PNU <span id="shp-sort-pnu"></span></th>
+                <th>연번</th>
+                <th onclick="shpSort('sido')" style="cursor:pointer;user-select:none">시도 <span id="shp-sort-sido"></span></th>
+                <th onclick="shpSort('sigungu')" style="cursor:pointer;user-select:none">시군구 <span id="shp-sort-sigungu"></span></th>
+                <th onclick="shpSort('emd')" style="cursor:pointer;user-select:none">읍면동 <span id="shp-sort-emd"></span></th>
+                <th onclick="shpSort('daejang')" style="cursor:pointer;user-select:none">대장구분 <span id="shp-sort-daejang"></span></th>
+                <th onclick="shpSort('jibun')" style="cursor:pointer;user-select:none">지번 <span id="shp-sort-jibun"></span></th>
+                <th onclick="shpSort('jimok')" style="cursor:pointer;user-select:none">지목 <span id="shp-sort-jimok"></span></th>
+                <th onclick="shpSort('jijuArea')" style="cursor:pointer;user-select:none">필지면적(㎡) <span id="shp-sort-jijuArea"></span></th>
+                <th onclick="shpSort('pyeonipArea')" style="cursor:pointer;user-select:none">편입면적(㎡) <span id="shp-sort-pyeonipArea"></span></th>
+                <th onclick="shpSort('gubun')" style="cursor:pointer;user-select:none">편입구분 <span id="shp-sort-gubun"></span></th>
               </tr>
             </thead>
             <tbody id="shpResultBody"></tbody>
@@ -1137,6 +928,8 @@ let shpJijukGeo   = null;  // 연속지적도 GeoJSON (원본 좌표 그대로)
 let shpGuyeokGeo  = null;  // 구역계 GeoJSON (원본 좌표 그대로)
 let shpStep1Rows  = [];    // Step1 산출: 필지면적·행정구역·지번·지목
 let shpResultRows = [];    // Step2 산출: 편입면적·편입구분 포함 최종
+let shpSortKey    = null;  // 현재 정렬 컬럼
+let shpSortAsc    = true;  // 오름차순 여부
 
 // ─── 투영좌표계 판별 ────────────────────────────────────
 // 첫 번째 좌표의 절댓값이 180 초과이면 투영좌표계(m 단위)로 판단
@@ -1248,12 +1041,6 @@ function shpGoStep(n) {
     }
   }
   window.scrollTo({ top: 0, behavior: 'smooth' });
-  if (n === 3) {
-    // 차트 먼저 렌더 후 지도 초기화
-    renderJimokChart();
-    renderGubunDonut();
-    setTimeout(initShpMaps, 80);
-  }
 }
 
 // ─── 드래그앤드롭 ──────────────────────────────────────
@@ -1324,44 +1111,16 @@ async function processJijukShp(file) {
   const bar = (pct) => { barEl.style.width = pct + '%'; };
 
   try {
-    log('▸ SHP ZIP 파일 읽는 중...');
+    log('▸ STEP 1  연속지적도 파일 읽는 중...');
     bar(10);
     const arrayBuffer = await file.arrayBuffer();
     const geojson = await parseShpZip(arrayBuffer);
-    log(`  ✅ ${geojson.features.length.toLocaleString()}개 피처 로드`);
     bar(30);
-
-    // .prj 파일 좌표계 확인 (ZIP 내 직접 탐색)
-    try {
-      const prjText = await extractPrjFromZip(arrayBuffer);
-      if (prjText) {
-        const nameMatch = prjText.match(/PROJCS\["([^"]+)"/i) || prjText.match(/GEOGCS\["([^"]+)"/i);
-        log(`▸ .prj 좌표계: <strong>${nameMatch ? nameMatch[1] : prjText.slice(0, 100)}</strong>`);
-      } else {
-        log('▸ .prj: 파일 없음 — 좌표값으로 좌표계 판별');
-      }
-    } catch(e) {
-      log(`▸ .prj 읽기 건너뜀: ${e.message}`);
-    }
-
-    // 좌표계 판별 — 첫 좌표값 직접 출력해서 확인
     _shpIsProjected = isProjected(geojson);
-    try {
-      const firstCoords = geojson.features[0].geometry.coordinates;
-      const sampleCoord = Array.isArray(firstCoords[0][0])
-        ? firstCoords[0][0]
-        : firstCoords[0][0][0];
-      log(`▸ 첫 번째 좌표값: X=${sampleCoord[0].toFixed(3)}, Y=${sampleCoord[1].toFixed(3)}`);
-    } catch(e) {}
-    log(`▸ 좌표계 감지: ${_shpIsProjected
-      ? '✅ 투영좌표계(m 단위) — Shoelace 평면 면적 계산 (QGIS 동일 방식)'
-      : '⚠️ 지리좌표계(도 단위) — geodesic 면적 계산'}`);
-    const converted = geojson; // 좌표 변환 없이 원본 그대로 사용
+    const converted = geojson;
     shpJijukGeo = converted;
     bar(50);
-    log('  ✅ 원본 좌표 그대로 로드 완료');
-
-    log('▸ PNU 기반 행정구역·지번·지목·필지면적 산출 중...');
+    log('▸ STEP 2  PNU 기반 행정구역·지번·지목·필지면적 산출 중...');
     shpStep1Rows = [];
     const total = converted.features.length;
 
@@ -1410,7 +1169,7 @@ async function processJijukShp(file) {
     }
 
     bar(100);
-    log(`  ✅ 산출 완료: ${shpStep1Rows.length.toLocaleString()}필지`);
+    log(`  ✅ 완료: ${shpStep1Rows.length.toLocaleString()}필지 | 필지면적 합계 ${Math.round(shpStep1Rows.reduce((s,r)=>s+r.jijuArea,0)).toLocaleString()} ㎡`);
 
     // 미리보기 (5건)
     const preview = shpStep1Rows.slice(0, 5);
@@ -1462,48 +1221,13 @@ async function processGuyeokShp(file) {
     if (typeof jsts === 'undefined') {
       throw new Error('JSTS 라이브러리 로드 실패! 인터넷 연결 상태를 확인해주세요.');
     }
-    log('▸ JSTS 라이브러리 확인 완료');
 
-    log('▸ 구역계 SHP ZIP 읽는 중...');
+    log('▸ STEP 1  구역계 파일 읽는 중...');
     bar(5);
     const arrayBuffer = await file.arrayBuffer();
     const geojson = await parseShpZip(arrayBuffer);
     const converted = geojson;
     shpGuyeokGeo = converted;
-
-    log(`  ✅ 구역계 ${converted.features.length}개 피처 로드`);
-
-    // .prj 좌표계 확인
-    try {
-      const prjText = await extractPrjFromZip(arrayBuffer);
-      if (prjText) {
-        const nm = prjText.match(/PROJCS\["([^"]+)"/i) || prjText.match(/GEOGCS\["([^"]+)"/i);
-        log(`▸ 구역계 .prj: <strong>${nm ? nm[1] : prjText.slice(0,100)}</strong>`);
-      } else {
-        log('▸ 구역계 .prj: 없음 — 좌표값으로 판별');
-      }
-    } catch(e) {}
-
-    // 첫 좌표값 + 연속지적도 첫 좌표값 함께 출력 (좌표계 불일치 시각 비교)
-    try {
-      const gc = converted.features[0].geometry.coordinates;
-      const sc = Array.isArray(gc[0][0]) ? gc[0][0] : gc[0][0][0];
-      log(`▸ 구역계 첫 좌표: X=${sc[0].toFixed(2)}, Y=${sc[1].toFixed(2)}`);
-    } catch(e) {}
-    try {
-      const jc = shpStep1Rows[0].geometry.coordinates;
-      const fc = Array.isArray(jc[0][0]) ? jc[0][0] : jc[0][0][0];
-      log(`▸ 연속지적도 첫 좌표: X=${fc[0].toFixed(2)}, Y=${fc[1].toFixed(2)}`);
-    } catch(e) {}
-
-    // 좌표계 일치 여부
-    const guyeokIsProjected = isProjected(converted);
-    if (guyeokIsProjected !== _shpIsProjected) {
-      log(`  ⚠️ <strong style="color:#b45309">좌표계 불일치: 연속지적도(${_shpIsProjected?'투영':'지리'}) ≠ 구역계(${guyeokIsProjected?'투영':'지리'})</strong>`);
-      log(`  ⚠️ 좌표 범위가 달라도 JSTS가 처리를 시도합니다. 결과가 0이면 두 파일의 좌표계를 통일해주세요.`);
-    } else {
-      log(`  ✅ 좌표계 일치: ${guyeokIsProjected ? '투영(m단위)' : '지리(도단위)'}`);
-    }
     bar(15);
 
     // ── JSTS Reader/Writer 초기화 ──
@@ -1511,13 +1235,12 @@ async function processGuyeokShp(file) {
     try {
       jstsReader = new jsts.io.GeoJSONReader();
       jstsWriter = new jsts.io.GeoJSONWriter();
-      log('▸ JSTS Reader/Writer 초기화 완료');
     } catch(e) {
       throw new Error('JSTS 초기화 실패: ' + e.message);
     }
 
     // ── 구역계 전체를 Union → 단일 JSTS geometry ──
-    log('▸ 구역계 Union 중...');
+    log('▸ STEP 2  구역계 폴리곤 준비 중...');
     _guyeokJsts = null;
     let guyeokReadOk = 0, guyeokReadFail = 0;
     for (const feat of converted.features) {
@@ -1525,32 +1248,22 @@ async function processGuyeokShp(file) {
       try {
         const g = jstsReader.read(feat.geometry);
         if (!g || g.isEmpty()) continue;
-        // union 대신 geometryFactory.createGeometryCollection으로 묶어서
-        // TopologyException 방지를 위해 buffer(0) 정규화 적용
         const gValid = g.buffer(0);
         _guyeokJsts = _guyeokJsts ? _guyeokJsts.union(gValid) : gValid;
         guyeokReadOk++;
       } catch(e) {
         guyeokReadFail++;
-        if (guyeokReadFail <= 3) log(`  ⚠️ 구역계 피처 파싱 오류: ${e.message}`);
       }
     }
-    log(`  구역계 읽기: 성공 ${guyeokReadOk}개, 실패 ${guyeokReadFail}개`);
 
     if (!_guyeokJsts || _guyeokJsts.isEmpty()) {
       throw new Error('구역계 Union 결과가 비어있습니다. SHP 파일 내용을 확인해주세요.');
     }
-    log(`  ✅ 구역계 Union 완료`);
-
-    // 구역계 bbox 출력 (좌표계 확인용)
-    try {
-      const env = _guyeokJsts.getEnvelopeInternal();
-      log(`  구역계 bbox: X=[${env.getMinX().toFixed(0)}, ${env.getMaxX().toFixed(0)}], Y=[${env.getMinY().toFixed(0)}, ${env.getMaxY().toFixed(0)}]`);
-    } catch(e) {}
+    log(`  ✅ 구역계 준비 완료 (${guyeokReadOk}개 피처)`);
     bar(25);
 
     // ── 교차분석(Clip) ──
-    log('▸ 교차분석(Clip) 시작...');
+    log('▸ STEP 3  교차분석(Clip) 및 편입면적 산출 중...');
     const total = shpStep1Rows.length;
     shpResultRows = [];
     let cntBboxPass = 0, cntIntersectPass = 0, cntClipOk = 0, cntClipFail = 0, cntAreaZero = 0;
@@ -1558,7 +1271,6 @@ async function processGuyeokShp(file) {
     for (let i = 0; i < total; i++) {
       if (i % 100 === 0) {
         bar(25 + Math.round(i / total * 60));
-        if (i > 0) log(`  ${i.toLocaleString()} / ${total.toLocaleString()} 처리 중... (편입확인: ${shpResultRows.length})`);
         await new Promise(r => setTimeout(r, 0));
       }
       const row = shpStep1Rows[i];
@@ -1623,36 +1335,18 @@ async function processGuyeokShp(file) {
           pnu: row.pnu, sido: row.sido, sigungu: row.sigungu, emd: row.emd,
           daejang: row.daejang, jibun: row.jibun, jimok: row.jimok,
           jijuArea: row.jijuArea, pyeonipArea, gubun,
-          geometry: row.geometry,  // 지도 렌더링용
         });
       } catch(e) {
         cntClipFail++;
-        if (cntClipFail <= 3) log(`  ⚠️ 개별 필지 오류: ${e.message}`);
       }
     }
 
-    // 상세 디버그 통계 출력
-    log(`━━━━━━ 처리 결과 ━━━━━━`);
-    log(`  전체 필지: ${total.toLocaleString()}`);
-    log(`  bbox 통과: ${cntBboxPass.toLocaleString()}`);
-    log(`  교차 확인: ${cntIntersectPass.toLocaleString()}`);
-    log(`  클립 성공: ${cntClipOk.toLocaleString()}`);
-    log(`  면적 0제외: ${cntAreaZero}`);
-    log(`  클립 오류: ${cntClipFail}`);
-    log(`  최종 편입: ${shpResultRows.length.toLocaleString()}필지`);
-    log(`━━━━━━━━━━━━━━━━━━━━━━`);
-
+    // 결과 요약
     if (shpResultRows.length === 0) {
-      if (cntBboxPass === 0) {
-        log(`  ❌ <strong style="color:red">bbox 통과 0건 → 두 파일의 좌표계(CRS)가 다를 가능성이 높습니다!</strong>`);
-        log(`  ❌ 연속지적도와 구역계를 동일한 좌표계로 변환한 뒤 다시 시도해주세요.`);
-      } else if (cntIntersectPass === 0) {
-        log(`  ❌ <strong style="color:red">bbox는 겹치나 실제 교차 없음 → 구역계가 필지 범위 밖에 있거나 좌표 오류</strong>`);
-      } else if (cntClipOk === 0) {
-        log(`  ❌ <strong style="color:red">교차는 확인되나 클립 실패 → 형상이 복잡하거나 위상 오류(TopologyException)</strong>`);
-      } else if (cntAreaZero > 0) {
-        log(`  ❌ <strong style="color:red">클립은 성공했으나 면적이 0 → 좌표계 단위 문제(도단위 vs 미터단위 혼용 가능성)</strong>`);
-      }
+      if (cntBboxPass === 0) log(`  ❌ 편입 필지 없음 — 두 파일의 좌표계가 다를 수 있습니다. 동일한 좌표계로 맞춰주세요.`);
+      else if (cntIntersectPass === 0) log(`  ❌ 편입 필지 없음 — 구역계가 연속지적도 범위 밖에 있습니다.`);
+      else if (cntClipOk === 0) log(`  ❌ 편입 필지 없음 — Clip 처리 실패. 형상 오류를 확인해주세요.`);
+      else log(`  ❌ 편입 필지 없음 — 면적이 0.5㎡ 미만이거나 좌표 단위 문제일 수 있습니다.`);
     }
 
     bar(90);
@@ -1661,8 +1355,7 @@ async function processGuyeokShp(file) {
     const sumArea  = shpResultRows.reduce((s,r) => s + r.jijuArea,   0);
     const sumPyeon = shpResultRows.reduce((s,r) => s + r.pyeonipArea, 0);
 
-    log(`  ✅ Clip 완료: ${shpResultRows.length.toLocaleString()}필지 편입`);
-    log(`  완전편입: ${cntFull} / 부분편입: ${cntPart}`);
+    log(`  ✅ 완료: ${shpResultRows.length.toLocaleString()}필지 편입 | 완전편입 ${cntFull} / 부분편입 ${cntPart}`);
     bar(100);
 
     // 통계 카드 업데이트
@@ -1691,397 +1384,81 @@ async function processGuyeokShp(file) {
   }
 }
 
-// ─── STEP 3: 지목 색상표 ──────────────────────────────
-const JIMOK_COLORS = {
-  '전':'#7bb661','답':'#4e9a8c','대':'#e07b3a','도':'#888','임':'#2e6b2e',
-  '잡':'#b08030','구':'#c0a060','목':'#55a055','묘':'#808080','철':'#606060',
-  '사':'#d4a060','창':'#d07050','종':'#50a0c0','천':'#4080c0','학':'#8060c0',
-  '유':'#60a080','장':'#c06080','과':'#e09040','주':'#e06040','차':'#909090',
-  '수':'#4090c0','체':'#a050a0','공':'#d0a030','양':'#60c0a0','원':'#50a070',
-  '염':'#c0c040','광':'#a0a0a0','제':'#8080c0','하':'#3070c0','용':'#c05050'
-};
-const GUBUN_COLORS = { '완전편입':'#1a5c3a', '부분편입':'#b45309' };
-
-let _shpMap = null;        // 분석 지도 Leaflet 인스턴스
-let _locMap = null;        // 위치도 Leaflet 인스턴스
-let _mapColorMode = 'gubun';  // 'gubun' | 'jimok'
-let _mapLayers = [];       // 분석 지도 레이어 목록
-let _locLayers = [];       // 위치도 레이어 목록
-let _locTileLayer = null;
-let _shpJijukLayerGroup = null;  // 분석지도 필지 레이어그룹
-let _locLayerGroup = null;
-let _locGuyeokLayer = null;
-
-// 투영좌표 → WGS84 변환 (EPSG:5186 기준, 간이 변환)
-// Proj4js 없이 사용하기 위해 turf의 toWgs84 없이 직접 처리
-// 한국 투영좌표계(TM계)를 경위도로 변환하는 근사 함수
-function projToLatLng(x, y) {
-  // 투영좌표계 여부 판별: |x| > 180이면 투영좌표
-  // EPSG:5186 (GRS80 TM 중부원점): 원점 위도 38°N, 원점 경도 127°E, 축척 1.0
-  // 근사 역변환 (수 미터 오차 허용)
-  const lat0 = 38.0 * Math.PI / 180;
-  const lon0 = 127.0 * Math.PI / 180;
-  const a = 6378137.0;
-  const f = 1 / 298.257222101;
-  const e2 = 2*f - f*f;
-  const k0 = 1.0;
-  const FN = 600000, FE = 200000;
-  const N0 = x - FE, E0 = y - FN; // EPSG:5186: x=Easting, y=Northing
-
-  // 근사 역변환 (소수점 5자리 정도 정확도)
-  const M0 = a * ((1 - e2/4 - 3*e2*e2/64)*lat0 - (3*e2/8 + 3*e2*e2/32)*Math.sin(2*lat0) + (15*e2*e2/256)*Math.sin(4*lat0));
-  const M = M0 + E0/k0;
-  const mu = M / (a * (1 - e2/4 - 3*e2*e2/64));
-  const e1 = (1 - Math.sqrt(1-e2)) / (1 + Math.sqrt(1-e2));
-  const phi1 = mu + (3*e1/2 - 27*e1*e1*e1/32)*Math.sin(2*mu) + (21*e1*e1/16)*Math.sin(4*mu) - (151*e1*e1*e1/96)*Math.sin(6*mu);
-  const N1 = a / Math.sqrt(1 - e2*Math.sin(phi1)*Math.sin(phi1));
-  const T1 = Math.tan(phi1)*Math.tan(phi1);
-  const C1 = e2*Math.cos(phi1)*Math.cos(phi1)/(1-e2);
-  const R1 = a*(1-e2)/Math.pow(1-e2*Math.sin(phi1)*Math.sin(phi1), 1.5);
-  const D = N0 / (N1*k0);
-  const lat = phi1 - (N1*Math.tan(phi1)/R1)*(D*D/2 - (5+3*T1+10*C1-4*C1*C1-9*e2)*D*D*D*D/24);
-  const lon = lon0 + (D - (1+2*T1+C1)*D*D*D/6) / Math.cos(phi1);
-  return [lat * 180/Math.PI, lon * 180/Math.PI];
+// ─── 위치도에서 보기 ───────────────────────────────────
+function sendToLocationMap() {
+  if (shpResultRows.length === 0) { showToast('⚠️ 산출 결과가 없습니다'); return; }
+  try {
+    // geometry 포함 데이터 저장 (origRings: EPSG:5174 좌표)
+    const payload = shpResultRows.map(r => ({
+      pnu:         r.pnu,
+      sido:        r.sido,
+      sigungu:     r.sigungu,
+      emd:         r.emd,
+      daejang:     r.daejang,
+      jibun:       r.jibun,
+      jimok:       r.jimok,
+      jijuArea:    r.jijuArea,
+      pyeonipArea: r.pyeonipArea,
+      gubun:       r.gubun,
+      rings:       r.clippedRings || r.origRings || [],
+    }));
+    sessionStorage.setItem('pyeonipData', JSON.stringify(payload));
+    window.location.href = 'location-map.html?mode=pyeonip';
+  } catch(e) {
+    showToast('❌ 데이터 전달 실패: ' + e.message);
+  }
 }
-
-// GeoJSON geometry 좌표를 Leaflet용 [lat,lng]으로 변환
-function geomToLatLngs(geom) {
-  if (!geom) return null;
-  function cvtRing(ring) {
-    return ring.map(([x, y]) => _shpIsProjected ? projToLatLng(x, y) : [y, x]);
-  }
-  if (geom.type === 'Polygon') {
-    return geom.coordinates.map(cvtRing);
-  } else if (geom.type === 'MultiPolygon') {
-    return geom.coordinates.map(poly => poly.map(cvtRing));
-  }
-  return null;
-}
-
-// ─── 지도 초기화 ──────────────────────────────────────
-function initShpMaps() {
-  // 1) 분석 지도
-  if (!_shpMap) {
-    _shpMap = L.map('shpLeafletMap', { zoomControl:true, attributionControl:false });
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom:19, attribution:'© OSM'
-    }).addTo(_shpMap);
-    _shpJijukLayerGroup = L.layerGroup().addTo(_shpMap);
-  }
-
-  // 2) 위치도
-  if (!_locMap) {
-    _locMap = L.map('shpLocationMap', { zoomControl:true, attributionControl:false });
-    _locTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom:19
-    }).addTo(_locMap);
-    _locLayerGroup = L.layerGroup().addTo(_locMap);
-  }
-
-  // 지도에 데이터 그리기
-  setTimeout(() => {
-    renderMapLayers();
-    renderLocMap();
-    _shpMap.invalidateSize();
-    _locMap.invalidateSize();
-  }, 100);
-}
-
-// ─── 분석 지도 레이어 렌더 ────────────────────────────
-function renderMapLayers() {
-  if (!_shpMap || !_shpJijukLayerGroup) return;
-  _shpJijukLayerGroup.clearLayers();
-
-  const fG = (document.getElementById('shpFilterGubun')?.value || '');
-  const fJ = (document.getElementById('shpFilterJimok')?.value || '');
-  const fA = parseFloat(document.getElementById('shpFilterMinArea')?.value || '0') || 0;
-  const q  = (document.getElementById('shpSearch')?.value || '').toLowerCase();
-
-  const filtered = shpResultRows.filter(r => {
-    if (fG && r.gubun !== fG) return false;
-    if (fJ && r.jimok !== fJ) return false;
-    if (fA && r.pyeonipArea < fA) return false;
-    if (q && !r.pnu.includes(q) && !r.jibun.toLowerCase().includes(q)) return false;
-    return true;
-  });
-
-  const bounds = [];
-  for (const r of filtered) {
-    if (!r.geometry) continue;
-    const latlngs = geomToLatLngs(r.geometry);
-    if (!latlngs) continue;
-    const color = _mapColorMode === 'jimok'
-      ? (JIMOK_COLORS[r.jimok] || '#888')
-      : GUBUN_COLORS[r.gubun] || '#888';
-    try {
-      const poly = r.geometry.type === 'MultiPolygon'
-        ? L.polygon(latlngs.map(p => p), { color, fillColor:color, fillOpacity:0.5, weight:1.2 })
-        : L.polygon(latlngs, { color, fillColor:color, fillOpacity:0.5, weight:1.2 });
-      poly.bindTooltip(
-        `<strong>${r.jibun}</strong> ${r.jimok}<br>편입: ${r.pyeonipArea.toLocaleString()} ㎡ <em>(${r.gubun})</em>`,
-        { sticky:true, className:'shp-tooltip' }
-      );
-      _shpJijukLayerGroup.addLayer(poly);
-      // bounds 수집
-      if (r.geometry.type === 'Polygon') {
-        r.geometry.coordinates[0].forEach(([x,y]) => {
-          const ll = _shpIsProjected ? projToLatLng(x,y) : [y,x];
-          bounds.push(ll);
-        });
-      } else if (r.geometry.type === 'MultiPolygon') {
-        r.geometry.coordinates.forEach(poly => poly[0].forEach(([x,y]) => {
-          const ll = _shpIsProjected ? projToLatLng(x,y) : [y,x];
-          bounds.push(ll);
-        }));
-      }
-    } catch(e) {}
-  }
-
-  if (bounds.length > 0) {
-    try { _shpMap.fitBounds(L.latLngBounds(bounds).pad(0.08)); } catch(e) {}
-  }
-  renderMapLegend();
-}
-
-// ─── 위치도 렌더 ──────────────────────────────────────
-function renderLocMap() {
-  if (!_locMap || !_locLayerGroup) return;
-  _locLayerGroup.clearLayers();
-  if (_locGuyeokLayer) { _locMap.removeLayer(_locGuyeokLayer); _locGuyeokLayer = null; }
-
-  const bounds = [];
-
-  // 구역계 레이어 (파란 외곽선)
-  if (shpGuyeokGeo) {
-    const guyeokLayers = [];
-    for (const feat of shpGuyeokGeo.features) {
-      if (!feat.geometry) continue;
-      const ll = geomToLatLngs(feat.geometry);
-      if (!ll) continue;
-      try {
-        const poly = feat.geometry.type === 'MultiPolygon'
-          ? L.polygon(ll.map(p => p), { color:'#1a3a6e', fillColor:'#1a3a6e', fillOpacity:0.08, weight:2.5, dashArray:'6 3' })
-          : L.polygon(ll, { color:'#1a3a6e', fillColor:'#1a3a6e', fillOpacity:0.08, weight:2.5, dashArray:'6 3' });
-        guyeokLayers.push(poly);
-        if (feat.geometry.type === 'Polygon') {
-          feat.geometry.coordinates[0].forEach(([x,y]) => bounds.push(_shpIsProjected ? projToLatLng(x,y) : [y,x]));
-        }
-      } catch(e) {}
-    }
-    _locGuyeokLayer = L.layerGroup(guyeokLayers).addTo(_locMap);
-  }
-
-  // 편입필지 레이어
-  for (const r of shpResultRows) {
-    if (!r.geometry) continue;
-    const latlngs = geomToLatLngs(r.geometry);
-    if (!latlngs) continue;
-    const color = GUBUN_COLORS[r.gubun] || '#888';
-    try {
-      const poly = r.geometry.type === 'MultiPolygon'
-        ? L.polygon(latlngs.map(p => p), { color, fillColor:color, fillOpacity:0.55, weight:1.5 })
-        : L.polygon(latlngs, { color, fillColor:color, fillOpacity:0.55, weight:1.5 });
-      poly.bindTooltip(`<strong>${r.jibun}</strong> ${r.jimok}<br>${r.pyeonipArea.toLocaleString()} ㎡ (${r.gubun})`, { sticky:true });
-      _locLayerGroup.addLayer(poly);
-      if (r.geometry.type === 'Polygon') {
-        r.geometry.coordinates[0].forEach(([x,y]) => bounds.push(_shpIsProjected ? projToLatLng(x,y) : [y,x]));
-      }
-    } catch(e) {}
-  }
-
-  if (bounds.length > 0) {
-    try { _locMap.fitBounds(L.latLngBounds(bounds).pad(0.1)); } catch(e) {}
-  }
-
-  // 정보 바 업데이트
-  document.getElementById('loc-count').textContent = shpResultRows.length.toLocaleString();
-  document.getElementById('loc-area').textContent  = Math.round(shpResultRows.reduce((s,r)=>s+r.pyeonipArea,0)).toLocaleString();
-}
-
-// ─── 지도 범례 ────────────────────────────────────────
-function renderMapLegend() {
-  const el = document.getElementById('mapLegend');
-  if (!el) return;
-  if (_mapColorMode === 'gubun') {
-    el.innerHTML = `<div class="map-legend-title">편입유형</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#1a5c3a"></div>완전편입</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#b45309"></div>부분편입</div>`;
+// ─── 정렬 ──────────────────────────────────────────────
+function shpSort(key) {
+  if (shpSortKey === key) {
+    shpSortAsc = !shpSortAsc;
   } else {
-    const jimoks = [...new Set(shpResultRows.map(r=>r.jimok).filter(Boolean))];
-    el.innerHTML = `<div class="map-legend-title">지목</div>` +
-      jimoks.map(j => `<div class="legend-item"><div class="legend-dot" style="background:${JIMOK_COLORS[j]||'#888'}"></div>${j}</div>`).join('');
+    shpSortKey = key;
+    shpSortAsc = true;
   }
-}
-
-// ─── 지목별 차트 ──────────────────────────────────────
-function renderJimokChart() {
-  const el = document.getElementById('jimokChart');
-  if (!el) return;
-  const map = {};
-  for (const r of shpResultRows) {
-    const j = r.jimok || '미상';
-    if (!map[j]) map[j] = { cnt:0, area:0 };
-    map[j].cnt++;
-    map[j].area += r.pyeonipArea;
-  }
-  const sorted = Object.entries(map).sort((a,b) => b[1].area - a[1].area);
-  const maxArea = sorted[0]?.[1].area || 1;
-
-  // 지목 필터 select 업데이트
-  const sel = document.getElementById('shpFilterJimok');
-  if (sel) {
-    const prev = sel.value;
-    sel.innerHTML = '<option value="">전체</option>' +
-      sorted.map(([j]) => `<option value="${j}"${j===prev?' selected':''}>${j}</option>`).join('');
-  }
-
-  el.innerHTML = sorted.map(([j, d]) => `
-    <div class="chart-row" onclick="filterByJimok('${j}')" title="${j}: ${d.cnt}필지 / ${Math.round(d.area).toLocaleString()}㎡">
-      <div class="chart-label">${j}</div>
-      <div class="chart-bar-wrap">
-        <div class="chart-bar" style="width:${Math.round(d.area/maxArea*100)}%;background:${JIMOK_COLORS[j]||'#888'}"></div>
-      </div>
-      <div class="chart-count">${d.cnt}필지</div>
-    </div>
-  `).join('');
-}
-
-// ─── 편입유형 도넛 차트 ──────────────────────────────
-function renderGubunDonut() {
-  const full = shpResultRows.filter(r=>r.gubun==='완전편입');
-  const part = shpResultRows.filter(r=>r.gubun==='부분편입');
-  const total = shpResultRows.length || 1;
-  const fullPct = full.length / total;
-  const partPct = part.length / total;
-
-  // SVG 도넛
-  const cx=70, cy=70, r=50, stroke=18;
-  const c = 2*Math.PI*r;
-  const fullDash = c*fullPct;
-  const partDash = c*partPct;
-  const svg = document.getElementById('donutSvg');
-  if (svg) {
-    svg.innerHTML = `
-      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#eee" stroke-width="${stroke}"/>
-      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#b45309" stroke-width="${stroke}"
-        stroke-dasharray="${c}" stroke-dashoffset="0" transform="rotate(-90 ${cx} ${cy})"/>
-      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#1a5c3a" stroke-width="${stroke}"
-        stroke-dasharray="${fullDash} ${c-fullDash}" stroke-dashoffset="0" transform="rotate(-90 ${cx} ${cy})"/>
-      <text x="${cx}" y="${cy-6}" text-anchor="middle" font-size="18" font-weight="800" font-family="'DM Mono',monospace" fill="#1a1a1a">${total}</text>
-      <text x="${cx}" y="${cy+14}" text-anchor="middle" font-size="10" fill="#888" font-family="'Noto Sans KR',sans-serif">필지</text>
-    `;
-  }
-
-  document.getElementById('ds-full').textContent = full.length;
-  document.getElementById('ds-part').textContent = part.length;
-  document.getElementById('ds-full-area').textContent = Math.round(full.reduce((s,r)=>s+r.pyeonipArea,0)).toLocaleString() + ' ㎡';
-  document.getElementById('ds-part-area').textContent = Math.round(part.reduce((s,r)=>s+r.pyeonipArea,0)).toLocaleString() + ' ㎡';
-
-  // 편입율 분포 바
-  const rateEl = document.getElementById('pyeonipRateBar');
-  if (rateEl) {
-    const buckets = [0,0,0,0,0]; // 0-20, 20-40, 40-60, 60-80, 80-100%
-    for (const r of shpResultRows) {
-      const rate = r.jijuArea > 0 ? r.pyeonipArea / r.jijuArea : 0;
-      const idx = Math.min(4, Math.floor(rate * 5));
-      buckets[idx]++;
-    }
-    const maxB = Math.max(...buckets, 1);
-    rateEl.innerHTML = ['0-20%','20-40%','40-60%','60-80%','80-100%'].map((lbl,i) => `
-      <div class="chart-row">
-        <div class="chart-label" style="width:46px;font-size:9px">${lbl}</div>
-        <div class="chart-bar-wrap">
-          <div class="chart-bar" style="width:${Math.round(buckets[i]/maxB*100)}%;background:${['#b45309','#c97020','#8a7020','#357040','#1a5c3a'][i]}"></div>
-        </div>
-        <div class="chart-count">${buckets[i]}</div>
-      </div>
-    `).join('');
-  }
-}
-
-// ─── 공개 인터페이스 ──────────────────────────────────
-function setMapColor(mode) {
-  _mapColorMode = mode;
-  document.getElementById('mapColorGubun').classList.toggle('active', mode==='gubun');
-  document.getElementById('mapColorJimok').classList.toggle('active', mode==='jimok');
-  renderMapLayers();
-}
-
-function fitMapBounds() { if (_shpMap) renderMapLayers(); }
-function fitLocMapBounds() { if (_locMap) renderLocMap(); }
-
-function switchAtab(name) {
-  document.querySelectorAll('.atab').forEach((b,i) => {
-    const names = ['jimok','gubun','filter'];
-    b.classList.toggle('active', names[i]===name);
-  });
-  document.querySelectorAll('.atab-panel').forEach(p => p.classList.remove('active'));
-  document.getElementById('atab-'+name).classList.add('active');
-}
-
-function filterByJimok(j) {
-  const sel = document.getElementById('shpFilterJimok');
-  if (sel) { sel.value = sel.value === j ? '' : j; }
-  switchAtab('filter');
+  // 모든 화살표 초기화
+  document.querySelectorAll('[id^="shp-sort-"]').forEach(el => el.textContent = '');
+  // 현재 컬럼 화살표 표시
+  const arrowEl = document.getElementById('shp-sort-' + key);
+  if (arrowEl) arrowEl.textContent = shpSortAsc ? ' ↑' : ' ↓';
   renderShpResult();
-  updateMapFilter();
 }
 
-function updateMapFilter() { renderMapLayers(); }
-
-function resetShpFilter() {
-  const ids = ['shpSearch','shpFilterGubun','shpFilterJimok','shpFilterMinArea'];
-  ids.forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
-  renderShpResult();
-  renderMapLayers();
-}
-
-function changeLocMapTile() {
-  if (!_locMap || !_locTileLayer) return;
-  const val = document.getElementById('locMapTile').value;
-  _locMap.removeLayer(_locTileLayer);
-  const urls = {
-    osm: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    carto: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
-  };
-  _locTileLayer = L.tileLayer(urls[val]||urls.osm, { maxZoom:19 }).addTo(_locMap);
-}
-
-function captureLocationMap() {
-  showToast('💡 브라우저의 인쇄(Ctrl+P) 기능으로 저장하거나, 화면 캡처 도구를 사용해주세요.');
-}
-
-// ─── STEP 3: 결과 테이블 렌더 ────────────────────────
 function renderShpResult() {
   const q  = (document.getElementById('shpSearch')?.value  || '').toLowerCase();
   const fg = (document.getElementById('shpFilterGubun')?.value || '');
-  const fj = (document.getElementById('shpFilterJimok')?.value || '');
-  const fa = parseFloat(document.getElementById('shpFilterMinArea')?.value || '0') || 0;
 
-  const list = shpResultRows.filter(r => {
-    if (q && !r.pnu.includes(q) && !r.jibun.toLowerCase().includes(q)) return false;
-    if (fg && r.gubun !== fg) return false;
-    if (fj && r.jimok !== fj) return false;
-    if (fa && r.pyeonipArea < fa) return false;
-    return true;
+  let list = shpResultRows.filter(r => {
+    const mQ  = !q  || r.pnu.includes(q) || r.jibun.toLowerCase().includes(q);
+    const mFG = !fg || r.gubun === fg;
+    return mQ && mFG;
   });
 
-  const countEl = document.getElementById('shpTableCount');
-  if (countEl) countEl.textContent = `${list.length.toLocaleString()} / ${shpResultRows.length.toLocaleString()} 필지`;
+  // 정렬 적용
+  if (shpSortKey) {
+    list = [...list].sort((a, b) => {
+      const va = a[shpSortKey] ?? '';
+      const vb = b[shpSortKey] ?? '';
+      let cmp;
+      if (typeof va === 'number' && typeof vb === 'number') {
+        cmp = va - vb;
+      } else {
+        cmp = String(va).localeCompare(String(vb), 'ko');
+      }
+      return shpSortAsc ? cmp : -cmp;
+    });
+  }
 
   const tbody = document.getElementById('shpResultBody');
   if (list.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="12" style="padding:40px;text-align:center;color:var(--ink3)">결과 없음</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" style="padding:40px;text-align:center;color:var(--ink3)">결과 없음</td></tr>`;
     return;
   }
 
   tbody.innerHTML = list.map((r, i) => {
-    const rate = r.jijuArea > 0 ? Math.round(r.pyeonipArea / r.jijuArea * 1000)/10 : 0;
     const gubunBadge = r.gubun === '완전편입'
       ? `<span class="status-badge s-완편">완전편입</span>`
       : `<span class="status-badge s-일편">부분편입</span>`;
-    const jimokColor = JIMOK_COLORS[r.jimok] || '#888';
     return `<tr>
       <td class="td-mono" style="font-size:10px">${escHtml(r.pnu)}</td>
       <td class="td-mono">${i + 1}</td>
@@ -2090,12 +1467,9 @@ function renderShpResult() {
       <td>${escHtml(r.emd)}</td>
       <td>${escHtml(r.daejang)}</td>
       <td class="td-mono">${escHtml(r.jibun)}</td>
-      <td><span style="display:inline-flex;align-items:center;gap:4px">
-        <span style="width:8px;height:8px;border-radius:2px;background:${jimokColor};display:inline-block"></span>${escHtml(r.jimok)}
-      </span></td>
+      <td>${escHtml(r.jimok)}</td>
       <td class="td-mono">${r.jijuArea.toLocaleString()}</td>
       <td class="td-mono">${r.pyeonipArea.toLocaleString()}</td>
-      <td class="td-mono" style="font-size:10px">${rate}%</td>
       <td>${gubunBadge}</td>
     </tr>`;
   }).join('');

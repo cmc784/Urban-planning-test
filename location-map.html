@@ -343,9 +343,9 @@ input[type="range"] {
   <div class="topbar-left">
     <button class="back-btn" onclick="history.back()">← 돌아가기</button>
     <span class="topbar-title">위치도 생성</span>
-    <span class="topbar-badge">DXF → 위성지도</span>
+    <span class="topbar-badge" id="topbar-badge">DXF → 위성지도</span>
   </div>
-  <div class="step-bar">
+  <div class="step-bar" id="dxf-step-bar">
     <div class="step-item done" id="s1"><span class="step-dot"></span>업로드</div>
     <div class="step-item" id="s2"><span class="step-dot"></span>레이어</div>
     <div class="step-item" id="s3"><span class="step-dot"></span>생성</div>
@@ -358,6 +358,109 @@ input[type="range"] {
 
   <!-- 사이드바 -->
   <div class="sidebar">
+
+    <!-- ── 편입 모드 패널 (pyeonip mode) ── -->
+    <div id="pyeonip-sidebar" style="display:none">
+
+      <!-- 색상 모드 토글 -->
+      <div class="panel">
+        <div class="panel-title">🗺️ 편입 필지 표시</div>
+        <div style="font-size:11px;color:var(--ink3);margin-bottom:10px">
+          편입산출물을 지도 위에 표시합니다.<br>아래 버튼으로 색상 구분 방식을 전환하세요.
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:12px">
+          <button id="btn-mode-gubun" class="btn btn-main" style="flex:1;font-size:12px;padding:8px" onclick="setColorMode('gubun')">
+            편입유형별 색상
+          </button>
+          <button id="btn-mode-jimok" class="btn btn-outline" style="flex:1;font-size:12px;padding:8px" onclick="setColorMode('jimok')">
+            지목별 색상
+          </button>
+        </div>
+
+        <!-- 범례 -->
+        <div id="legend-gubun">
+          <div style="font-size:11px;font-weight:700;color:var(--ink3);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">편입유형 범례</div>
+          <div style="display:flex;flex-direction:column;gap:4px;font-size:12px">
+            <div style="display:flex;align-items:center;gap:8px"><div style="width:12px;height:12px;border-radius:2px;background:#1a5c3a;flex-shrink:0"></div>완전편입</div>
+            <div style="display:flex;align-items:center;gap:8px"><div style="width:12px;height:12px;border-radius:2px;background:#b45309;flex-shrink:0"></div>부분편입</div>
+          </div>
+        </div>
+        <div id="legend-jimok" style="display:none">
+          <div style="font-size:11px;font-weight:700;color:var(--ink3);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">지목 범례</div>
+          <div id="jimok-legend-items" style="display:flex;flex-direction:column;gap:4px;font-size:12px"></div>
+        </div>
+      </div>
+
+      <!-- 통계 요약 -->
+      <div class="panel">
+        <div class="panel-title">📊 편입 현황</div>
+        <div id="pyeonip-stats" style="font-size:12px;display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+
+      <!-- 구역계 스타일 -->
+      <div class="panel">
+        <div class="panel-title">구역계 스타일</div>
+        <div class="row2">
+          <div>
+            <label class="field-label">선 색상</label>
+            <input type="color" id="line-color" value="#e03030">
+          </div>
+          <div>
+            <label class="field-label">선 두께</label>
+            <input type="range" id="line-weight-p" min="1" max="6" value="2" step="0.5">
+            <div class="range-val" id="lw-val-p">2px</div>
+          </div>
+        </div>
+        <label class="field-label">채우기 투명도</label>
+        <input type="range" id="fill-opacity-p" min="0" max="0.5" value="0.35" step="0.01">
+        <div class="range-val" id="fo-val-p">35%</div>
+      </div>
+
+      <!-- 지도 설정 -->
+      <div class="panel">
+        <div class="panel-title">지도 설정</div>
+        <label class="field-label">사업지구명 (출력 제목)</label>
+        <input type="text" id="project-name-p" placeholder="예) ○○도시개발사업">
+        <div class="row2" style="margin-top:8px">
+          <div>
+            <label class="field-label">출력 용지</label>
+            <select id="paper-size-p">
+              <option value="a3l" selected>A3 가로</option>
+              <option value="a3p">A3 세로</option>
+              <option value="a4l">A4 가로</option>
+              <option value="a4p">A4 세로</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label">배경 지도</label>
+            <select id="map-layer-p" onchange="switchTilesP()">
+              <option value="esri-sat" selected>위성 — Esri</option>
+              <option value="esri-topo">지형도 — Esri</option>
+              <option value="osm">일반 — OSM</option>
+            </select>
+          </div>
+        </div>
+        <div class="toggle-row" style="margin-top:8px">
+          <span>방위표 표시</span>
+          <div class="toggle on" id="toggle-north-p" onclick="this.classList.toggle('on'); toggleNorth()"></div>
+        </div>
+        <div class="toggle-row">
+          <span>스케일바 표시</span>
+          <div class="toggle on" id="toggle-scale-p" onclick="this.classList.toggle('on'); toggleScale()"></div>
+        </div>
+      </div>
+
+      <!-- 출력 -->
+      <div class="panel">
+        <div class="panel-title">출력</div>
+        <button class="btn btn-export" onclick="exportPNG()">📷 PNG 다운로드</button>
+        <button class="btn btn-export btn-pdf" style="margin-top:6px" onclick="exportPDF()">📄 PDF 다운로드</button>
+      </div>
+
+    </div><!-- /pyeonip-sidebar -->
+
+    <!-- ── 기존 DXF 모드 패널 ── -->
+    <div id="dxf-sidebar">
 
     <!-- 1. 파일 업로드 -->
     <div class="panel">
@@ -493,6 +596,8 @@ input[type="range"] {
       </div>
     </div>
 
+    </div><!-- /dxf-sidebar -->
+
   </div><!-- /sidebar -->
 
   <!-- 지도 -->
@@ -505,7 +610,7 @@ input[type="range"] {
     <!-- 빈 상태 -->
     <div class="map-empty" id="map-empty">
       <div class="map-empty-icon">🗺️</div>
-      <div class="map-empty-text">
+      <div class="map-empty-text" id="map-empty-text">
         DXF 파일을 업로드하고<br>
         <strong>위치도 생성</strong>을 클릭하세요
       </div>
@@ -973,6 +1078,226 @@ document.getElementById('project-name').addEventListener('input', function() {
   const el = document.getElementById('print-title-overlay');
   el.textContent = this.value ? this.value + ' 위치도' : '위치도';
 });
+
+document.getElementById('project-name-p').addEventListener('input', function() {
+  const el = document.getElementById('print-title-overlay');
+  el.textContent = this.value ? this.value + ' 위치도' : '위치도';
+});
+
+document.getElementById('line-weight-p').addEventListener('input', function() {
+  document.getElementById('lw-val-p').textContent = this.value + 'px';
+  if (pyeonipMode) renderPyeonipLayers();
+});
+document.getElementById('fill-opacity-p').addEventListener('input', function() {
+  document.getElementById('fo-val-p').textContent = Math.round(this.value * 100) + '%';
+  if (pyeonipMode) renderPyeonipLayers();
+});
+
+// ═══════════════════════════════════════════════════
+// 편입 필지 모드
+// ═══════════════════════════════════════════════════
+let pyeonipMode   = false;
+let pyeonipData   = [];
+let pyeonipLayers = [];
+let colorMode     = 'gubun'; // 'gubun' | 'jimok'
+
+// 지목별 색상 팔레트
+const JIMOK_COLORS = {
+  '전': '#4ade80', '답': '#86efac', '대': '#f97316', '도': '#94a3b8',
+  '임': '#166534', '잡': '#a3e635', '구': '#fb923c', '목': '#84cc16',
+  '묘': '#6b7280', '철': '#64748b', '사': '#fbbf24', '창': '#f59e0b',
+  '천': '#38bdf8', '학': '#818cf8', '유': '#c084fc', '하': '#7dd3fc',
+  '수': '#34d399', '공': '#f87171', '주': '#fb7185',
+};
+const DEFAULT_COLOR = '#a78bfa';
+
+function getJimokColor(jimok) {
+  return JIMOK_COLORS[jimok] || DEFAULT_COLOR;
+}
+function getGubunColor(gubun) {
+  return gubun === '완전편입' ? '#1a5c3a' : '#b45309';
+}
+
+// 편입 모드 초기화
+function initPyeonipMode() {
+  try {
+    const raw = sessionStorage.getItem('pyeonipData');
+    if (!raw) return;
+    pyeonipData = JSON.parse(raw);
+    if (!pyeonipData || pyeonipData.length === 0) return;
+  } catch(e) { return; }
+
+  pyeonipMode = true;
+
+  // UI 전환
+  document.getElementById('dxf-sidebar').style.display    = 'none';
+  document.getElementById('pyeonip-sidebar').style.display = 'block';
+  document.getElementById('dxf-step-bar').style.display    = 'none';
+  document.getElementById('topbar-badge').textContent      = '편입 필지 시각화';
+  document.getElementById('map-empty').classList.add('hidden');
+
+  // 통계 렌더
+  renderPyeonipStats();
+  // 지목 범례 생성
+  buildJimokLegend();
+  // 지도에 표시
+  renderPyeonipLayers();
+}
+
+// 색상 모드 전환
+function setColorMode(mode) {
+  colorMode = mode;
+  document.getElementById('btn-mode-gubun').className =
+    'btn ' + (mode === 'gubun' ? 'btn-main' : 'btn-outline') + ' ';
+  document.getElementById('btn-mode-jimok').className =
+    'btn ' + (mode === 'jimok' ? 'btn-main' : 'btn-outline') + ' ';
+  document.getElementById('btn-mode-gubun').style.cssText = 'flex:1;font-size:12px;padding:8px';
+  document.getElementById('btn-mode-jimok').style.cssText = 'flex:1;font-size:12px;padding:8px';
+  document.getElementById('legend-gubun').style.display = mode === 'gubun' ? 'block' : 'none';
+  document.getElementById('legend-jimok').style.display = mode === 'jimok' ? 'block' : 'none';
+  renderPyeonipLayers();
+}
+
+// 지목 범례 생성
+function buildJimokLegend() {
+  const jimokSet = [...new Set(pyeonipData.map(r => r.jimok).filter(Boolean))].sort();
+  const el = document.getElementById('jimok-legend-items');
+  el.innerHTML = jimokSet.map(j => `
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="width:12px;height:12px;border-radius:2px;background:${getJimokColor(j)};flex-shrink:0"></div>
+      ${j}
+    </div>`).join('');
+}
+
+// 통계 렌더
+function renderPyeonipStats() {
+  const total     = pyeonipData.length;
+  const cntFull   = pyeonipData.filter(r => r.gubun === '완전편입').length;
+  const cntPart   = pyeonipData.filter(r => r.gubun === '부분편입').length;
+  const sumArea   = pyeonipData.reduce((s, r) => s + (r.jijuArea || 0), 0);
+  const sumPyeon  = pyeonipData.reduce((s, r) => s + (r.pyeonipArea || 0), 0);
+
+  // 지목별 집계
+  const jimokMap = {};
+  pyeonipData.forEach(r => {
+    const j = r.jimok || '미상';
+    if (!jimokMap[j]) jimokMap[j] = { cnt: 0, area: 0 };
+    jimokMap[j].cnt++;
+    jimokMap[j].area += r.pyeonipArea || 0;
+  });
+
+  const jimokRows = Object.entries(jimokMap)
+    .sort((a, b) => b[1].area - a[1].area)
+    .map(([j, v]) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--border2)">
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="width:8px;height:8px;border-radius:2px;background:${getJimokColor(j)}"></div>
+          <span>${j}</span>
+        </div>
+        <span style="font-family:'DM Mono',monospace;font-size:11px">${v.cnt}필지 / ${Math.round(v.area).toLocaleString()}㎡</span>
+      </div>`).join('');
+
+  document.getElementById('pyeonip-stats').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
+      <div style="background:var(--green-light);border-radius:6px;padding:8px 10px">
+        <div style="font-size:10px;color:var(--green);font-weight:700">완전편입</div>
+        <div style="font-size:16px;font-weight:800;font-family:'DM Mono',monospace">${cntFull}</div>
+      </div>
+      <div style="background:var(--amber-light);border-radius:6px;padding:8px 10px">
+        <div style="font-size:10px;color:var(--amber);font-weight:700">부분편입</div>
+        <div style="font-size:16px;font-weight:800;font-family:'DM Mono',monospace">${cntPart}</div>
+      </div>
+    </div>
+    <div style="font-size:11px;margin-bottom:2px">전체 <b>${total}</b>필지 &nbsp;|&nbsp; 편입면적 합계 <b>${Math.round(sumPyeon).toLocaleString()} ㎡</b></div>
+    <div style="margin-top:8px;font-size:11px;font-weight:700;color:var(--ink3);margin-bottom:4px">지목별 편입 현황</div>
+    ${jimokRows}
+  `;
+}
+
+// 편입 필지 지도 레이어 렌더
+function renderPyeonipLayers() {
+  // 기존 레이어 제거
+  pyeonipLayers.forEach(l => map.removeLayer(l));
+  pyeonipLayers = [];
+
+  const fillOpacity = parseFloat(document.getElementById('fill-opacity-p').value);
+  const lineWeight  = parseFloat(document.getElementById('line-weight-p').value);
+  const epsg = '5174';
+
+  const allLL = [];
+
+  pyeonipData.forEach(row => {
+    if (!row.rings || row.rings.length === 0) return;
+    const color = colorMode === 'gubun'
+      ? getGubunColor(row.gubun)
+      : getJimokColor(row.jimok);
+
+    row.rings.forEach(ring => {
+      if (!ring || ring.length < 3) return;
+      try {
+        const latlngs = ring
+          .map(([x, y]) => {
+            const [lng, lat] = proj4(`EPSG:${epsg}`, 'EPSG:4326', [x, y]);
+            return [lat, lng];
+          })
+          .filter(([la, ln]) => la > 32 && la < 40 && ln > 122 && ln < 132);
+
+        if (latlngs.length < 3) return;
+        allLL.push(...latlngs);
+
+        const layer = L.polygon(latlngs, {
+          color,
+          weight: lineWeight,
+          fillColor: color,
+          fillOpacity,
+          opacity: 1,
+        });
+
+        layer.bindPopup(`
+          <div style="font-family:'Noto Sans KR',sans-serif;font-size:12px;min-width:180px">
+            <div style="font-weight:800;font-size:13px;margin-bottom:6px">${row.jibun || '-'} ${row.jimok || ''}</div>
+            <table style="width:100%;border-collapse:collapse">
+              <tr><td style="color:#888;padding:2px 4px">PNU</td><td style="font-family:'DM Mono',monospace;font-size:10px;padding:2px 4px">${row.pnu || '-'}</td></tr>
+              <tr><td style="color:#888;padding:2px 4px">행정구역</td><td style="padding:2px 4px">${[row.sido,row.sigungu,row.emd].filter(Boolean).join(' ')}</td></tr>
+              <tr><td style="color:#888;padding:2px 4px">대장구분</td><td style="padding:2px 4px">${row.daejang || '-'}</td></tr>
+              <tr><td style="color:#888;padding:2px 4px">필지면적</td><td style="padding:2px 4px;font-family:'DM Mono',monospace">${(row.jijuArea||0).toLocaleString()} ㎡</td></tr>
+              <tr><td style="color:#888;padding:2px 4px">편입면적</td><td style="padding:2px 4px;font-family:'DM Mono',monospace">${(row.pyeonipArea||0).toLocaleString()} ㎡</td></tr>
+              <tr><td style="color:#888;padding:2px 4px">편입구분</td><td style="padding:2px 4px;font-weight:700;color:${color}">${row.gubun || '-'}</td></tr>
+            </table>
+          </div>
+        `, { maxWidth: 260 });
+
+        layer.addTo(map);
+        pyeonipLayers.push(layer);
+      } catch(e) {}
+    });
+  });
+
+  // 전체 범위로 지도 맞춤
+  if (allLL.length > 0) {
+    try {
+      map.fitBounds(L.latLngBounds(allLL), { padding: [50, 50] });
+    } catch(e) {}
+  }
+
+  // 라벨 레이어 최상단
+  if (currentTileLabel && map.hasLayer(currentTileLabel)) currentTileLabel.bringToFront();
+}
+
+// 편입 모드용 타일 전환
+function switchTilesP() {
+  const v = document.getElementById('map-layer-p').value;
+  document.getElementById('map-layer').value = v;
+  switchTiles();
+}
+
+// ── 페이지 로드 시 편입 모드 감지 ──
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('mode') === 'pyeonip') {
+    initPyeonipMode();
+  }
+})();
 </script>
 </body>
 </html>
