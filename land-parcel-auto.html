@@ -414,6 +414,127 @@ tbody.result-body td:last-child { border-right:none; }
   .stats-row { grid-template-columns:1fr 1fr; }
   .mapping-row { grid-template-columns:1fr 30px 1fr; }
 }
+
+/* ── 필지 스타일 패널 ── */
+.style-panel-wrap {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.style-panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 18px; cursor: pointer;
+  background: var(--white); border: none; width: 100%;
+  font-family: 'Noto Sans KR', sans-serif;
+  transition: background 0.15s;
+}
+.style-panel-header:hover { background: var(--gray); }
+.style-panel-header-left { display: flex; align-items: center; gap: 8px; }
+.style-panel-header-title { font-size: 13px; font-weight: 700; color: var(--ink); }
+.style-panel-header-badge {
+  font-size: 10px; font-weight: 700; font-family: 'DM Mono', monospace;
+  background: var(--green-light); color: var(--green-mid);
+  padding: 2px 8px; border-radius: 10px;
+}
+.style-panel-chevron { font-size: 11px; color: var(--ink3); transition: transform 0.2s; }
+.style-panel-chevron.open { transform: rotate(180deg); }
+.style-panel-body { display: none; padding: 0 18px 16px; }
+.style-panel-body.open { display: block; }
+
+.style-section-title {
+  font-size: 10px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.8px; color: var(--ink3); font-family: 'DM Mono', monospace;
+  margin: 14px 0 10px; display: flex; align-items: center; gap: 6px;
+}
+.style-section-title::before { content: ''; display: block; width: 3px; height: 12px; background: var(--green); border-radius: 2px; }
+
+.style-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.style-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.style-field { display: flex; flex-direction: column; gap: 5px; }
+.style-label {
+  font-size: 11px; font-weight: 600; color: var(--ink2);
+  font-family: 'DM Mono', monospace;
+}
+.style-label span { font-size: 10px; font-weight: 400; color: var(--ink3); margin-left: 3px; }
+
+/* color swatch row */
+.color-row { display: flex; align-items: center; gap: 6px; }
+.color-swatch-input {
+  width: 36px; height: 28px; border: 1px solid var(--border);
+  border-radius: 6px; cursor: pointer; padding: 2px; background: none;
+}
+.color-hex-input {
+  flex: 1; padding: 5px 8px; border: 1px solid var(--border);
+  border-radius: 6px; font-size: 11px; font-family: 'DM Mono', monospace;
+  color: var(--ink); outline: none; background: var(--white);
+}
+.color-hex-input:focus { border-color: var(--green); }
+
+/* range slider */
+.style-range-wrap { display: flex; align-items: center; gap: 8px; }
+.style-range {
+  flex: 1; -webkit-appearance: none; appearance: none;
+  height: 4px; border-radius: 2px; background: var(--border);
+  outline: none; cursor: pointer;
+}
+.style-range::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px;
+  border-radius: 50%; background: var(--green);
+  border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  cursor: pointer;
+}
+.style-range-val {
+  font-size: 11px; font-family: 'DM Mono', monospace;
+  color: var(--ink); font-weight: 600; min-width: 32px; text-align: right;
+}
+
+/* hatch pattern preview */
+.hatch-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 4px; }
+.hatch-option {
+  position: relative; border: 2px solid var(--border);
+  border-radius: 7px; padding: 6px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 4px; transition: all 0.15s; background: var(--white);
+}
+.hatch-option:hover { border-color: var(--green-mid); }
+.hatch-option.selected { border-color: var(--green); background: var(--green-light); }
+.hatch-option svg { width: 40px; height: 40px; display: block; }
+.hatch-option-label { font-size: 9px; font-family: 'DM Mono', monospace; color: var(--ink3); text-align: center; }
+.hatch-option.selected .hatch-option-label { color: var(--green-mid); font-weight: 700; }
+
+/* preview box */
+.style-preview-box {
+  border: 1px solid var(--border); border-radius: 8px;
+  overflow: hidden; background: #e8e4dc;
+  margin-top: 10px; height: 90px;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.style-preview-box svg { display: block; }
+
+/* per-type tabs */
+.style-type-tabs { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+.style-type-tab {
+  padding: 5px 12px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--white);
+  font-size: 11px; font-weight: 600; cursor: pointer;
+  font-family: 'Noto Sans KR', sans-serif; color: var(--ink2);
+  transition: all 0.15s;
+}
+.style-type-tab:hover { background: var(--gray); }
+.style-type-tab.active { background: var(--green); color: white; border-color: var(--green); }
+
+.style-reset-btn {
+  font-size: 11px; padding: 6px 12px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--white);
+  cursor: pointer; color: var(--ink2); font-family: 'Noto Sans KR', sans-serif;
+  transition: all 0.15s;
+}
+.style-reset-btn:hover { background: var(--red-light); color: var(--red); border-color: var(--red); }
 </style>
 </head>
 <body>
@@ -611,8 +732,131 @@ tbody.result-body td:last-child { border-right:none; }
           </select>
           <button class="btn-sm primary" onclick="exportShpExcel()">📥 엑셀 다운로드</button>
           <button class="btn-sm" onclick="sendShpToJoseo()" style="background:var(--blue);color:white;border-color:var(--blue)">📋 조서로 보내기</button>
+          <button class="btn-sm" onclick="toggleStylePanel()" id="btnStylePanel" style="background:#7c3aed;color:white;border-color:#7c3aed">🎨 필지 스타일 설정</button>
           <button class="btn-sm" onclick="sendToLocationMap()" style="background:var(--teal,#0f766e);color:white;border-color:var(--teal,#0f766e)">🗺️ 위치도에서 보기</button>
         </div>
+        <!-- ── 필지 스타일 설정 패널 ── -->
+        <div class="style-panel-wrap" id="stylePanelWrap" style="display:none;margin-bottom:12px">
+          <button class="style-panel-header" onclick="toggleStyleBody()">
+            <span class="style-panel-header-left">
+              <span>🎨</span>
+              <span class="style-panel-header-title">필지 스타일 설정</span>
+              <span class="style-panel-header-badge">위치도 반영</span>
+            </span>
+            <span class="style-panel-chevron open" id="stylePanelChevron">▼</span>
+          </button>
+          <div class="style-panel-body open" id="stylePanelBody">
+
+            <!-- 편입구분별 탭 -->
+            <div class="style-section-title">편입 구분별 스타일</div>
+            <div class="style-type-tabs">
+              <button class="style-type-tab active" onclick="switchStyleTab('full')" id="styleTab-full">완전편입</button>
+              <button class="style-type-tab" onclick="switchStyleTab('part')" id="styleTab-part">부분편입</button>
+              <button class="style-type-tab" onclick="switchStyleTab('zone')" id="styleTab-zone">구역계</button>
+              <div style="flex:1"></div>
+              <button class="style-reset-btn" onclick="resetParcelStyle()">↺ 기본값으로</button>
+            </div>
+
+            <!-- 채우기 색상 -->
+            <div class="style-section-title">채우기 (Fill)</div>
+            <div class="style-grid-2">
+              <div class="style-field">
+                <div class="style-label">색상</div>
+                <div class="color-row">
+                  <input type="color" class="color-swatch-input" id="fillColorPicker"
+                    oninput="syncColorHex('fill')">
+                  <input type="text" class="color-hex-input" id="fillColorHex" maxlength="7"
+                    placeholder="#rrggbb" oninput="syncColorPicker('fill')">
+                </div>
+              </div>
+              <div class="style-field">
+                <div class="style-label">투명도 <span id="fillOpacityVal">0.35</span></div>
+                <div class="style-range-wrap">
+                  <input type="range" class="style-range" id="fillOpacity" min="0" max="1" step="0.05" value="0.35"
+                    oninput="updateOpacityLabel('fillOpacity','fillOpacityVal');updatePreview()">
+                </div>
+              </div>
+            </div>
+
+            <!-- 해치 패턴 -->
+            <div class="style-section-title">해치 패턴 (Hatch)</div>
+            <div class="hatch-grid" id="hatchGrid">
+              <!-- JS로 렌더링 -->
+            </div>
+
+            <!-- 선 (Stroke) -->
+            <div class="style-section-title">외곽선 (Stroke)</div>
+            <div class="style-grid">
+              <div class="style-field">
+                <div class="style-label">색상</div>
+                <div class="color-row">
+                  <input type="color" class="color-swatch-input" id="strokeColorPicker"
+                    oninput="syncColorHex('stroke')">
+                  <input type="text" class="color-hex-input" id="strokeColorHex" maxlength="7"
+                    placeholder="#rrggbb" oninput="syncColorPicker('stroke')">
+                </div>
+              </div>
+              <div class="style-field">
+                <div class="style-label">두께 <span id="strokeWidthVal">2</span>px</div>
+                <div class="style-range-wrap">
+                  <input type="range" class="style-range" id="strokeWidth" min="0.5" max="8" step="0.5" value="2"
+                    oninput="updateOpacityLabel('strokeWidth','strokeWidthVal');updatePreview()">
+                </div>
+              </div>
+              <div class="style-field">
+                <div class="style-label">선 스타일</div>
+                <select class="map-select" id="strokeDash" onchange="updatePreview()">
+                  <option value="none">실선</option>
+                  <option value="6,3">짧은 점선</option>
+                  <option value="10,4">긴 점선</option>
+                  <option value="2,4">점점선</option>
+                  <option value="12,4,3,4">1점쇄선</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- 라벨 -->
+            <div class="style-section-title">라벨 표시</div>
+            <div class="style-grid-2">
+              <div class="style-field">
+                <div class="style-label">표시 내용</div>
+                <select class="map-select" id="labelContent" onchange="updatePreview()">
+                  <option value="none">표시 안함</option>
+                  <option value="jibun" selected>지번</option>
+                  <option value="jimok">지목</option>
+                  <option value="jibun_jimok">지번+지목</option>
+                  <option value="pyeonip">편입면적</option>
+                  <option value="pnu">PNU</option>
+                </select>
+              </div>
+              <div class="style-field">
+                <div class="style-label">글씨 크기 <span id="labelSizeVal">11</span>px</div>
+                <div class="style-range-wrap">
+                  <input type="range" class="style-range" id="labelSize" min="8" max="20" step="1" value="11"
+                    oninput="updateOpacityLabel('labelSize','labelSizeVal');updatePreview()">
+                </div>
+              </div>
+            </div>
+
+            <!-- 미리보기 -->
+            <div class="style-section-title">미리보기</div>
+            <div class="style-preview-box">
+              <svg id="stylePreviewSvg" width="460" height="88" xmlns="http://www.w3.org/2000/svg">
+                <defs id="previewDefs"></defs>
+                <!-- 배경 격자 -->
+                <rect width="460" height="88" fill="#e0ddd5"/>
+                <path id="previewPath1" d="" fill="none" stroke="none"/>
+                <path id="previewPath2" d="" fill="none" stroke="none"/>
+                <text id="previewLabel1" x="0" y="0" text-anchor="middle" dominant-baseline="middle"
+                  font-family="Noto Sans KR, sans-serif" fill="#222" font-size="11"></text>
+                <text id="previewLabel2" x="0" y="0" text-anchor="middle" dominant-baseline="middle"
+                  font-family="Noto Sans KR, sans-serif" fill="#222" font-size="11"></text>
+              </svg>
+            </div>
+
+          </div><!-- /style-panel-body -->
+        </div><!-- /style-panel-wrap -->
+
         <div class="table-wrap">
           <table class="result" style="min-width:1100px">
             <thead>
@@ -1425,6 +1669,258 @@ async function processGuyeokShp(file) {
   }
 }
 
+// ─── 필지 스타일 설정 ────────────────────────────────
+const DEFAULT_STYLES = {
+  full: {
+    fillColor: '#ff4444', fillOpacity: 0.35, hatch: 'none',
+    strokeColor: '#cc0000', strokeWidth: 2, strokeDash: 'none',
+    labelContent: 'jibun', labelSize: 11,
+  },
+  part: {
+    fillColor: '#ff8c00', fillOpacity: 0.30, hatch: 'diagonal',
+    strokeColor: '#cc6600', strokeWidth: 2, strokeDash: 'none',
+    labelContent: 'jibun', labelSize: 11,
+  },
+  zone: {
+    fillColor: '#1a5c3a', fillOpacity: 0.08, hatch: 'none',
+    strokeColor: '#1a5c3a', strokeWidth: 2.5, strokeDash: '8,4',
+    labelContent: 'none', labelSize: 11,
+  },
+};
+
+let parcelStyles = JSON.parse(JSON.stringify(DEFAULT_STYLES));
+let currentStyleTab = 'full';
+
+const HATCH_DEFS = [
+  { id: 'none',       label: '없음',     svg: '' },
+  { id: 'diagonal',   label: '사선',     angle: 45,  spacing: 6 },
+  { id: 'diagonal2',  label: '역사선',   angle: -45, spacing: 6 },
+  { id: 'crosshatch', label: '격자',     angle: 45,  spacing: 6, cross: true },
+  { id: 'horizontal', label: '수평선',   angle: 0,   spacing: 6 },
+  { id: 'vertical',   label: '수직선',   angle: 90,  spacing: 6 },
+  { id: 'dots',       label: '점',       dot: true,  spacing: 6 },
+  { id: 'dense',      label: '촘촘사선', angle: 45,  spacing: 4 },
+  { id: 'wide',       label: '넓은사선', angle: 45,  spacing: 10 },
+  { id: 'zigzag',     label: '지그재그', zigzag: true, spacing: 8 },
+];
+
+function initHatchGrid() {
+  const grid = document.getElementById('hatchGrid');
+  if (!grid) return;
+  grid.innerHTML = HATCH_DEFS.map(h => `
+    <button class="hatch-option${h.id === parcelStyles[currentStyleTab].hatch ? ' selected' : ''}"
+      id="hatch-${h.id}" onclick="selectHatch('${h.id}')">
+      <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+        <rect width="40" height="40" fill="#f0ede6"/>
+        ${h.id==='none' ? '<text x="20" y="22" text-anchor="middle" font-size="10" fill="#aaa">없음</text>'
+          : makeMiniHatchSvg(h, '#666', '#ddd')}
+      </svg>
+      <span class="hatch-option-label">${h.label}</span>
+    </button>`).join('');
+}
+
+function makeMiniHatchSvg(h, color, bg) {
+  const size = 40;
+  let out = `<rect width="${size}" height="${size}" fill="${bg}"/>`;
+  if (h.dot) {
+    const sp = h.spacing;
+    for (let y = sp/2; y < size; y += sp)
+      for (let x = sp/2; x < size; x += sp)
+        out += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.2" fill="${color}"/>`;
+  } else if (h.zigzag) {
+    const sp = h.spacing;
+    let d = '';
+    for (let y = 0; y < size + sp; y += sp) {
+      d += `M0,${y}`;
+      for (let x = 0; x < size; x += sp)
+        d += ` L${x+sp/2},${y-sp/2} L${x+sp},${y}`;
+    }
+    out += `<path d="${d}" stroke="${color}" stroke-width="1" fill="none"/>`;
+  } else if (h.cross) {
+    const sp = h.spacing;
+    for (let i = -size; i < size*2; i += sp) {
+      out += `<line x1="${i}" y1="0" x2="${i+size}" y2="${size}" stroke="${color}" stroke-width="1"/>`;
+      out += `<line x1="${i+size}" y1="0" x2="${i}" y2="${size}" stroke="${color}" stroke-width="1"/>`;
+    }
+  } else {
+    const sp = h.spacing;
+    const ang = h.angle || 0;
+    if (ang === 0) {
+      for (let y = 0; y < size; y += sp)
+        out += `<line x1="0" y1="${y}" x2="${size}" y2="${y}" stroke="${color}" stroke-width="1"/>`;
+    } else if (ang === 90) {
+      for (let x = 0; x < size; x += sp)
+        out += `<line x1="${x}" y1="0" x2="${x}" y2="${size}" stroke="${color}" stroke-width="1"/>`;
+    } else {
+      for (let i = -size; i < size*2; i += sp)
+        out += ang > 0
+          ? `<line x1="${i}" y1="0" x2="${i+size}" y2="${size}" stroke="${color}" stroke-width="1"/>`
+          : `<line x1="${i+size}" y1="0" x2="${i}" y2="${size}" stroke="${color}" stroke-width="1"/>`;
+    }
+  }
+  out += `<rect width="${size}" height="${size}" fill="none" stroke="#ccc" stroke-width="0.5"/>`;
+  return out;
+}
+
+function selectHatch(id) {
+  parcelStyles[currentStyleTab].hatch = id;
+  document.querySelectorAll('.hatch-option').forEach(el => el.classList.remove('selected'));
+  const el = document.getElementById('hatch-' + id);
+  if (el) el.classList.add('selected');
+  updatePreview();
+}
+
+function switchStyleTab(tab) {
+  currentStyleTab = tab;
+  document.querySelectorAll('.style-type-tab').forEach(b => b.classList.remove('active'));
+  const tabEl = document.getElementById('styleTab-' + tab);
+  if (tabEl) tabEl.classList.add('active');
+  loadStyleToUI(tab);
+  initHatchGrid();
+}
+
+function loadStyleToUI(tab) {
+  const s = parcelStyles[tab];
+  document.getElementById('fillColorPicker').value    = s.fillColor;
+  document.getElementById('fillColorHex').value       = s.fillColor;
+  document.getElementById('fillOpacity').value        = s.fillOpacity;
+  document.getElementById('fillOpacityVal').textContent = s.fillOpacity;
+  document.getElementById('strokeColorPicker').value  = s.strokeColor;
+  document.getElementById('strokeColorHex').value     = s.strokeColor;
+  document.getElementById('strokeWidth').value        = s.strokeWidth;
+  document.getElementById('strokeWidthVal').textContent = s.strokeWidth;
+  document.getElementById('strokeDash').value         = s.strokeDash;
+  document.getElementById('labelContent').value       = s.labelContent;
+  document.getElementById('labelSize').value          = s.labelSize;
+  document.getElementById('labelSizeVal').textContent = s.labelSize;
+  updatePreview();
+}
+
+function saveUIToStyle() {
+  const s = parcelStyles[currentStyleTab];
+  s.fillColor    = document.getElementById('fillColorHex').value || s.fillColor;
+  s.fillOpacity  = parseFloat(document.getElementById('fillOpacity').value);
+  s.strokeColor  = document.getElementById('strokeColorHex').value || s.strokeColor;
+  s.strokeWidth  = parseFloat(document.getElementById('strokeWidth').value);
+  s.strokeDash   = document.getElementById('strokeDash').value;
+  s.labelContent = document.getElementById('labelContent').value;
+  s.labelSize    = parseInt(document.getElementById('labelSize').value);
+}
+
+function syncColorHex(which) {
+  const picker = document.getElementById(which + 'ColorPicker');
+  const hex    = document.getElementById(which + 'ColorHex');
+  hex.value = picker.value;
+  saveUIToStyle(); updatePreview();
+}
+function syncColorPicker(which) {
+  const hex    = document.getElementById(which + 'ColorHex');
+  const picker = document.getElementById(which + 'ColorPicker');
+  if (/^#[0-9a-fA-F]{6}$/.test(hex.value)) {
+    picker.value = hex.value;
+    saveUIToStyle(); updatePreview();
+  }
+}
+function updateOpacityLabel(inputId, labelId) {
+  document.getElementById(labelId).textContent = document.getElementById(inputId).value;
+  saveUIToStyle();
+}
+
+function resetParcelStyle() {
+  parcelStyles = JSON.parse(JSON.stringify(DEFAULT_STYLES));
+  loadStyleToUI(currentStyleTab);
+  initHatchGrid();
+  showToast('↺ 기본 스타일로 초기화되었습니다');
+}
+
+function toggleStylePanel() {
+  const wrap = document.getElementById('stylePanelWrap');
+  const isHidden = wrap.style.display === 'none';
+  wrap.style.display = isHidden ? 'block' : 'none';
+  if (isHidden) { loadStyleToUI(currentStyleTab); initHatchGrid(); }
+}
+
+function toggleStyleBody() {
+  const body = document.getElementById('stylePanelBody');
+  const chevron = document.getElementById('stylePanelChevron');
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  chevron.classList.toggle('open', !isOpen);
+}
+
+// ── SVG 해치 패턴 defs 생성 (위치도 전달용) ──────────
+function buildHatchPatternDef(id, hatchType, color) {
+  const h = HATCH_DEFS.find(d => d.id === hatchType);
+  if (!h || hatchType === 'none') return null;
+  const size = h.spacing || 8;
+  let inner = '';
+  if (h.dot) {
+    inner = `<circle cx="${size/2}" cy="${size/2}" r="1.2" fill="${color}"/>`;
+  } else if (h.zigzag) {
+    inner = `<path d="M0,${size} L${size/2},0 L${size},${size}" stroke="${color}" stroke-width="1" fill="none"/>`;
+  } else if (h.cross) {
+    inner = `<line x1="0" y1="0" x2="${size}" y2="${size}" stroke="${color}" stroke-width="1"/>
+             <line x1="${size}" y1="0" x2="0" y2="${size}" stroke="${color}" stroke-width="1"/>`;
+  } else if (h.angle === 0) {
+    inner = `<line x1="0" y1="${size/2}" x2="${size}" y2="${size/2}" stroke="${color}" stroke-width="1"/>`;
+  } else if (h.angle === 90) {
+    inner = `<line x1="${size/2}" y1="0" x2="${size/2}" y2="${size}" stroke="${color}" stroke-width="1"/>`;
+  } else if (h.angle > 0) {
+    inner = `<line x1="0" y1="0" x2="${size}" y2="${size}" stroke="${color}" stroke-width="1"/>`;
+  } else {
+    inner = `<line x1="${size}" y1="0" x2="0" y2="${size}" stroke="${color}" stroke-width="1"/>`;
+  }
+  return { id, size, inner };
+}
+
+// ── 미리보기 렌더링 ──────────────────────────────────
+function updatePreview() {
+  saveUIToStyle();
+  const s = parcelStyles[currentStyleTab];
+  const svg = document.getElementById('stylePreviewSvg');
+  const defs = document.getElementById('previewDefs');
+  if (!svg || !defs) return;
+
+  const pid = 'prev-hatch-' + currentStyleTab;
+  const hDef = buildHatchPatternDef(pid, s.hatch, s.fillColor);
+
+  let defsHtml = '';
+  if (hDef) {
+    defsHtml = `<pattern id="${pid}" patternUnits="userSpaceOnUse" width="${hDef.size}" height="${hDef.size}">${hDef.inner}</pattern>`;
+  }
+  defs.innerHTML = defsHtml;
+
+  const shapes = [
+    { d: 'M40,10 L180,14 L185,74 L38,78 Z',   cx: 111, cy: 44, label: '123-45 전' },
+    { d: 'M195,8  L340,6  L338,78 L192,76 Z',  cx: 265, cy: 42, label: '678-9 답'  },
+    { d: 'M350,12 L430,10 L428,80 L348,78 Z',  cx: 389, cy: 45, label: '100 대'   },
+  ];
+
+  shapes.forEach((sh, i) => {
+    const pathEl = document.getElementById('previewPath' + (i+1));
+    if (!pathEl) return;
+    const fillVal = s.hatch !== 'none' && hDef ? `url(#${pid})` : s.fillColor;
+    pathEl.setAttribute('d', sh.d);
+    pathEl.setAttribute('fill', fillVal);
+    pathEl.setAttribute('fill-opacity', s.hatch !== 'none' ? 1 : s.fillOpacity);
+    pathEl.setAttribute('stroke', s.strokeColor);
+    pathEl.setAttribute('stroke-width', s.strokeWidth);
+    pathEl.setAttribute('stroke-dasharray', s.strokeDash === 'none' ? '' : s.strokeDash);
+
+    const labelEl = document.getElementById('previewLabel' + (i+1));
+    if (!labelEl) return;
+    if (s.labelContent !== 'none') {
+      labelEl.setAttribute('x', sh.cx);
+      labelEl.setAttribute('y', sh.cy);
+      labelEl.setAttribute('font-size', s.labelSize);
+      labelEl.setAttribute('fill', s.strokeColor);
+      labelEl.textContent = sh.label;
+    } else {
+      labelEl.textContent = '';
+    }
+  });
+}
+
 // ─── 위치도에서 보기 ───────────────────────────────────
 function sendToLocationMap() {
   if (shpResultRows.length === 0) { showToast('⚠️ 산출 결과가 없습니다'); return; }
@@ -1452,6 +1948,11 @@ function sendToLocationMap() {
       return;
     }
     sessionStorage.setItem('pyeonipData', json);
+
+    // ── 스타일 설정도 함께 전달 ──
+    saveUIToStyle();
+    sessionStorage.setItem('pyeonipStyle', JSON.stringify(parcelStyles));
+
     window.location.href = 'location-map.html?mode=pyeonip';
   } catch(e) {
     showToast('❌ 데이터 전달 실패: ' + e.message);
