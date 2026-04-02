@@ -1122,10 +1122,23 @@ function getGubunColor(gubun) {
 function initPyeonipMode() {
   try {
     const raw = sessionStorage.getItem('pyeonipData');
-    if (!raw) return;
+    if (!raw) {
+      console.warn('[pyeonip] sessionStorage에 데이터 없음');
+      return;
+    }
     pyeonipData = JSON.parse(raw);
-    if (!pyeonipData || pyeonipData.length === 0) return;
-  } catch(e) { return; }
+    if (!pyeonipData || pyeonipData.length === 0) {
+      console.warn('[pyeonip] 파싱된 데이터 없음');
+      return;
+    }
+    // rings 없는 행 필터링
+    const withRings = pyeonipData.filter(r => r.rings && r.rings.length > 0);
+    console.log(`[pyeonip] 전체 ${pyeonipData.length}건 / rings 있음 ${withRings.length}건`);
+    pyeonipData = withRings.length > 0 ? withRings : pyeonipData;
+  } catch(e) {
+    console.error('[pyeonip] 데이터 파싱 오류:', e);
+    return;
+  }
 
   pyeonipMode = true;
 
@@ -1292,12 +1305,14 @@ function switchTilesP() {
 }
 
 // ── 페이지 로드 시 편입 모드 감지 ──
-(function() {
+// window load 이벤트로 지도 초기화 완료 후 실행 보장
+window.addEventListener('load', function() {
   const params = new URLSearchParams(window.location.search);
   if (params.get('mode') === 'pyeonip') {
-    initPyeonipMode();
+    // 지도 타일 로드까지 여유 시간 확보
+    setTimeout(initPyeonipMode, 300);
   }
-})();
+});
 </script>
 </body>
 </html>

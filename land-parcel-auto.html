@@ -958,6 +958,27 @@ function isProjected(geojson) {
 
 // ─── Shoelace 공식: 평면 면적(㎡) ───────────────────────
 // 투영좌표계(m 단위)일 때 QGIS 와 동일한 평면 면적 반환
+// ─── 교차 결과 geometry → rings 배열 추출 ─────────────
+// Polygon/MultiPolygon geometry에서 외부링만 추출
+// (sessionStorage 용량 절약: 홀 제외, 소수점 1자리 반올림)
+function extractRings(geo) {
+  if (!geo) return [];
+  const round1 = c => [Math.round(c[0]*10)/10, Math.round(c[1]*10)/10];
+  const rings = [];
+  if (geo.type === 'Polygon') {
+    if (geo.coordinates[0]) rings.push(geo.coordinates[0].map(round1));
+  } else if (geo.type === 'MultiPolygon') {
+    for (const poly of geo.coordinates) {
+      if (poly[0]) rings.push(poly[0].map(round1));
+    }
+  } else if (geo.type === 'GeometryCollection') {
+    for (const g of (geo.geometries || [])) {
+      rings.push(...extractRings(g));
+    }
+  }
+  return rings;
+}
+
 function shoelaceArea(ring) {
   let area = 0;
   const n = ring.length;
@@ -1335,6 +1356,8 @@ async function processGuyeokShp(file) {
           pnu: row.pnu, sido: row.sido, sigungu: row.sigungu, emd: row.emd,
           daejang: row.daejang, jibun: row.jibun, jimok: row.jimok,
           jijuArea: row.jijuArea, pyeonipArea, gubun,
+          // 지도 표시용: 교차 결과 rings (EPSG:5174 좌표 그대로)
+          rings: extractRings(intersectionGeo),
         });
       } catch(e) {
         cntClipFail++;
@@ -1388,7 +1411,8 @@ async function processGuyeokShp(file) {
 function sendToLocationMap() {
   if (shpResultRows.length === 0) { showToast('⚠️ 산출 결과가 없습니다'); return; }
   try {
-    // geometry 포함 데이터 저장 (origRings: EPSG:5174 좌표)
+    // rings만 포함 (교차 결과 좌표, EPSG:5174)
+    // sessionStorage 5MB 제한 대응: 좌표 소수점 1자리로 절약
     const payload = shpResultRows.map(r => ({
       pnu:         r.pnu,
       sido:        r.sido,
@@ -1400,12 +1424,20 @@ function sendToLocationMap() {
       jijuArea:    r.jijuArea,
       pyeonipArea: r.pyeonipArea,
       gubun:       r.gubun,
-      rings:       r.clippedRings || r.origRings || [],
+      rings:       r.rings || [],
     }));
-    sessionStorage.setItem('pyeonipData', JSON.stringify(payload));
+
+    const json = JSON.stringify(payload);
+    // 용량 체크 (5MB 한도)
+    if (json.length > 4.5 * 1024 * 1024) {
+      showToast('⚠️ 데이터가 너무 큽니다. 필지 수를 줄이거나 필터 후 시도해주세요.');
+      return;
+    }
+    sessionStorage.setItem('pyeonipData', json);
     window.location.href = 'location-map.html?mode=pyeonip';
   } catch(e) {
     showToast('❌ 데이터 전달 실패: ' + e.message);
+    console.error(e);
   }
 }
 // ─── 정렬 ──────────────────────────────────────────────
