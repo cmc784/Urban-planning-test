@@ -334,86 +334,6 @@ input[type="range"] {
   display:none;
 }
 .coord-info.show { display:block; }
-
-/* ── 필지 스타일 패널 ── */
-.style-type-tabs {
-  display:flex; gap:4px; margin-bottom:10px; flex-wrap:wrap;
-}
-.style-type-tab {
-  flex:1; padding:5px 4px; border-radius:6px;
-  border:1px solid var(--border); background:var(--white);
-  font-size:10px; font-weight:700; cursor:pointer;
-  font-family:'Noto Sans KR',sans-serif; color:var(--ink3);
-  transition:all .15s; text-align:center; white-space:nowrap;
-}
-.style-type-tab:hover { background:var(--bg); color:var(--ink2); }
-.style-type-tab.active { background:var(--teal); color:white; border-color:var(--teal); }
-
-.color-row {
-  display:flex; align-items:center; gap:5px; margin-top:3px;
-}
-.color-swatch {
-  width:30px; height:26px; border:1px solid var(--border);
-  border-radius:5px; cursor:pointer; padding:2px; flex-shrink:0;
-}
-.color-hex {
-  flex:1; padding:5px 7px; border:1px solid var(--border);
-  border-radius:6px; font-size:10px; font-family:'DM Mono',monospace;
-  color:var(--ink); background:var(--white); outline:none;
-}
-.color-hex:focus { border-color:var(--teal); }
-
-.hatch-grid {
-  display:grid; grid-template-columns:repeat(5,1fr); gap:4px; margin-top:4px;
-}
-.hatch-opt {
-  border:1.5px solid var(--border); border-radius:5px;
-  padding:3px; cursor:pointer; display:flex;
-  flex-direction:column; align-items:center; gap:2px;
-  transition:all .12s; background:var(--white);
-}
-.hatch-opt:hover { border-color:var(--teal); }
-.hatch-opt.sel { border-color:var(--teal); background:var(--teal-light); }
-.hatch-opt svg { width:32px; height:32px; display:block; }
-.hatch-opt-lbl {
-  font-size:8px; font-family:'DM Mono',monospace;
-  color:var(--ink3); text-align:center; line-height:1.2;
-}
-.hatch-opt.sel .hatch-opt-lbl { color:var(--teal); font-weight:700; }
-
-.style-preview {
-  border:1px solid var(--border); border-radius:6px;
-  overflow:hidden; background:#e0ddd5; margin-top:8px;
-  height:68px; display:flex; align-items:center; justify-content:center;
-}
-
-.range-row {
-  display:flex; align-items:center; gap:6px; margin-top:3px;
-}
-.range-row input[type="range"] { flex:1; margin:0; }
-.range-num {
-  font-size:10px; font-family:'DM Mono',monospace;
-  color:var(--ink2); font-weight:700; min-width:28px; text-align:right;
-}
-
-.style-reset-btn {
-  font-size:10px; padding:4px 8px; border-radius:5px;
-  border:1px solid var(--border); background:var(--white);
-  cursor:pointer; color:var(--ink3); font-family:'Noto Sans KR',sans-serif;
-  transition:all .15s; margin-top:6px; width:100%;
-}
-.style-reset-btn:hover { background:var(--red-light); color:var(--red); border-color:var(--red); }
-
-.sub-label {
-  font-size:10px; font-weight:700; color:var(--ink3);
-  text-transform:uppercase; letter-spacing:.5px;
-  font-family:'DM Mono',monospace; margin:10px 0 5px;
-  display:flex; align-items:center; gap:5px;
-}
-.sub-label::before {
-  content:''; width:2px; height:10px;
-  background:var(--teal); border-radius:1px;
-}
 </style>
 </head>
 <body>
@@ -442,138 +362,115 @@ input[type="range"] {
     <!-- ── 편입 모드 패널 (pyeonip mode) ── -->
     <div id="pyeonip-sidebar" style="display:none">
 
-      <!-- 색상 모드 토글 -->
+      <!-- 편입 필지 표시 모드 -->
       <div class="panel">
         <div class="panel-title">🗺️ 편입 필지 표시</div>
-        <div style="font-size:11px;color:var(--ink3);margin-bottom:10px">
-          편입산출물을 지도 위에 표시합니다.<br>아래 버튼으로 색상 구분 방식을 전환하세요.
-        </div>
-        <div style="display:flex;gap:6px;margin-bottom:12px">
-          <button id="btn-mode-gubun" class="btn btn-main" style="flex:1;font-size:12px;padding:8px" onclick="setColorMode('gubun')">
-            편입유형별 색상
-          </button>
-          <button id="btn-mode-jimok" class="btn btn-outline" style="flex:1;font-size:12px;padding:8px" onclick="setColorMode('jimok')">
-            지목별 색상
-          </button>
+        <div style="display:flex;gap:6px;margin-bottom:14px">
+          <button id="btn-mode-gubun" class="btn btn-main" style="flex:1;font-size:12px;padding:8px" onclick="setColorMode('gubun')">편입유형별</button>
+          <button id="btn-mode-jimok" class="btn btn-outline" style="flex:1;font-size:12px;padding:8px" onclick="setColorMode('jimok')">지목별</button>
         </div>
 
-        <!-- 범례 -->
+        <!-- 편입유형별 범례 + 면적 -->
         <div id="legend-gubun">
           <div style="font-size:11px;font-weight:700;color:var(--ink3);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">편입유형 범례</div>
-          <div style="display:flex;flex-direction:column;gap:4px;font-size:12px">
-            <div style="display:flex;align-items:center;gap:8px"><div style="width:12px;height:12px;border-radius:2px;background:#1a5c3a;flex-shrink:0"></div>완전편입</div>
-            <div style="display:flex;align-items:center;gap:8px"><div style="width:12px;height:12px;border-radius:2px;background:#b45309;flex-shrink:0"></div>부분편입</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;background:var(--bg);border-radius:6px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div id="swatch-full" style="width:20px;height:14px;border-radius:2px;background:#1a5c3a;flex-shrink:0;cursor:pointer;border:1px solid rgba(0,0,0,0.1)" onclick="document.getElementById('cp-full').click()" title="색상 변경"></div>
+                <input type="color" id="cp-full" value="#1a5c3a" style="display:none" onchange="updateGubunColor('완전편입',this.value)">
+                <input type="text" id="rgb-full" value="#1a5c3a" placeholder="#RRGGBB" style="width:72px;padding:3px 5px;border:1px solid var(--border);border-radius:4px;font-size:11px;font-family:'DM Mono',monospace" oninput="applyRgbInput('rgb-full','cp-full','swatch-full');updateGubunColor('완전편입',this.value)">
+                <span style="font-size:12px">완전편입</span>
+              </div>
+              <span id="stat-full-area" style="font-size:11px;font-family:'DM Mono',monospace;color:var(--ink3)">— ㎡</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;background:var(--bg);border-radius:6px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div id="swatch-part" style="width:20px;height:14px;border-radius:2px;background:#b45309;flex-shrink:0;cursor:pointer;border:1px solid rgba(0,0,0,0.1)" onclick="document.getElementById('cp-part').click()" title="색상 변경"></div>
+                <input type="color" id="cp-part" value="#b45309" style="display:none" onchange="updateGubunColor('부분편입',this.value)">
+                <input type="text" id="rgb-part" value="#b45309" placeholder="#RRGGBB" style="width:72px;padding:3px 5px;border:1px solid var(--border);border-radius:4px;font-size:11px;font-family:'DM Mono',monospace" oninput="applyRgbInput('rgb-part','cp-part','swatch-part');updateGubunColor('부분편입',this.value)">
+                <span style="font-size:12px">부분편입</span>
+              </div>
+              <span id="stat-part-area" style="font-size:11px;font-family:'DM Mono',monospace;color:var(--ink3)">— ㎡</span>
+            </div>
           </div>
         </div>
+
+        <!-- 지목별 범례 + 면적 -->
         <div id="legend-jimok" style="display:none">
           <div style="font-size:11px;font-weight:700;color:var(--ink3);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">지목 범례</div>
-          <div id="jimok-legend-items" style="display:flex;flex-direction:column;gap:4px;font-size:12px"></div>
+          <div id="jimok-legend-items" style="display:flex;flex-direction:column;gap:4px"></div>
         </div>
       </div>
 
-      <!-- 통계 요약 -->
+      <!-- 필지 스타일 설정 -->
       <div class="panel">
-        <div class="panel-title">📊 편입 현황</div>
-        <div id="pyeonip-stats" style="font-size:12px;display:flex;flex-direction:column;gap:6px"></div>
+        <div class="panel-title">필지 스타일 설정</div>
+
+        <label class="field-label">선 두께</label>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <input type="range" id="line-weight-p" min="0.5" max="6" value="1.5" step="0.5" style="flex:1" oninput="document.getElementById('lw-num-p').value=this.value;renderPyeonipLayers()">
+          <input type="number" id="lw-num-p" value="1.5" min="0.5" max="6" step="0.5" style="width:52px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;font-size:12px;font-family:'DM Mono',monospace" oninput="document.getElementById('line-weight-p').value=this.value;renderPyeonipLayers()">
+          <span style="font-size:11px;color:var(--ink3)">px</span>
+        </div>
+
+        <label class="field-label">채우기 투명도</label>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <input type="range" id="fill-opacity-p" min="0" max="1" value="0.35" step="0.01" style="flex:1" oninput="syncOpacity('fill-opacity-p','fo-num-p');renderPyeonipLayers()">
+          <input type="number" id="fo-num-p" value="35" min="0" max="100" style="width:52px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;font-size:12px;font-family:'DM Mono',monospace" oninput="document.getElementById('fill-opacity-p').value=this.value/100;renderPyeonipLayers()">
+          <span style="font-size:11px;color:var(--ink3)">%</span>
+        </div>
+
+        <label class="field-label">해치 패턴</label>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">
+          <button class="btn btn-main" id="hatch-none" style="font-size:11px;padding:5px 10px" onclick="setHatch('none')">없음</button>
+          <button class="btn btn-outline" id="hatch-diagonal" style="font-size:11px;padding:5px 10px" onclick="setHatch('diagonal')">사선 ╱</button>
+          <button class="btn btn-outline" id="hatch-cross" style="font-size:11px;padding:5px 10px" onclick="setHatch('cross')">격자 ✕</button>
+          <button class="btn btn-outline" id="hatch-dot" style="font-size:11px;padding:5px 10px" onclick="setHatch('dot')">점 ·</button>
+        </div>
+
+        <label class="field-label">라벨 표시</label>
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
+          <button class="btn btn-outline" id="label-none" style="font-size:11px;padding:5px 10px" onclick="setLabel('none')">없음</button>
+          <button class="btn btn-main" id="label-jibun" style="font-size:11px;padding:5px 10px" onclick="setLabel('jibun')">지번</button>
+          <button class="btn btn-outline" id="label-jimok" style="font-size:11px;padding:5px 10px" onclick="setLabel('jimok')">지목</button>
+          <button class="btn btn-outline" id="label-area" style="font-size:11px;padding:5px 10px" onclick="setLabel('area')">면적</button>
+          <button class="btn btn-outline" id="label-all" style="font-size:11px;padding:5px 10px" onclick="setLabel('all')">전체</button>
+        </div>
       </div>
 
-      <!-- 필지 스타일 설정 (full panel) -->
+      <!-- 구역계 스타일 설정 -->
       <div class="panel">
-        <div class="panel-title">🎨 필지 스타일 설정</div>
-
-        <!-- 편입구분 탭 -->
-        <div class="style-type-tabs">
-          <button class="style-type-tab active" id="stab-full" onclick="switchStab('full')">완전편입</button>
-          <button class="style-type-tab" id="stab-part" onclick="switchStab('part')">부분편입</button>
-          <button class="style-type-tab" id="stab-zone" onclick="switchStab('zone')">구역계</button>
-        </div>
-
-        <!-- 채우기 -->
-        <div class="sub-label">채우기</div>
-        <div class="row2">
-          <div>
-            <label class="field-label">색상</label>
-            <div class="color-row">
-              <input type="color" class="color-swatch" id="ps-fill-picker" oninput="psSyncHex('fill')">
-              <input type="text" class="color-hex" id="ps-fill-hex" maxlength="7" placeholder="#rrggbb" oninput="psSyncPicker('fill')">
+        <div class="panel-title">구역계 스타일 설정</div>
+        <div style="display:flex;gap:10px;margin-bottom:10px">
+          <div style="flex:1">
+            <label class="field-label">선 색상</label>
+            <div style="display:flex;align-items:center;gap:5px">
+              <div id="swatch-guyeok-line" style="width:24px;height:20px;border-radius:3px;background:#1a3a6e;cursor:pointer;border:1px solid rgba(0,0,0,0.15);flex-shrink:0" onclick="document.getElementById('cp-guyeok-line').click()"></div>
+              <input type="color" id="cp-guyeok-line" value="#1a3a6e" style="display:none" onchange="document.getElementById('swatch-guyeok-line').style.background=this.value;document.getElementById('rgb-guyeok-line').value=this.value;renderGuyeokLayer()">
+              <input type="text" id="rgb-guyeok-line" value="#1a3a6e" placeholder="#RRGGBB" style="flex:1;padding:4px 5px;border:1px solid var(--border);border-radius:4px;font-size:11px;font-family:'DM Mono',monospace" oninput="applyRgbInput('rgb-guyeok-line','cp-guyeok-line','swatch-guyeok-line');renderGuyeokLayer()">
             </div>
           </div>
-          <div>
-            <label class="field-label">투명도 &nbsp;<span id="ps-fill-opa-val" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--teal)">35%</span></label>
-            <div class="range-row">
-              <input type="range" id="ps-fill-opa" min="0" max="1" step="0.05" value="0.35" oninput="psRangeLabel('ps-fill-opa','ps-fill-opa-val','%',100);psApply()">
+          <div style="flex:1">
+            <label class="field-label">채우기 색상</label>
+            <div style="display:flex;align-items:center;gap:5px">
+              <div id="swatch-guyeok-fill" style="width:24px;height:20px;border-radius:3px;background:#1a3a6e;cursor:pointer;border:1px solid rgba(0,0,0,0.15);flex-shrink:0" onclick="document.getElementById('cp-guyeok-fill').click()"></div>
+              <input type="color" id="cp-guyeok-fill" value="#1a3a6e" style="display:none" onchange="document.getElementById('swatch-guyeok-fill').style.background=this.value;document.getElementById('rgb-guyeok-fill').value=this.value;renderGuyeokLayer()">
+              <input type="text" id="rgb-guyeok-fill" value="#1a3a6e" placeholder="#RRGGBB" style="flex:1;padding:4px 5px;border:1px solid var(--border);border-radius:4px;font-size:11px;font-family:'DM Mono',monospace" oninput="applyRgbInput('rgb-guyeok-fill','cp-guyeok-fill','swatch-guyeok-fill');renderGuyeokLayer()">
             </div>
           </div>
         </div>
-
-        <!-- 해치 패턴 -->
-        <div class="sub-label">해치 패턴</div>
-        <div class="hatch-grid" id="ps-hatch-grid"></div>
-
-        <!-- 외곽선 -->
-        <div class="sub-label">외곽선</div>
-        <div class="row2">
-          <div>
-            <label class="field-label">색상</label>
-            <div class="color-row">
-              <input type="color" class="color-swatch" id="ps-stroke-picker" oninput="psSyncHex('stroke')">
-              <input type="text" class="color-hex" id="ps-stroke-hex" maxlength="7" placeholder="#rrggbb" oninput="psSyncPicker('stroke')">
-            </div>
-          </div>
-          <div>
-            <label class="field-label">두께 &nbsp;<span id="ps-stroke-w-val" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--teal)">2px</span></label>
-            <div class="range-row">
-              <input type="range" id="ps-stroke-w" min="0.5" max="8" step="0.5" value="2" oninput="psRangeLabel('ps-stroke-w','ps-stroke-w-val','px',1);psApply()">
-            </div>
-          </div>
+        <label class="field-label">선 두께</label>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <input type="range" id="guyeok-weight" min="0.5" max="8" value="2" step="0.5" style="flex:1" oninput="document.getElementById('guyeok-weight-num').value=this.value;renderGuyeokLayer()">
+          <input type="number" id="guyeok-weight-num" value="2" min="0.5" max="8" step="0.5" style="width:52px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;font-size:12px;font-family:'DM Mono',monospace" oninput="document.getElementById('guyeok-weight').value=this.value;renderGuyeokLayer()">
+          <span style="font-size:11px;color:var(--ink3)">px</span>
         </div>
-        <label class="field-label" style="margin-top:6px">선 스타일</label>
-        <select id="ps-stroke-dash" onchange="psApply()" style="font-size:11px;padding:6px 8px">
-          <option value="none">실선</option>
-          <option value="6,3">짧은 점선</option>
-          <option value="10,4">긴 점선</option>
-          <option value="2,4">점점선</option>
-          <option value="12,4,3,4">1점쇄선</option>
-        </select>
-
-        <!-- 라벨 -->
-        <div class="sub-label">라벨</div>
-        <div class="row2">
-          <div>
-            <label class="field-label">표시 내용</label>
-            <select id="ps-label-content" onchange="psApply()" style="font-size:11px;padding:6px 8px">
-              <option value="none">표시 안함</option>
-              <option value="jibun" selected>지번</option>
-              <option value="jimok">지목</option>
-              <option value="jibun_jimok">지번+지목</option>
-              <option value="pyeonip">편입면적</option>
-              <option value="pnu">PNU</option>
-            </select>
-          </div>
-          <div>
-            <label class="field-label">크기 &nbsp;<span id="ps-label-sz-val" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--teal)">11px</span></label>
-            <div class="range-row">
-              <input type="range" id="ps-label-sz" min="7" max="18" step="1" value="11" oninput="psRangeLabel('ps-label-sz','ps-label-sz-val','px',1);psApply()">
-            </div>
-          </div>
+        <label class="field-label">채우기 투명도</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="range" id="guyeok-opacity" min="0" max="1" value="0.1" step="0.01" style="flex:1" oninput="syncOpacity('guyeok-opacity','guyeok-opacity-num');renderGuyeokLayer()">
+          <input type="number" id="guyeok-opacity-num" value="10" min="0" max="100" style="width:52px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;font-size:12px;font-family:'DM Mono',monospace" oninput="document.getElementById('guyeok-opacity').value=this.value/100;renderGuyeokLayer()">
+          <span style="font-size:11px;color:var(--ink3)">%</span>
         </div>
-
-        <!-- 미리보기 -->
-        <div class="sub-label">미리보기</div>
-        <div class="style-preview">
-          <svg id="ps-preview-svg" width="264" height="60" xmlns="http://www.w3.org/2000/svg">
-            <defs id="ps-preview-defs"></defs>
-            <rect width="264" height="60" fill="#d8d4cb"/>
-            <path id="ps-prev-p1" d="M8,4 L100,6 L98,54 L6,52 Z" fill="#ccc" stroke="#888" stroke-width="1.5"/>
-            <path id="ps-prev-p2" d="M108,4 L200,4 L198,54 L106,54 Z" fill="#ccc" stroke="#888" stroke-width="1.5"/>
-            <path id="ps-prev-p3" d="M208,6 L256,4 L254,54 L206,52 Z" fill="#ccc" stroke="#888" stroke-width="1.5"/>
-            <text id="ps-prev-l1" x="53" y="30" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif" font-size="10" fill="#444">123-45</text>
-            <text id="ps-prev-l2" x="153" y="30" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif" font-size="10" fill="#444">678-9</text>
-            <text id="ps-prev-l3" x="231" y="30" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif" font-size="10" fill="#444">100</text>
-          </svg>
-        </div>
-
-        <button class="style-reset-btn" onclick="psReset()">↺ 기본값으로 초기화</button>
       </div>
 
       <!-- 지도 설정 -->
@@ -809,30 +706,6 @@ let map, dxfData = null, drawnLayers = [], selectedLayers = new Set();
 let northCtrl = null, scaleCtrl = null;
 let showNorth = true, showScale = true, showTitle = true;
 let currentTileSat = null, currentTileLabel = null, currentTileBase = null;
-
-/* ── 편입 필지 시각화 상태 ── */
-let pyeonipData = [], pyeonipLayers = [], pyeonipLabelLayers = [], colorMode = 'gubun';
-let psCurrentTab = 'full';
-
-const PS_DEFAULTS = {
-  full: { fillColor:'#dc2626', fillOpacity:0.35, hatch:'none', strokeColor:'#991b1b', strokeWidth:2, strokeDash:'none', labelContent:'jibun', labelSize:11 },
-  part: { fillColor:'#ea580c', fillOpacity:0.30, hatch:'diagonal', strokeColor:'#9a3412', strokeWidth:2, strokeDash:'none', labelContent:'jibun', labelSize:11 },
-  zone: { fillColor:'#1a5c3a', fillOpacity:0.08, hatch:'none', strokeColor:'#1a5c3a', strokeWidth:2.5, strokeDash:'8,4', labelContent:'none', labelSize:11 },
-};
-let psStyles = JSON.parse(JSON.stringify(PS_DEFAULTS));
-
-const PS_HATCHES = [
-  { id:'none',       lbl:'없음' },
-  { id:'diagonal',   lbl:'사선',   angle:45,  sp:6 },
-  { id:'diagonal2',  lbl:'역사선', angle:-45, sp:6 },
-  { id:'crosshatch', lbl:'격자',   cross:true,sp:6 },
-  { id:'horizontal', lbl:'수평',   angle:0,   sp:6 },
-  { id:'vertical',   lbl:'수직',   angle:90,  sp:6 },
-  { id:'dots',       lbl:'점',     dot:true,  sp:6 },
-  { id:'dense',      lbl:'촘촘',   angle:45,  sp:4 },
-  { id:'wide',       lbl:'넓은',   angle:45,  sp:10 },
-  { id:'zigzag',     lbl:'지그재그',zigzag:true,sp:8 },
-];
 
 /* ── 상수 ── */
 const ESRI_SAT   = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
@@ -1268,252 +1141,126 @@ document.getElementById('project-name-p').addEventListener('input', function() {
   el.textContent = this.value ? this.value + ' 위치도' : '위치도';
 });
 
+document.getElementById('line-weight-p').addEventListener('input', function() {
+  document.getElementById('lw-val-p').textContent = this.value + 'px';
+  if (pyeonipMode) renderPyeonipLayers();
+});
+document.getElementById('fill-opacity-p').addEventListener('input', function() {
+  document.getElementById('fo-val-p').textContent = Math.round(this.value * 100) + '%';
+  if (pyeonipMode) renderPyeonipLayers();
+});
+
 // ═══════════════════════════════════════════════════
 // 편입 필지 모드
 // ═══════════════════════════════════════════════════
 let pyeonipMode   = false;
-// pyeonipData, pyeonipLayers, colorMode — 전역 선언부에서 정의됨
+let pyeonipData   = [];
+let pyeonipLayers = [];
+let guyeokLayers  = [];
+let labelLayers   = [];
+let colorMode     = 'gubun';
+let hatchMode     = 'none';
+let labelMode     = 'jibun';
+let pyeonipMode   = false;
+
+// 편입유형 색상 (사용자 변경 가능)
+const gubunColors = { '완전편입': '#1a5c3a', '부분편입': '#b45309' };
 
 // 지목별 색상 팔레트
 const JIMOK_COLORS = {
-  '전': '#4ade80', '답': '#86efac', '대': '#f97316', '도': '#94a3b8',
-  '임': '#166534', '잡': '#a3e635', '구': '#fb923c', '목': '#84cc16',
-  '묘': '#6b7280', '철': '#64748b', '사': '#fbbf24', '창': '#f59e0b',
-  '천': '#38bdf8', '학': '#818cf8', '유': '#c084fc', '하': '#7dd3fc',
-  '수': '#34d399', '공': '#f87171', '주': '#fb7185',
+  '전':'#4ade80','답':'#86efac','대':'#f97316','도':'#94a3b8',
+  '임':'#166534','잡':'#a3e635','구':'#fb923c','목':'#84cc16',
+  '묘':'#6b7280','철':'#64748b','사':'#fbbf24','창':'#f59e0b',
+  '천':'#38bdf8','학':'#818cf8','유':'#c084fc','하':'#7dd3fc',
+  '수':'#34d399','공':'#f87171','주':'#fb7185',
 };
 const DEFAULT_COLOR = '#a78bfa';
 
-function getJimokColor(jimok) {
-  return JIMOK_COLORS[jimok] || DEFAULT_COLOR;
-}
-function getGubunColor(gubun) {
-  return gubun === '완전편입' ? '#1a5c3a' : '#b45309';
-}
+function getJimokColor(jimok) { return JIMOK_COLORS[jimok] || DEFAULT_COLOR; }
+function getGubunColor(gubun) { return gubunColors[gubun] || '#888'; }
 
-// 편입 모드 초기화
-function initPyeonipMode() {
-  try {
-    const raw = sessionStorage.getItem('pyeonipData');
-    if (!raw) { console.warn('[pyeonip] sessionStorage에 데이터 없음'); return; }
-    pyeonipData = JSON.parse(raw);
-    if (!pyeonipData || pyeonipData.length === 0) { console.warn('[pyeonip] 파싱된 데이터 없음'); return; }
-    const withRings = pyeonipData.filter(r => r.rings && r.rings.length > 0);
-    console.log(`[pyeonip] 전체 ${pyeonipData.length}건 / rings 있음 ${withRings.length}건`);
-    pyeonipData = withRings.length > 0 ? withRings : pyeonipData;
-  } catch(e) { console.error('[pyeonip] 데이터 파싱 오류:', e); return; }
-
-  // 저장된 스타일 불러오기
-  try {
-    const rawStyle = sessionStorage.getItem('pyeonipStyle');
-    if (rawStyle) {
-      const saved = JSON.parse(rawStyle);
-      // 각 탭별로 안전하게 병합
-      ['full','part','zone'].forEach(tab => {
-        if (saved[tab]) psStyles[tab] = Object.assign({}, PS_DEFAULTS[tab], saved[tab]);
-      });
-    }
-  } catch(e) { console.warn('[pyeonip] 스타일 로드 실패, 기본값 사용'); }
-
-  pyeonipMode = true;
-
-  // UI 전환
-  document.getElementById('dxf-sidebar').style.display    = 'none';
-  document.getElementById('pyeonip-sidebar').style.display = 'block';
-  document.getElementById('dxf-step-bar').style.display    = 'none';
-  document.getElementById('topbar-badge').textContent      = '편입 필지 시각화';
-  document.getElementById('map-empty').classList.add('hidden');
-
-  // 스타일 패널 초기화
-  psInitHatchGrid();
-  psLoadUI('full');
-
-  // 통계 렌더
-  renderPyeonipStats();
-  // 지목 범례 생성
-  buildJimokLegend();
-  // 지도에 표시
-  renderPyeonipLayers();
-}
-
-// ── 스타일 패널 함수들 ───────────────────────────────
-
-function psInitHatchGrid() {
-  const grid = document.getElementById('ps-hatch-grid');
-  if (!grid) return;
-  const cur = psStyles[psCurrentTab].hatch;
-  grid.innerHTML = PS_HATCHES.map(h => `
-    <button class="hatch-opt${h.id === cur ? ' sel' : ''}" id="ho-${h.id}" onclick="psSelectHatch('${h.id}')">
-      <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-        <rect width="32" height="32" fill="#f0ede6"/>
-        ${h.id === 'none'
-          ? '<text x="16" y="18" text-anchor="middle" font-size="8" fill="#bbb">없음</text>'
-          : psMiniHatch(h, '#666', '#e0ddd5')}
-      </svg>
-      <span class="hatch-opt-lbl">${h.lbl}</span>
-    </button>`).join('');
-}
-
-function psMiniHatch(h, color, bg) {
-  const sz = 32, sp = h.sp || 8;
-  let o = `<rect width="${sz}" height="${sz}" fill="${bg}"/>`;
-  if (h.dot) {
-    for (let y = sp/2; y < sz; y += sp)
-      for (let x = sp/2; x < sz; x += sp)
-        o += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.1" fill="${color}"/>`;
-  } else if (h.zigzag) {
-    let d = '';
-    for (let y = 0; y < sz + sp; y += sp) {
-      d += `M0,${y}`;
-      for (let x = 0; x < sz; x += sp) d += ` L${x+sp/2},${y-sp/2} L${x+sp},${y}`;
-    }
-    o += `<path d="${d}" stroke="${color}" stroke-width="1" fill="none"/>`;
-  } else if (h.cross) {
-    for (let i = -sz; i < sz*2; i += sp) {
-      o += `<line x1="${i}" y1="0" x2="${i+sz}" y2="${sz}" stroke="${color}" stroke-width="1"/>`;
-      o += `<line x1="${i+sz}" y1="0" x2="${i}" y2="${sz}" stroke="${color}" stroke-width="1"/>`;
-    }
-  } else if (h.angle === 0) {
-    for (let y = 0; y < sz; y += sp) o += `<line x1="0" y1="${y}" x2="${sz}" y2="${y}" stroke="${color}" stroke-width="1"/>`;
-  } else if (h.angle === 90) {
-    for (let x = 0; x < sz; x += sp) o += `<line x1="${x}" y1="0" x2="${x}" y2="${sz}" stroke="${color}" stroke-width="1"/>`;
-  } else if ((h.angle||0) > 0) {
-    for (let i = -sz; i < sz*2; i += sp) o += `<line x1="${i}" y1="0" x2="${i+sz}" y2="${sz}" stroke="${color}" stroke-width="1"/>`;
-  } else {
-    for (let i = -sz; i < sz*2; i += sp) o += `<line x1="${i+sz}" y1="0" x2="${i}" y2="${sz}" stroke="${color}" stroke-width="1"/>`;
-  }
-  o += `<rect width="${sz}" height="${sz}" fill="none" stroke="#ccc" stroke-width="0.5"/>`;
-  return o;
-}
-
-function psSelectHatch(id) {
-  psStyles[psCurrentTab].hatch = id;
-  document.querySelectorAll('.hatch-opt').forEach(b => b.classList.remove('sel'));
-  const btn = document.getElementById('ho-' + id);
-  if (btn) btn.classList.add('sel');
-  psUpdatePreview();
-  renderPyeonipLayers();
-}
-
-function switchStab(tab) {
-  psSaveUI();
-  psCurrentTab = tab;
-  document.querySelectorAll('.style-type-tab').forEach(b => b.classList.remove('active'));
-  const btn = document.getElementById('stab-' + tab);
-  if (btn) btn.classList.add('active');
-  psLoadUI(tab);
-  psInitHatchGrid();
-}
-
-function psLoadUI(tab) {
-  const s = psStyles[tab];
-  document.getElementById('ps-fill-picker').value   = s.fillColor;
-  document.getElementById('ps-fill-hex').value      = s.fillColor;
-  document.getElementById('ps-fill-opa').value      = s.fillOpacity;
-  document.getElementById('ps-fill-opa-val').textContent = Math.round(s.fillOpacity * 100) + '%';
-  document.getElementById('ps-stroke-picker').value = s.strokeColor;
-  document.getElementById('ps-stroke-hex').value    = s.strokeColor;
-  document.getElementById('ps-stroke-w').value      = s.strokeWidth;
-  document.getElementById('ps-stroke-w-val').textContent = s.strokeWidth + 'px';
-  document.getElementById('ps-stroke-dash').value   = s.strokeDash;
-  document.getElementById('ps-label-content').value = s.labelContent;
-  document.getElementById('ps-label-sz').value      = s.labelSize;
-  document.getElementById('ps-label-sz-val').textContent = s.labelSize + 'px';
-  psUpdatePreview();
-}
-
-function psSaveUI() {
-  const s = psStyles[psCurrentTab];
-  const fhex = document.getElementById('ps-fill-hex').value;
-  const shex = document.getElementById('ps-stroke-hex').value;
-  if (/^#[0-9a-fA-F]{6}$/.test(fhex)) s.fillColor = fhex;
-  if (/^#[0-9a-fA-F]{6}$/.test(shex)) s.strokeColor = shex;
-  s.fillOpacity  = parseFloat(document.getElementById('ps-fill-opa').value);
-  s.strokeWidth  = parseFloat(document.getElementById('ps-stroke-w').value);
-  s.strokeDash   = document.getElementById('ps-stroke-dash').value;
-  s.labelContent = document.getElementById('ps-label-content').value;
-  s.labelSize    = parseInt(document.getElementById('ps-label-sz').value);
-}
-
-function psSyncHex(which) {
-  const v = document.getElementById('ps-' + which + '-picker').value;
-  document.getElementById('ps-' + which + '-hex').value = v;
-  psSaveUI(); psUpdatePreview(); psApply();
-}
-function psSyncPicker(which) {
-  const v = document.getElementById('ps-' + which + '-hex').value;
-  if (/^#[0-9a-fA-F]{6}$/.test(v)) {
-    document.getElementById('ps-' + which + '-picker').value = v;
-    psSaveUI(); psUpdatePreview(); psApply();
+// ── 유틸: RGB 텍스트 입력 → color picker + swatch 동기화 ──
+function applyRgbInput(rgbId, cpId, swatchId) {
+  const val = document.getElementById(rgbId).value.trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+    document.getElementById(cpId).value = val;
+    document.getElementById(swatchId).style.background = val;
   }
 }
-function psRangeLabel(inputId, labelId, unit, mul) {
-  const v = document.getElementById(inputId).value;
-  document.getElementById(labelId).textContent = (parseFloat(v) * mul).toFixed(mul === 100 ? 0 : 1) + unit;
-}
-function psApply() {
-  psSaveUI();
-  psUpdatePreview();
-  renderPyeonipLayers();
-}
-function psReset() {
-  psStyles = JSON.parse(JSON.stringify(PS_DEFAULTS));
-  psLoadUI(psCurrentTab);
-  psInitHatchGrid();
-  renderPyeonipLayers();
-  toast('↺ 기본 스타일로 초기화되었습니다', 'success');
+
+// ── 유틸: 슬라이더 ↔ 숫자 투명도 동기화 ──
+function syncOpacity(sliderId, numId) {
+  const v = parseFloat(document.getElementById(sliderId).value);
+  document.getElementById(numId).value = Math.round(v * 100);
 }
 
-// 미리보기 업데이트
-function psUpdatePreview() {
-  const s = psStyles[psCurrentTab];
-  const defs = document.getElementById('ps-preview-defs');
-  if (!defs) return;
+// ── SVG 해치 패턴 등록 (Leaflet pane에 SVG defs 삽입) ──
+function ensureHatchDefs() {
+  if (document.getElementById('pyeonip-hatch-defs')) return;
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(svgNS, 'svg');
+  svg.id = 'pyeonip-hatch-defs';
+  svg.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden';
+  svg.innerHTML = `
+    <defs>
+      <pattern id="hatch-diagonal" patternUnits="userSpaceOnUse" width="8" height="8" patternTransform="rotate(45)">
+        <line x1="0" y1="0" x2="0" y2="8" stroke="currentColor" stroke-width="1.5"/>
+      </pattern>
+      <pattern id="hatch-cross" patternUnits="userSpaceOnUse" width="8" height="8">
+        <line x1="0" y1="4" x2="8" y2="4" stroke="currentColor" stroke-width="1"/>
+        <line x1="4" y1="0" x2="4" y2="8" stroke="currentColor" stroke-width="1"/>
+      </pattern>
+      <pattern id="hatch-dot" patternUnits="userSpaceOnUse" width="8" height="8">
+        <circle cx="4" cy="4" r="1.5" fill="currentColor"/>
+      </pattern>
+    </defs>`;
+  document.body.appendChild(svg);
+}
 
-  const pid = 'prev-pat';
-  const h = PS_HATCHES.find(h => h.id === s.hatch);
-
-  if (h && s.hatch !== 'none') {
-    const sp = h.sp || 8;
-    defs.innerHTML = `<pattern id="${pid}" patternUnits="userSpaceOnUse" width="${sp}" height="${sp}">${buildHatchInner(h, s.fillColor, sp)}</pattern>`;
-  } else {
-    defs.innerHTML = '';
-  }
-
-  const fillVal = (h && s.hatch !== 'none') ? `url(#${pid})` : s.fillColor;
-  const fillOpa = (h && s.hatch !== 'none') ? s.fillOpacity : s.fillOpacity;
-  const dash = s.strokeDash === 'none' ? '' : s.strokeDash;
-
-  const labels = ['123-45', '678-9', '100'];
-  [1,2,3].forEach(i => {
-    const p = document.getElementById('ps-prev-p' + i);
-    if (p) {
-      p.setAttribute('fill', fillVal);
-      p.setAttribute('fill-opacity', fillOpa);
-      p.setAttribute('stroke', s.strokeColor);
-      p.setAttribute('stroke-width', s.strokeWidth);
-      p.setAttribute('stroke-dasharray', dash);
-    }
-    const l = document.getElementById('ps-prev-l' + i);
-    if (l) {
-      if (s.labelContent !== 'none') {
-        l.setAttribute('font-size', Math.min(s.labelSize, 11));
-        l.setAttribute('fill', s.strokeColor);
-        l.textContent = labels[i-1];
-      } else {
-        l.textContent = '';
-      }
-    }
+// ── 해치 모드 변경 ──
+function setHatch(mode) {
+  hatchMode = mode;
+  ['none','diagonal','cross','dot'].forEach(m => {
+    const btn = document.getElementById('hatch-' + m);
+    if (btn) btn.className = 'btn ' + (m === mode ? 'btn-main' : 'btn-outline');
+    if (btn) btn.style.cssText = 'font-size:11px;padding:5px 10px';
   });
+  renderPyeonipLayers();
 }
 
-// 색상 모드 전환
+// ── 라벨 모드 변경 ──
+function setLabel(mode) {
+  labelMode = mode;
+  ['none','jibun','jimok','area','all'].forEach(m => {
+    const btn = document.getElementById('label-' + m);
+    if (btn) btn.className = 'btn ' + (m === mode ? 'btn-main' : 'btn-outline');
+    if (btn) btn.style.cssText = 'font-size:11px;padding:5px 10px';
+  });
+  renderPyeonipLayers();
+}
+
+// ── 편입유형 색상 변경 ──
+function updateGubunColor(gubun, color) {
+  if (!/^#[0-9a-fA-F]{6}$/.test(color)) return;
+  gubunColors[gubun] = color;
+  // swatch + rgb 입력 동기화
+  if (gubun === '완전편입') {
+    document.getElementById('swatch-full').style.background = color;
+    document.getElementById('cp-full').value = color;
+    document.getElementById('rgb-full').value = color;
+  } else {
+    document.getElementById('swatch-part').style.background = color;
+    document.getElementById('cp-part').value = color;
+    document.getElementById('rgb-part').value = color;
+  }
+  if (colorMode === 'gubun') renderPyeonipLayers();
+}
+
+// ── 색상 모드 전환 ──
 function setColorMode(mode) {
   colorMode = mode;
-  document.getElementById('btn-mode-gubun').className =
-    'btn ' + (mode === 'gubun' ? 'btn-main' : 'btn-outline') + ' ';
-  document.getElementById('btn-mode-jimok').className =
-    'btn ' + (mode === 'jimok' ? 'btn-main' : 'btn-outline') + ' ';
+  document.getElementById('btn-mode-gubun').className = 'btn ' + (mode === 'gubun' ? 'btn-main' : 'btn-outline');
+  document.getElementById('btn-mode-jimok').className = 'btn ' + (mode === 'jimok' ? 'btn-main' : 'btn-outline');
   document.getElementById('btn-mode-gubun').style.cssText = 'flex:1;font-size:12px;padding:8px';
   document.getElementById('btn-mode-jimok').style.cssText = 'flex:1;font-size:12px;padding:8px';
   document.getElementById('legend-gubun').style.display = mode === 'gubun' ? 'block' : 'none';
@@ -1521,246 +1268,235 @@ function setColorMode(mode) {
   renderPyeonipLayers();
 }
 
-// 지목 범례 생성
+// ── 지목 범례 생성 (색상 스워치 + RGB 입력 + 면적) ──
 function buildJimokLegend() {
   const jimokSet = [...new Set(pyeonipData.map(r => r.jimok).filter(Boolean))].sort();
-  const el = document.getElementById('jimok-legend-items');
-  el.innerHTML = jimokSet.map(j => `
-    <div style="display:flex;align-items:center;gap:8px">
-      <div style="width:12px;height:12px;border-radius:2px;background:${getJimokColor(j)};flex-shrink:0"></div>
-      ${j}
-    </div>`).join('');
-}
-
-// 통계 렌더
-function renderPyeonipStats() {
-  const total     = pyeonipData.length;
-  const cntFull   = pyeonipData.filter(r => r.gubun === '완전편입').length;
-  const cntPart   = pyeonipData.filter(r => r.gubun === '부분편입').length;
-  const sumArea   = pyeonipData.reduce((s, r) => s + (r.jijuArea || 0), 0);
-  const sumPyeon  = pyeonipData.reduce((s, r) => s + (r.pyeonipArea || 0), 0);
-
-  // 지목별 집계
-  const jimokMap = {};
+  const jimokArea = {};
   pyeonipData.forEach(r => {
     const j = r.jimok || '미상';
-    if (!jimokMap[j]) jimokMap[j] = { cnt: 0, area: 0 };
-    jimokMap[j].cnt++;
-    jimokMap[j].area += r.pyeonipArea || 0;
+    if (!jimokArea[j]) jimokArea[j] = 0;
+    jimokArea[j] += r.pyeonipArea || 0;
   });
-
-  const jimokRows = Object.entries(jimokMap)
-    .sort((a, b) => b[1].area - a[1].area)
-    .map(([j, v]) => `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--border2)">
-        <div style="display:flex;align-items:center;gap:6px">
-          <div style="width:8px;height:8px;border-radius:2px;background:${getJimokColor(j)}"></div>
-          <span>${j}</span>
-        </div>
-        <span style="font-family:'DM Mono',monospace;font-size:11px">${v.cnt}필지 / ${Math.round(v.area).toLocaleString()}㎡</span>
-      </div>`).join('');
-
-  document.getElementById('pyeonip-stats').innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
-      <div style="background:var(--green-light);border-radius:6px;padding:8px 10px">
-        <div style="font-size:10px;color:var(--green);font-weight:700">완전편입</div>
-        <div style="font-size:16px;font-weight:800;font-family:'DM Mono',monospace">${cntFull}</div>
+  const el = document.getElementById('jimok-legend-items');
+  el.innerHTML = jimokSet.map(j => {
+    const color = getJimokColor(j);
+    const area  = Math.round(jimokArea[j] || 0).toLocaleString();
+    return `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 6px;background:var(--bg);border-radius:5px">
+      <div style="display:flex;align-items:center;gap:6px">
+        <div id="swatch-jimok-${j}" style="width:18px;height:12px;border-radius:2px;background:${color};cursor:pointer;border:1px solid rgba(0,0,0,0.1);flex-shrink:0"
+          onclick="document.getElementById('cp-jimok-${j}').click()" title="색상 변경"></div>
+        <input type="color" id="cp-jimok-${j}" value="${color}" style="display:none"
+          onchange="updateJimokColor('${j}',this.value)">
+        <input type="text" id="rgb-jimok-${j}" value="${color}" placeholder="#RRGGBB"
+          style="width:68px;padding:2px 4px;border:1px solid var(--border);border-radius:3px;font-size:10px;font-family:'DM Mono',monospace"
+          oninput="applyRgbInput('rgb-jimok-${j}','cp-jimok-${j}','swatch-jimok-${j}');updateJimokColor('${j}',this.value)">
+        <span style="font-size:12px">${j}</span>
       </div>
-      <div style="background:var(--amber-light);border-radius:6px;padding:8px 10px">
-        <div style="font-size:10px;color:var(--amber);font-weight:700">부분편입</div>
-        <div style="font-size:16px;font-weight:800;font-family:'DM Mono',monospace">${cntPart}</div>
-      </div>
-    </div>
-    <div style="font-size:11px;margin-bottom:2px">전체 <b>${total}</b>필지 &nbsp;|&nbsp; 편입면적 합계 <b>${Math.round(sumPyeon).toLocaleString()} ㎡</b></div>
-    <div style="margin-top:8px;font-size:11px;font-weight:700;color:var(--ink3);margin-bottom:4px">지목별 편입 현황</div>
-    ${jimokRows}
-  `;
+      <span style="font-size:11px;font-family:'DM Mono',monospace;color:var(--ink3)">${area} ㎡</span>
+    </div>`;
+  }).join('');
 }
 
-// 편입 필지 지도 레이어 렌더
-function renderPyeonipLayers() {
-  // 기존 레이어 제거
-  pyeonipLayers.forEach(l => map.removeLayer(l));
-  pyeonipLayers = [];
-  pyeonipLabelLayers.forEach(l => map.removeLayer(l));
-  pyeonipLabelLayers = [];
+function updateJimokColor(jimok, color) {
+  if (!/^#[0-9a-fA-F]{6}$/.test(color)) return;
+  JIMOK_COLORS[jimok] = color;
+  const sw = document.getElementById('swatch-jimok-' + jimok);
+  const cp = document.getElementById('cp-jimok-' + jimok);
+  const rb = document.getElementById('rgb-jimok-' + jimok);
+  if (sw) sw.style.background = color;
+  if (cp) cp.value = color;
+  if (rb) rb.value = color;
+  if (colorMode === 'jimok') renderPyeonipLayers();
+}
 
+// ── 편입유형별 면적 통계 표시 ──
+function updateGubunStats() {
+  const full = pyeonipData.filter(r => r.gubun === '완전편입');
+  const part = pyeonipData.filter(r => r.gubun === '부분편입');
+  const fullArea = Math.round(full.reduce((s,r) => s + (r.pyeonipArea||0), 0)).toLocaleString();
+  const partArea = Math.round(part.reduce((s,r) => s + (r.pyeonipArea||0), 0)).toLocaleString();
+  const sf = document.getElementById('stat-full-area');
+  const sp = document.getElementById('stat-part-area');
+  if (sf) sf.textContent = fullArea + ' ㎡';
+  if (sp) sp.textContent = partArea + ' ㎡';
+}
+
+// ── 편입 모드 초기화 ──
+function initPyeonipMode() {
+  try {
+    const raw = sessionStorage.getItem('pyeonipData');
+    if (!raw) { console.warn('[pyeonip] sessionStorage 데이터 없음'); return; }
+    pyeonipData = JSON.parse(raw);
+    if (!pyeonipData || pyeonipData.length === 0) { console.warn('[pyeonip] 데이터 없음'); return; }
+    const withRings = pyeonipData.filter(r => r.rings && r.rings.length > 0);
+    console.log(`[pyeonip] ${pyeonipData.length}건 / rings ${withRings.length}건`);
+    pyeonipData = withRings.length > 0 ? withRings : pyeonipData;
+  } catch(e) { console.error('[pyeonip] 파싱 오류:', e); return; }
+
+  pyeonipMode = true;
+  ensureHatchDefs();
+
+  document.getElementById('dxf-sidebar').style.display    = 'none';
+  document.getElementById('pyeonip-sidebar').style.display = 'block';
+  document.getElementById('dxf-step-bar').style.display    = 'none';
+  document.getElementById('topbar-badge').textContent      = '편입 필지 시각화';
+  document.getElementById('map-empty').classList.add('hidden');
+
+  updateGubunStats();
+  buildJimokLegend();
+  renderPyeonipLayers();
+  renderGuyeokLayer();
+}
+
+// ── 구역계 레이어 렌더 ──
+function renderGuyeokLayer() {
+  guyeokLayers.forEach(l => map.removeLayer(l));
+  guyeokLayers = [];
+
+  // sessionStorage에서 구역계 데이터 로드
+  let guyeokData = null;
+  try {
+    const raw = sessionStorage.getItem('guyeokData');
+    if (raw) guyeokData = JSON.parse(raw);
+  } catch(e) {}
+  if (!guyeokData || !guyeokData.length) return;
+
+  const lineColor  = document.getElementById('cp-guyeok-line').value;
+  const fillColor  = document.getElementById('cp-guyeok-fill').value;
+  const weight     = parseFloat(document.getElementById('guyeok-weight').value);
+  const opacity    = parseFloat(document.getElementById('guyeok-opacity').value);
+
+  guyeokData.forEach(ring => {
+    if (!ring || ring.length < 3) return;
+    try {
+      const latlngs = ring.map(([x,y]) => {
+        if (x < 50000 || x > 500000 || y < 100000 || y > 900000) return null;
+        const [lng, lat] = proj4('EPSG:5174','EPSG:4326',[x,y]);
+        return (lat>33&&lat<39&&lng>124&&lng<131) ? [lat,lng] : null;
+      }).filter(Boolean);
+      if (latlngs.length < 3) return;
+      const layer = L.polygon(latlngs, {
+        color: lineColor, weight, fillColor, fillOpacity: opacity, opacity: 1
+      }).addTo(map);
+      guyeokLayers.push(layer);
+    } catch(e) {}
+  });
+}
+
+// ── 편입 필지 레이어 렌더 ──
+function renderPyeonipLayers() {
+  pyeonipLayers.forEach(l => map.removeLayer(l));
+  labelLayers.forEach(l => map.removeLayer(l));
+  pyeonipLayers = [];
+  labelLayers   = [];
+
+  const fillOpacity = parseFloat(document.getElementById('fill-opacity-p').value);
+  const lineWeight  = parseFloat(document.getElementById('line-weight-p').value);
   const allLL = [];
-  let rendered = 0, skipped = 0;
 
   pyeonipData.forEach(row => {
-    if (!row.rings || row.rings.length === 0) { skipped++; return; }
-
-    // 편입구분에 따른 스타일 선택
-    const sKey = row.gubun === '완전편입' ? 'full' : 'part';
-    const s = psStyles[sKey];
-
-    // 색상 모드: gubun=스타일설정 색상 / jimok=지목색상
-    const baseColor = colorMode === 'gubun' ? s.fillColor : getJimokColor(row.jimok);
-    const strokeColor = colorMode === 'gubun' ? s.strokeColor : baseColor;
+    if (!row.rings || row.rings.length === 0) return;
+    const color = colorMode === 'gubun' ? getGubunColor(row.gubun) : getJimokColor(row.jimok);
 
     row.rings.forEach(ring => {
       if (!ring || ring.length < 3) return;
       try {
         const latlngs = [];
-        for (const coord of ring) {
-          const [x, y] = coord;
+        for (const [x, y] of ring) {
           if (x < 50000 || x > 500000 || y < 100000 || y > 900000) continue;
-          const [lng, lat] = proj4('EPSG:5174', 'EPSG:4326', [x, y]);
-          if (lat < 33 || lat > 39 || lng < 124 || lng > 131) continue;
-          latlngs.push([lat, lng]);
+          const [lng, lat] = proj4('EPSG:5174','EPSG:4326',[x,y]);
+          if (lat<33||lat>39||lng<124||lng>131) continue;
+          latlngs.push([lat,lng]);
         }
         if (latlngs.length < 3) return;
         allLL.push(...latlngs);
 
-        // 해치 패턴 SVG icon (Leaflet DivIcon 방식)
-        let fillColor = baseColor;
-        let fillOpacity = s.fillOpacity;
-
-        const dashArray = (s.strokeDash === 'none' || !s.strokeDash) ? null : s.strokeDash;
+        // 해치 패턴 적용
+        let fillOpt = { fillColor: color, fillOpacity };
+        if (hatchMode !== 'none') {
+          // SVG 패턴을 Leaflet에 직접 적용 (CSS className 방식)
+          fillOpt.className = 'hatch-layer-' + hatchMode;
+          fillOpt.fillOpacity = 0.01; // 채우기는 패턴으로
+        }
 
         const layer = L.polygon(latlngs, {
-          color: strokeColor,
-          weight: s.strokeWidth,
-          dashArray,
-          fillColor,
-          fillOpacity: s.hatch !== 'none' ? 0 : fillOpacity,
-          opacity: 1,
+          color, weight: lineWeight, opacity: 1, ...fillOpt,
         });
 
-        // 해치는 SVG 패턴 오버레이로 구현
-        if (s.hatch !== 'none') {
+        // 해치 SVG 패턴 직접 삽입
+        if (hatchMode !== 'none') {
           layer.on('add', function() {
-            const paths = layer.getElement ? [layer.getElement()] : [];
-            // Leaflet SVG path에 패턴 fill 적용
-            layer._path && applyHatchToPath(layer._path, s.hatch, baseColor, fillOpacity, sKey + row.pnu);
+            const el = this.getElement();
+            if (!el) return;
+            const paths = el.querySelectorAll('path');
+            paths.forEach(p => {
+              p.style.fill = `url(#hatch-${hatchMode})`;
+              p.style.color = color;
+              p.style.fillOpacity = fillOpacity;
+              p.style.stroke = color;
+            });
           });
         }
 
         layer.bindPopup(`
           <div style="font-family:'Noto Sans KR',sans-serif;font-size:12px;min-width:180px">
-            <div style="font-weight:800;font-size:13px;margin-bottom:6px">${row.jibun || '-'} ${row.jimok || ''}</div>
+            <div style="font-weight:800;font-size:13px;margin-bottom:6px">${row.jibun||'-'} ${row.jimok||''}</div>
             <table style="width:100%;border-collapse:collapse">
-              <tr><td style="color:#888;padding:2px 4px">PNU</td><td style="font-family:'DM Mono',monospace;font-size:10px;padding:2px 4px">${row.pnu || '-'}</td></tr>
+              <tr><td style="color:#888;padding:2px 4px">PNU</td><td style="font-family:'DM Mono',monospace;font-size:10px;padding:2px 4px">${row.pnu||'-'}</td></tr>
               <tr><td style="color:#888;padding:2px 4px">행정구역</td><td style="padding:2px 4px">${[row.sido,row.sigungu,row.emd].filter(Boolean).join(' ')}</td></tr>
-              <tr><td style="color:#888;padding:2px 4px">대장구분</td><td style="padding:2px 4px">${row.daejang || '-'}</td></tr>
+              <tr><td style="color:#888;padding:2px 4px">대장구분</td><td style="padding:2px 4px">${row.daejang||'-'}</td></tr>
               <tr><td style="color:#888;padding:2px 4px">필지면적</td><td style="padding:2px 4px;font-family:'DM Mono',monospace">${(row.jijuArea||0).toLocaleString()} ㎡</td></tr>
               <tr><td style="color:#888;padding:2px 4px">편입면적</td><td style="padding:2px 4px;font-family:'DM Mono',monospace">${(row.pyeonipArea||0).toLocaleString()} ㎡</td></tr>
-              <tr><td style="color:#888;padding:2px 4px">편입구분</td><td style="padding:2px 4px;font-weight:700;color:${strokeColor}">${row.gubun || '-'}</td></tr>
+              <tr><td style="color:#888;padding:2px 4px">편입구분</td><td style="padding:2px 4px;font-weight:700;color:${color}">${row.gubun||'-'}</td></tr>
             </table>
-          </div>
-        `, { maxWidth: 260 });
+          </div>`, { maxWidth:260 });
 
         layer.addTo(map);
         pyeonipLayers.push(layer);
 
-        // 해치 패턴: layer add 후 즉시 적용
-        if (s.hatch !== 'none') {
-          setTimeout(() => {
-            if (layer._path) applyHatchToPath(layer._path, s.hatch, baseColor, fillOpacity, sKey + '_' + row.pnu);
-          }, 0);
-        }
-
-        // 라벨 마커
-        if (s.labelContent && s.labelContent !== 'none') {
-          const center = latlngs.reduce((acc, ll) => [acc[0]+ll[0], acc[1]+ll[1]], [0,0]);
-          const cx = center[0] / latlngs.length;
-          const cy = center[1] / latlngs.length;
-          const labelText = getLabelText(row, s.labelContent);
-          if (labelText) {
-            const lbl = L.marker([cx, cy], {
-              icon: L.divIcon({
-                className: '',
-                html: `<div style="font-family:'Noto Sans KR',sans-serif;font-size:${s.labelSize}px;font-weight:700;color:${strokeColor};white-space:nowrap;text-shadow:0 0 3px rgba(255,255,255,0.9),0 0 3px rgba(255,255,255,0.9)">${labelText}</div>`,
-                iconAnchor: [0, 0],
-              }),
-              interactive: false,
+        // 라벨 표시
+        if (labelMode !== 'none') {
+          const cx = latlngs.reduce((s,c) => s+c[0], 0) / latlngs.length;
+          const cy = latlngs.reduce((s,c) => s+c[1], 0) / latlngs.length;
+          let txt = '';
+          if      (labelMode === 'jibun') txt = row.jibun || '';
+          else if (labelMode === 'jimok') txt = row.jimok || '';
+          else if (labelMode === 'area')  txt = (row.pyeonipArea||0).toLocaleString() + '㎡';
+          else if (labelMode === 'all')   txt = `${row.jibun||''} ${row.jimok||''}\n${(row.pyeonipArea||0).toLocaleString()}㎡`;
+          if (txt) {
+            const icon = L.divIcon({
+              className: '',
+              html: `<div style="font-family:'Noto Sans KR',sans-serif;font-size:10px;font-weight:600;color:#1a1a1a;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff;white-space:nowrap;transform:translate(-50%,-50%);text-align:center;line-height:1.4">${txt.replace('\n','<br>')}</div>`,
+              iconSize: [0,0], iconAnchor: [0,0],
             });
-            lbl.addTo(map);
-            pyeonipLabelLayers.push(lbl);
+            const lbl = L.marker([cx, cy], { icon, interactive: false }).addTo(map);
+            labelLayers.push(lbl);
           }
         }
-
-        rendered++;
-      } catch(e) { skipped++; }
+      } catch(e) {}
     });
   });
 
-  console.log(`[pyeonip] 렌더 완료: ${rendered}개 표시 / ${skipped}개 스킵`);
-
   if (allLL.length > 0) {
     try { map.fitBounds(L.latLngBounds(allLL), { padding:[50,50] }); } catch(e) {}
-  } else {
-    console.warn('[pyeonip] 표시할 좌표가 없습니다.');
   }
-
   if (currentTileLabel && map.hasLayer(currentTileLabel)) currentTileLabel.bringToFront();
 }
 
-// 라벨 텍스트 생성
-function getLabelText(row, content) {
-  switch(content) {
-    case 'jibun':       return row.jibun || '';
-    case 'jimok':       return row.jimok || '';
-    case 'jibun_jimok': return [row.jibun, row.jimok].filter(Boolean).join(' ');
-    case 'pyeonip':     return row.pyeonipArea ? row.pyeonipArea.toLocaleString() + '㎡' : '';
-    case 'pnu':         return row.pnu || '';
-    default: return '';
-  }
-}
-
-// SVG path에 해치 패턴 fill 적용
-function applyHatchToPath(pathEl, hatchId, color, opacity, uid) {
-  try {
-    const svgEl = pathEl.closest('svg') || pathEl.ownerSVGElement;
-    if (!svgEl) return;
-    let defs = svgEl.querySelector('defs');
-    if (!defs) { defs = document.createElementNS('http://www.w3.org/2000/svg','defs'); svgEl.prepend(defs); }
-
-    const patId = 'hatch-' + uid.replace(/[^a-zA-Z0-9]/g,'_');
-    if (!defs.querySelector('#' + patId)) {
-      const h = PS_HATCHES.find(h => h.id === hatchId);
-      if (!h || h.id === 'none') return;
-      const sp = h.sp || 8;
-      const pat = document.createElementNS('http://www.w3.org/2000/svg','pattern');
-      pat.setAttribute('id', patId);
-      pat.setAttribute('patternUnits','userSpaceOnUse');
-      pat.setAttribute('width', sp); pat.setAttribute('height', sp);
-      pat.innerHTML = buildHatchInner(h, color, sp);
-      defs.appendChild(pat);
-    }
-    pathEl.style.fill = `url(#${patId})`;
-    pathEl.style.fillOpacity = opacity;
-  } catch(e) {}
-}
-
-function buildHatchInner(h, color, sp) {
-  if (h.dot)    return `<circle cx="${sp/2}" cy="${sp/2}" r="1.2" fill="${color}"/>`;
-  if (h.zigzag) return `<path d="M0,${sp} L${sp/2},0 L${sp},${sp}" stroke="${color}" stroke-width="1" fill="none"/>`;
-  if (h.cross)  return `<line x1="0" y1="0" x2="${sp}" y2="${sp}" stroke="${color}" stroke-width="1"/>
-                         <line x1="${sp}" y1="0" x2="0" y2="${sp}" stroke="${color}" stroke-width="1"/>`;
-  if (h.angle === 0)  return `<line x1="0" y1="${sp/2}" x2="${sp}" y2="${sp/2}" stroke="${color}" stroke-width="1"/>`;
-  if (h.angle === 90) return `<line x1="${sp/2}" y1="0" x2="${sp/2}" y2="${sp}" stroke="${color}" stroke-width="1"/>`;
-  if ((h.angle||0) > 0) return `<line x1="0" y1="0" x2="${sp}" y2="${sp}" stroke="${color}" stroke-width="1"/>`;
-  return `<line x1="${sp}" y1="0" x2="0" y2="${sp}" stroke="${color}" stroke-width="1"/>`;
-}
-
-// 편입 모드용 타일 전환
 function switchTilesP() {
   const v = document.getElementById('map-layer-p').value;
   document.getElementById('map-layer').value = v;
   switchTiles();
 }
 
-// ── 페이지 로드 시 편입 모드 감지 ──
-// window load 이벤트로 지도 초기화 완료 후 실행 보장
 window.addEventListener('load', function() {
   const params = new URLSearchParams(window.location.search);
   if (params.get('mode') === 'pyeonip') {
-    // 지도 타일 로드까지 여유 시간 확보
     setTimeout(initPyeonipMode, 300);
   }
 });
+
 </script>
 </body>
 </html>
