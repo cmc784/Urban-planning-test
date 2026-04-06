@@ -502,36 +502,38 @@ input[type="range"] {
       <div class="panel">
         <div class="panel-title">🗂️ 레이어</div>
 
-        <!-- 색상 모드 토글 -->
-        <div style="display:flex;gap:6px;margin-bottom:12px">
-          <button id="btn-mode-gubun" class="btn btn-main" style="flex:1;font-size:12px;padding:8px" onclick="setColorMode('gubun')">
-            편입유형별
-          </button>
-          <button id="btn-mode-jimok" class="btn btn-outline" style="flex:1;font-size:12px;padding:8px" onclick="setColorMode('jimok')">
-            지목별
-          </button>
-        </div>
-
         <!-- 레이어 목록 -->
         <div id="layer-panel-list">
 
+          <!-- 구역계 (항상 표시) -->
+          <div class="lyr-row" id="lyr-zone">
+            <button class="lyr-eye on" id="lyr-eye-zone" onclick="toggleLayerVis('zone')" title="가시성">👁</button>
+            <div class="lyr-swatch-wrap" onclick="openLayerEdit('zone')">
+              <svg class="lyr-swatch" id="lyr-sw-zone" viewBox="0 0 28 18" xmlns="http://www.w3.org/2000/svg">
+                <rect x="1" y="1" width="26" height="16" rx="2"
+                  fill="#1a5c3a" fill-opacity="0.08"
+                  stroke="#1a5c3a" stroke-width="2" stroke-dasharray="6,2"/>
+              </svg>
+            </div>
+            <span class="lyr-name">구역계</span>
+            <button class="lyr-edit-btn" onclick="openLayerEdit('zone')">✏️</button>
+          </div>
+
+          <!-- 구분선 -->
+          <div style="height:1px;background:var(--border2);margin:6px 0"></div>
+
+          <!-- 편입유형별 / 지목별 전환 버튼 -->
+          <div style="display:flex;gap:4px;margin-bottom:8px">
+            <button id="btn-mode-gubun" class="btn btn-main" style="flex:1;font-size:12px;padding:7px" onclick="setColorMode('gubun')">
+              편입유형별
+            </button>
+            <button id="btn-mode-jimok" class="btn btn-outline" style="flex:1;font-size:12px;padding:7px" onclick="setColorMode('jimok')">
+              지목별
+            </button>
+          </div>
+
           <!-- 편입유형별 레이어 그룹 -->
           <div id="lyr-gubun-group">
-            <!-- 구역계 레이어 -->
-            <div class="lyr-row" id="lyr-zone">
-              <button class="lyr-eye on" id="lyr-eye-zone" onclick="toggleLayerVis('zone')" title="가시성">👁</button>
-              <div class="lyr-swatch-wrap" onclick="openLayerEdit('zone')">
-                <svg class="lyr-swatch" id="lyr-sw-zone" viewBox="0 0 28 18" xmlns="http://www.w3.org/2000/svg">
-                  <rect x="1" y="1" width="26" height="16" rx="2"
-                    fill="#1a5c3a" fill-opacity="0.08"
-                    stroke="#1a5c3a" stroke-width="2" stroke-dasharray="6,2"/>
-                </svg>
-              </div>
-              <span class="lyr-name">구역계</span>
-              <button class="lyr-edit-btn" onclick="openLayerEdit('zone')">✏️</button>
-            </div>
-
-            <!-- 완전편입 레이어 -->
             <div class="lyr-row" id="lyr-full">
               <button class="lyr-eye on" id="lyr-eye-full" onclick="toggleLayerVis('full')" title="가시성">👁</button>
               <div class="lyr-swatch-wrap" onclick="openLayerEdit('full')">
@@ -544,8 +546,6 @@ input[type="range"] {
               <span class="lyr-name">완전편입</span>
               <button class="lyr-edit-btn" onclick="openLayerEdit('full')">✏️</button>
             </div>
-
-            <!-- 부분편입 레이어 -->
             <div class="lyr-row" id="lyr-part">
               <button class="lyr-eye on" id="lyr-eye-part" onclick="toggleLayerVis('part')" title="가시성">👁</button>
               <div class="lyr-swatch-wrap" onclick="openLayerEdit('part')">
@@ -1502,8 +1502,8 @@ function setColorMode(mode) {
     'btn ' + (mode === 'gubun' ? 'btn-main' : 'btn-outline') + ' ';
   document.getElementById('btn-mode-jimok').className =
     'btn ' + (mode === 'jimok' ? 'btn-main' : 'btn-outline') + ' ';
-  document.getElementById('btn-mode-gubun').style.cssText = 'flex:1;font-size:12px;padding:8px';
-  document.getElementById('btn-mode-jimok').style.cssText = 'flex:1;font-size:12px;padding:8px';
+  document.getElementById('btn-mode-gubun').style.cssText = 'flex:1;font-size:12px;padding:7px';
+  document.getElementById('btn-mode-jimok').style.cssText = 'flex:1;font-size:12px;padding:7px';
   document.getElementById('lyr-gubun-group').style.display = mode === 'gubun' ? 'block' : 'none';
   document.getElementById('lyr-jimok-group').style.display = mode === 'jimok' ? 'block' : 'none';
   renderPyeonipStats();
