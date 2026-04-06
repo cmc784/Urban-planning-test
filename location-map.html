@@ -515,51 +515,53 @@ input[type="range"] {
         <!-- 레이어 목록 -->
         <div id="layer-panel-list">
 
-          <!-- 구역계 레이어 -->
-          <div class="lyr-row" id="lyr-zone">
-            <button class="lyr-eye on" id="lyr-eye-zone" onclick="toggleLayerVis('zone')" title="가시성">👁</button>
-            <div class="lyr-swatch-wrap" onclick="openLayerEdit('zone')">
-              <svg class="lyr-swatch" id="lyr-sw-zone" viewBox="0 0 28 18" xmlns="http://www.w3.org/2000/svg">
-                <rect x="1" y="1" width="26" height="16" rx="2"
-                  fill="#1a5c3a" fill-opacity="0.08"
-                  stroke="#1a5c3a" stroke-width="2" stroke-dasharray="6,2"/>
-              </svg>
+          <!-- 편입유형별 레이어 그룹 -->
+          <div id="lyr-gubun-group">
+            <!-- 구역계 레이어 -->
+            <div class="lyr-row" id="lyr-zone">
+              <button class="lyr-eye on" id="lyr-eye-zone" onclick="toggleLayerVis('zone')" title="가시성">👁</button>
+              <div class="lyr-swatch-wrap" onclick="openLayerEdit('zone')">
+                <svg class="lyr-swatch" id="lyr-sw-zone" viewBox="0 0 28 18" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="1" y="1" width="26" height="16" rx="2"
+                    fill="#1a5c3a" fill-opacity="0.08"
+                    stroke="#1a5c3a" stroke-width="2" stroke-dasharray="6,2"/>
+                </svg>
+              </div>
+              <span class="lyr-name">구역계</span>
+              <button class="lyr-edit-btn" onclick="openLayerEdit('zone')">✏️</button>
             </div>
-            <span class="lyr-name">구역계</span>
-            <button class="lyr-edit-btn" onclick="openLayerEdit('zone')">✏️</button>
+
+            <!-- 완전편입 레이어 -->
+            <div class="lyr-row" id="lyr-full">
+              <button class="lyr-eye on" id="lyr-eye-full" onclick="toggleLayerVis('full')" title="가시성">👁</button>
+              <div class="lyr-swatch-wrap" onclick="openLayerEdit('full')">
+                <svg class="lyr-swatch" id="lyr-sw-full" viewBox="0 0 28 18" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="1" y="1" width="26" height="16" rx="2"
+                    fill="#dc2626" fill-opacity="0.35"
+                    stroke="#991b1b" stroke-width="2"/>
+                </svg>
+              </div>
+              <span class="lyr-name">완전편입</span>
+              <button class="lyr-edit-btn" onclick="openLayerEdit('full')">✏️</button>
+            </div>
+
+            <!-- 부분편입 레이어 -->
+            <div class="lyr-row" id="lyr-part">
+              <button class="lyr-eye on" id="lyr-eye-part" onclick="toggleLayerVis('part')" title="가시성">👁</button>
+              <div class="lyr-swatch-wrap" onclick="openLayerEdit('part')">
+                <svg class="lyr-swatch" id="lyr-sw-part" viewBox="0 0 28 18" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="1" y="1" width="26" height="16" rx="2"
+                    fill="#ea580c" fill-opacity="0.30"
+                    stroke="#9a3412" stroke-width="2" stroke-dasharray="4,2"/>
+                </svg>
+              </div>
+              <span class="lyr-name">부분편입</span>
+              <button class="lyr-edit-btn" onclick="openLayerEdit('part')">✏️</button>
+            </div>
           </div>
 
-          <!-- 완전편입 레이어 -->
-          <div class="lyr-row" id="lyr-full">
-            <button class="lyr-eye on" id="lyr-eye-full" onclick="toggleLayerVis('full')" title="가시성">👁</button>
-            <div class="lyr-swatch-wrap" onclick="openLayerEdit('full')">
-              <svg class="lyr-swatch" id="lyr-sw-full" viewBox="0 0 28 18" xmlns="http://www.w3.org/2000/svg">
-                <rect x="1" y="1" width="26" height="16" rx="2"
-                  fill="#dc2626" fill-opacity="0.35"
-                  stroke="#991b1b" stroke-width="2"/>
-              </svg>
-            </div>
-            <span class="lyr-name">완전편입</span>
-            <button class="lyr-edit-btn" onclick="openLayerEdit('full')">✏️</button>
-          </div>
-
-          <!-- 부분편입 레이어 -->
-          <div class="lyr-row" id="lyr-part">
-            <button class="lyr-eye on" id="lyr-eye-part" onclick="toggleLayerVis('part')" title="가시성">👁</button>
-            <div class="lyr-swatch-wrap" onclick="openLayerEdit('part')">
-              <svg class="lyr-swatch" id="lyr-sw-part" viewBox="0 0 28 18" xmlns="http://www.w3.org/2000/svg">
-                <rect x="1" y="1" width="26" height="16" rx="2"
-                  fill="#ea580c" fill-opacity="0.30"
-                  stroke="#9a3412" stroke-width="2" stroke-dasharray="4,2"/>
-              </svg>
-            </div>
-            <span class="lyr-name">부분편입</span>
-            <button class="lyr-edit-btn" onclick="openLayerEdit('part')">✏️</button>
-          </div>
-
-          <!-- 지목별 레이어 (지목별 모드일 때 표시) -->
+          <!-- 지목별 레이어 그룹 -->
           <div id="lyr-jimok-group" style="display:none">
-            <div style="font-size:11px;color:var(--ink3);margin:8px 0 4px;font-weight:700">지목별 색상</div>
             <div id="lyr-jimok-rows"></div>
           </div>
 
@@ -610,10 +612,26 @@ input[type="range"] {
             style="width:54px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;font-size:11.5px;font-family:'DM Mono',monospace;text-align:center;outline:none"
             oninput="lepNumToRange('lep-stroke-w-num','lep-stroke-w',1)">
         </div>
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px">
           <input type="range" id="lep-stroke-w" min="0.5" max="8" step="0.5" value="2" style="flex:1"
             oninput="lepRangeToNum('lep-stroke-w','lep-stroke-w-num',1);lepApply()">
         </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:11.5px;color:var(--ink2)">선 스타일</span>
+        </div>
+        <select id="lep-stroke-dash" onchange="lepApply()"
+          style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:11.5px;font-family:'Noto Sans KR',sans-serif;outline:none;margin-bottom:12px">
+          <option value="none">실선</option>
+          <option value="4,4">점선</option>
+          <option value="8,4">파선</option>
+          <option value="16,4">긴 파선</option>
+          <option value="12,4,2,4">일점쇄선</option>
+          <option value="12,3,2,3,2,3">이점쇄선</option>
+        </select>
+
+        <!-- 해치 패턴 -->
+        <div style="font-size:11px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">해치 패턴</div>
+        <div id="lep-hatch-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:14px"></div>
 
         <div style="display:flex;gap:8px">
           <button onclick="lepApply()" style="flex:1;padding:8px;background:var(--teal);color:white;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif">적용</button>
@@ -625,109 +643,6 @@ input[type="range"] {
       <div class="panel">
         <div class="panel-title">📊 편입 현황</div>
         <div id="pyeonip-stats" style="font-size:12px;display:flex;flex-direction:column;gap:6px"></div>
-      </div>
-
-      <!-- 필지 스타일 설정 (full panel) -->
-      <div class="panel">
-        <div class="panel-title">🎨 필지 스타일 설정</div>
-
-        <!-- 편입구분 탭 -->
-        <div class="style-type-tabs">
-          <button class="style-type-tab active" id="stab-full" onclick="switchStab('full')">완전편입</button>
-          <button class="style-type-tab" id="stab-part" onclick="switchStab('part')">부분편입</button>
-          <button class="style-type-tab" id="stab-zone" onclick="switchStab('zone')">구역계</button>
-        </div>
-
-        <!-- 채우기 -->
-        <div class="sub-label">채우기</div>
-        <div class="row2">
-          <div>
-            <label class="field-label">색상</label>
-            <div class="color-row">
-              <input type="color" class="color-swatch" id="ps-fill-picker" oninput="psSyncHex('fill')">
-              <input type="text" class="color-hex" id="ps-fill-hex" maxlength="7" placeholder="#rrggbb" oninput="psSyncPicker('fill')">
-            </div>
-          </div>
-          <div>
-            <label class="field-label" style="display:flex;align-items:center;justify-content:space-between">
-              <span>투명도</span>
-              <input type="number" class="range-num-input" id="ps-fill-opa-num"
-                min="0" max="100" step="5" value="35"
-                oninput="psNumToRange('ps-fill-opa-num','ps-fill-opa',0.01)">
-            </label>
-            <div class="range-row">
-              <input type="range" id="ps-fill-opa" min="0" max="1" step="0.05" value="0.35"
-                oninput="psRangeToNum('ps-fill-opa','ps-fill-opa-num',100);psApply()">
-            </div>
-          </div>
-        </div>
-
-        <!-- 해치 패턴 -->
-        <div class="sub-label">해치 패턴</div>
-        <div class="hatch-grid" id="ps-hatch-grid"></div>
-
-        <!-- 외곽선 -->
-        <div class="sub-label">외곽선</div>
-        <div class="row2">
-          <div>
-            <label class="field-label">색상</label>
-            <div class="color-row">
-              <input type="color" class="color-swatch" id="ps-stroke-picker" oninput="psSyncHex('stroke')">
-              <input type="text" class="color-hex" id="ps-stroke-hex" maxlength="7" placeholder="#rrggbb" oninput="psSyncPicker('stroke')">
-            </div>
-          </div>
-          <div>
-            <label class="field-label" style="display:flex;align-items:center;justify-content:space-between">
-              <span>두께</span>
-              <input type="number" class="range-num-input" id="ps-stroke-w-num"
-                min="0.5" max="8" step="0.5" value="2"
-                oninput="psNumToRange('ps-stroke-w-num','ps-stroke-w',1)">
-            </label>
-            <div class="range-row">
-              <input type="range" id="ps-stroke-w" min="0.5" max="8" step="0.5" value="2"
-                oninput="psRangeToNum('ps-stroke-w','ps-stroke-w-num',1);psApply()">
-            </div>
-          </div>
-        </div>
-        <label class="field-label" style="margin-top:6px">선 스타일</label>
-        <select id="ps-stroke-dash" onchange="psApply()" style="font-size:11px;padding:6px 8px">
-          <option value="none">실선</option>
-          <option value="4,4">점선</option>
-          <option value="8,4">파선</option>
-          <option value="16,4">긴 파선</option>
-          <option value="12,4,2,4">일점쇄선</option>
-          <option value="12,3,2,3,2,3">이점쇄선</option>
-        </select>
-
-        <!-- 라벨 -->
-        <div class="sub-label">라벨</div>
-        <div class="row2">
-          <div>
-            <label class="field-label">표시 내용</label>
-            <select id="ps-label-content" onchange="psApply()" style="font-size:11px;padding:6px 8px">
-              <option value="none">표시 안함</option>
-              <option value="jibun" selected>지번</option>
-              <option value="jimok">지목</option>
-              <option value="jibun_jimok">지번+지목</option>
-              <option value="pyeonip">편입면적</option>
-              <option value="pnu">PNU</option>
-            </select>
-          </div>
-          <div>
-            <label class="field-label" style="display:flex;align-items:center;justify-content:space-between">
-              <span>크기</span>
-              <input type="number" class="range-num-input" id="ps-label-sz-num"
-                min="7" max="18" step="1" value="11"
-                oninput="psNumToRange('ps-label-sz-num','ps-label-sz',1)">
-            </label>
-            <div class="range-row">
-              <input type="range" id="ps-label-sz" min="7" max="18" step="1" value="11"
-                oninput="psRangeToNum('ps-label-sz','ps-label-sz-num',1);psApply()">
-            </div>
-          </div>
-        </div>
-
-        <button class="style-reset-btn" onclick="psReset()">↺ 기본값으로 초기화</button>
       </div>
 
       <!-- 지도 설정 -->
@@ -1512,38 +1427,23 @@ function initPyeonipMode() {
   document.getElementById('topbar-badge').textContent      = '편입 필지 시각화';
   document.getElementById('map-empty').classList.add('hidden');
 
-  // 스타일 패널 초기화
-  psInitHatchGrid();
-  psLoadUI('full');
+  // 레이어 스와치 초기화
+  updateAllSwatches();
+  // 모드 초기 표시 (편입유형별 기본)
+  document.getElementById('lyr-gubun-group').style.display = 'block';
+  document.getElementById('lyr-jimok-group').style.display = 'none';
 
   // 통계 렌더
   renderPyeonipStats();
-  // 지목 범례 + 레이어 행 생성
-  buildJimokLegend();
+  // 지목 레이어 행 생성 (지목별 모드 전환 시 바로 보이도록)
   buildJimokLayerRows();
-  // 레이어 스와치 초기화
-  updateAllSwatches();
   // 지도에 표시
   renderPyeonipLayers();
 }
 
 // ── 스타일 패널 함수들 ───────────────────────────────
 
-function psInitHatchGrid() {
-  const grid = document.getElementById('ps-hatch-grid');
-  if (!grid) return;
-  const cur = psStyles[psCurrentTab].hatch;
-  grid.innerHTML = PS_HATCHES.map(h => `
-    <button class="hatch-opt${h.id === cur ? ' sel' : ''}" id="ho-${h.id}" onclick="psSelectHatch('${h.id}')">
-      <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-        <rect width="32" height="32" fill="#f0ede6"/>
-        ${h.id === 'none'
-          ? '<text x="16" y="18" text-anchor="middle" font-size="8" fill="#bbb">없음</text>'
-          : psMiniHatch(h, '#666', '#e0ddd5')}
-      </svg>
-      <span class="hatch-opt-lbl">${h.lbl}</span>
-    </button>`).join('');
-}
+function psInitHatchGrid() {} // 제거됨 - 호환성 유지용 빈 함수
 
 function psMiniHatch(h, color, bg) {
   const sz = 32, sp = h.sp || 8;
@@ -1577,109 +1477,23 @@ function psMiniHatch(h, color, bg) {
   return o;
 }
 
-function psSelectHatch(id) {
-  psStyles[psCurrentTab].hatch = id;
-  document.querySelectorAll('.hatch-opt').forEach(b => b.classList.remove('sel'));
-  const btn = document.getElementById('ho-' + id);
-  if (btn) btn.classList.add('sel');
-  psUpdatePreview();
-  renderPyeonipLayers();
-}
-
-function switchStab(tab) {
-  psSaveUI();
-  psCurrentTab = tab;
-  document.querySelectorAll('.style-type-tab').forEach(b => b.classList.remove('active'));
-  const btn = document.getElementById('stab-' + tab);
-  if (btn) btn.classList.add('active');
-  psLoadUI(tab);
-  psInitHatchGrid();
-}
-
-function psLoadUI(tab) {
-  const s = psStyles[tab];
-  document.getElementById('ps-fill-picker').value   = s.fillColor;
-  document.getElementById('ps-fill-hex').value      = s.fillColor;
-  document.getElementById('ps-fill-opa').value      = s.fillOpacity;
-  document.getElementById('ps-fill-opa-num').value  = Math.round(s.fillOpacity * 100);
-  document.getElementById('ps-stroke-picker').value = s.strokeColor;
-  document.getElementById('ps-stroke-hex').value    = s.strokeColor;
-  document.getElementById('ps-stroke-w').value      = s.strokeWidth;
-  document.getElementById('ps-stroke-w-num').value  = s.strokeWidth;
-  const dashSel = document.getElementById('ps-stroke-dash');
-  dashSel.value = s.strokeDash;
-  if (dashSel.value !== s.strokeDash) dashSel.value = 'none';
-  document.getElementById('ps-label-content').value = s.labelContent;
-  document.getElementById('ps-label-sz').value      = s.labelSize;
-  document.getElementById('ps-label-sz-num').value  = s.labelSize;
-  psUpdatePreview();
-}
-
-function psSaveUI() {
-  const s = psStyles[psCurrentTab];
-  const fhex = document.getElementById('ps-fill-hex').value;
-  const shex = document.getElementById('ps-stroke-hex').value;
-  if (/^#[0-9a-fA-F]{6}$/.test(fhex)) s.fillColor = fhex;
-  if (/^#[0-9a-fA-F]{6}$/.test(shex)) s.strokeColor = shex;
-  s.fillOpacity  = parseFloat(document.getElementById('ps-fill-opa').value);
-  s.strokeWidth  = parseFloat(document.getElementById('ps-stroke-w').value);
-  s.strokeDash   = document.getElementById('ps-stroke-dash').value;
-  s.labelContent = document.getElementById('ps-label-content').value;
-  s.labelSize    = parseInt(document.getElementById('ps-label-sz').value);
-}
-
-function psSyncHex(which) {
-  const v = document.getElementById('ps-' + which + '-picker').value;
-  document.getElementById('ps-' + which + '-hex').value = v;
-  psSaveUI(); psUpdatePreview(); psApply();
-}
-function psSyncPicker(which) {
-  const v = document.getElementById('ps-' + which + '-hex').value;
-  if (/^#[0-9a-fA-F]{6}$/.test(v)) {
-    document.getElementById('ps-' + which + '-picker').value = v;
-    psSaveUI(); psUpdatePreview(); psApply();
-  }
-}
-function psRangeLabel(inputId, labelId, unit, mul) {
-  // 구버전 호환 (현재 사용 안 함, 빈 함수로 유지)
-}
-
-// 슬라이더 → 숫자 입력란 동기화
-function psRangeToNum(rangeId, numId, mul) {
-  const v = parseFloat(document.getElementById(rangeId).value);
-  const numEl = document.getElementById(numId);
-  if (numEl) numEl.value = Math.round(v * mul * 10) / 10;
-}
-
-// 숫자 입력란 → 슬라이더 동기화
-function psNumToRange(numId, rangeId, div) {
-  const numEl   = document.getElementById(numId);
-  const rangeEl = document.getElementById(rangeId);
-  if (!numEl || !rangeEl) return;
-  let v = parseFloat(numEl.value);
-  if (isNaN(v)) return;
-  const rMin = parseFloat(rangeEl.min);
-  const rMax = parseFloat(rangeEl.max);
-  // 숫자 입력란은 사용자 단위(%), 슬라이더는 raw 단위(0~1 등)
-  const raw = v * div;
-  rangeEl.value = Math.min(Math.max(raw, rMin), rMax);
-  psApply();
-}
-function psApply() {
-  psSaveUI();
-  psUpdatePreview();
-  renderPyeonipLayers();
-}
+function switchStab(tab) {} // 제거됨 - 호환성 유지용 빈 함수
+function psLoadUI(tab) {}   // 제거됨 - 호환성 유지용 빈 함수
+function psSaveUI() {}      // 제거됨 - 호환성 유지용 빈 함수
+function psSyncHex(w) {}    // 제거됨
+function psSyncPicker(w) {} // 제거됨
+function psRangeLabel() {}  // 제거됨
+function psRangeToNum() {}  // 제거됨
+function psNumToRange() {}  // 제거됨
+function psApply() { renderPyeonipLayers(); } // 단순화
 function psReset() {
   psStyles = JSON.parse(JSON.stringify(PS_DEFAULTS));
-  psLoadUI(psCurrentTab);
-  psInitHatchGrid();
+  updateAllSwatches();
   renderPyeonipLayers();
   toast('↺ 기본 스타일로 초기화되었습니다', 'success');
 }
-
-// 미리보기 제거됨 — 함수는 호환성 유지를 위해 빈 함수로 유지
-function psUpdatePreview() {}
+function psSelectHatch() {} // 제거됨
+function psUpdatePreview() {} // 제거됨
 
 // 색상 모드 전환
 function setColorMode(mode) {
@@ -1690,6 +1504,7 @@ function setColorMode(mode) {
     'btn ' + (mode === 'jimok' ? 'btn-main' : 'btn-outline') + ' ';
   document.getElementById('btn-mode-gubun').style.cssText = 'flex:1;font-size:12px;padding:8px';
   document.getElementById('btn-mode-jimok').style.cssText = 'flex:1;font-size:12px;padding:8px';
+  document.getElementById('lyr-gubun-group').style.display = mode === 'gubun' ? 'block' : 'none';
   document.getElementById('lyr-jimok-group').style.display = mode === 'jimok' ? 'block' : 'none';
   renderPyeonipStats();
   renderPyeonipLayers();
@@ -1797,9 +1612,13 @@ function openLayerEdit(key) {
   document.getElementById('lep-stroke-hex').value     = s.strokeColor;
   document.getElementById('lep-stroke-w').value       = s.strokeWidth;
   document.getElementById('lep-stroke-w-num').value   = s.strokeWidth;
+  // 선 스타일
+  const dashSel = document.getElementById('lep-stroke-dash');
+  dashSel.value = s.strokeDash;
+  if (dashSel.value !== s.strokeDash) dashSel.value = 'none';
+  // 해치 패턴 그리드
+  lepInitHatchGrid(s.hatch);
   document.getElementById('layer-edit-panel').style.display = 'block';
-  // 스타일 탭도 동기화
-  switchStab(key);
 }
 
 function closeLayerEdit() {
@@ -1845,8 +1664,39 @@ function lepApply() {
   if (/^#[0-9a-fA-F]{6}$/.test(shex)) s.strokeColor = shex;
   s.fillOpacity = parseFloat(document.getElementById('lep-fill-opa').value);
   s.strokeWidth = parseFloat(document.getElementById('lep-stroke-w').value);
-  // 기존 스타일 패널도 동기화
-  psLoadUI(lepCurrentKey);
+  s.strokeDash  = document.getElementById('lep-stroke-dash').value;
+  // hatch는 lepSelectHatch에서 직접 저장
+  updateLayerSwatch(lepCurrentKey);
+  renderPyeonipLayers();
+}
+
+// 해치 그리드 초기화 (레이어 편집 패널용)
+function lepInitHatchGrid(currentHatch) {
+  const grid = document.getElementById('lep-hatch-grid');
+  if (!grid) return;
+  grid.innerHTML = PS_HATCHES.map(h => `
+    <button class="hatch-opt${h.id === currentHatch ? ' sel' : ''}" id="lh-${h.id}"
+      onclick="lepSelectHatch('${h.id}')"
+      style="border:1.5px solid var(--border);border-radius:5px;padding:3px;cursor:pointer;
+             display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--white)">
+      <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" style="width:28px;height:28px;display:block">
+        <rect width="32" height="32" fill="#f0ede6"/>
+        ${h.id === 'none'
+          ? '<text x="16" y="18" text-anchor="middle" font-size="8" fill="#bbb">없음</text>'
+          : psMiniHatch(h, '#666', '#e0ddd5')}
+      </svg>
+      <span style="font-size:8px;font-family:\'DM Mono\',monospace;color:var(--ink3);text-align:center">${h.lbl}</span>
+    </button>`).join('');
+}
+
+function lepSelectHatch(id) {
+  if (!lepCurrentKey) return;
+  psStyles[lepCurrentKey].hatch = id;
+  document.querySelectorAll('#lep-hatch-grid .hatch-opt').forEach(b => {
+    b.classList.toggle('sel', b.id === 'lh-' + id);
+    b.style.borderColor = b.id === 'lh-' + id ? 'var(--teal)' : 'var(--border)';
+    b.style.background  = b.id === 'lh-' + id ? 'var(--teal-light)' : 'var(--white)';
+  });
   updateLayerSwatch(lepCurrentKey);
   renderPyeonipLayers();
 }
@@ -1904,7 +1754,6 @@ function renderPyeonipStats() {
       .sort((a, b) => b[1].area - a[1].area)
       .map(([j, v]) => {
         const c = jimokUserColors[j] || getJimokColor(j);
-        const vis = jimokLayerVis[j] !== false;
         return `
         <div style="display:flex;align-items:center;gap:7px;padding:5px 2px;border-bottom:1px solid var(--border2)">
           <div style="width:10px;height:10px;border-radius:2px;background:${c};flex-shrink:0;border:1px solid rgba(0,0,0,0.1)"></div>
@@ -1912,7 +1761,7 @@ function renderPyeonipStats() {
           <div style="text-align:right">
             <div style="font-size:11.5px;font-family:'DM Mono',monospace;color:var(--ink2)">${v.cnt}필지</div>
             <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--ink3)">${Math.round(v.area).toLocaleString()} ㎡</div>
-            <div style="font-size:10.5px;color:var(--ink3)">완전 ${v.full} / 부분 ${v.part}</div>
+            <div style="font-size:11.5px;color:var(--ink3)">완전 ${v.full} / 부분 ${v.part}</div>
           </div>
         </div>`;
       }).join('');
