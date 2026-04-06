@@ -425,7 +425,6 @@ input[type="range"] {
 .range-num-input:focus { border-color:var(--teal); }
 
 .style-reset-btn {
-  font-size:11.5px; padding:4px 8px; border-radius:5px;
   border:1px solid var(--border); background:var(--white);
   cursor:pointer; color:var(--ink3); font-family:'Noto Sans KR',sans-serif;
   transition:all .15s; margin-top:6px; width:100%;
@@ -442,6 +441,35 @@ input[type="range"] {
   content:''; width:2px; height:10px;
   background:var(--teal); border-radius:1px;
 }
+
+/* ── 레이어 패널 ── */
+.lyr-row {
+  display:flex; align-items:center; gap:7px;
+  padding:6px 4px; border-bottom:1px solid var(--border2);
+  border-radius:6px; transition:background .12s;
+}
+.lyr-row:hover { background:var(--bg); }
+.lyr-eye {
+  background:none; border:none; cursor:pointer;
+  font-size:14px; padding:0 2px; opacity:1;
+  transition:opacity .15s; flex-shrink:0;
+}
+.lyr-eye.off { opacity:0.25; }
+.lyr-swatch-wrap { cursor:pointer; flex-shrink:0; }
+.lyr-swatch { width:36px; height:22px; display:block; overflow:visible; }
+.lyr-name { flex:1; font-size:12px; font-weight:600; color:var(--ink2); }
+.lyr-edit-btn {
+  background:none; border:1px solid var(--border); border-radius:5px;
+  padding:2px 6px; font-size:11px; cursor:pointer; color:var(--ink3);
+  transition:all .12s; flex-shrink:0;
+}
+.lyr-edit-btn:hover { background:var(--teal); color:white; border-color:var(--teal); }
+.lyr-jimok-row {
+  display:flex; align-items:center; gap:7px;
+  padding:4px 4px; border-bottom:1px solid var(--border2);
+  border-radius:4px; transition:background .12s;
+}
+.lyr-jimok-row:hover { background:var(--bg); }
 </style>
 </head>
 <body>
@@ -470,12 +498,11 @@ input[type="range"] {
     <!-- ── 편입 모드 패널 (pyeonip mode) ── -->
     <div id="pyeonip-sidebar" style="display:none">
 
-      <!-- 색상 모드 토글 -->
+      <!-- GIS 스타일 레이어 패널 -->
       <div class="panel">
-        <div class="panel-title">🗺️ 편입 필지 표시</div>
-        <div style="font-size:11px;color:var(--ink3);margin-bottom:10px">
-          편입산출물을 지도 위에 표시합니다.<br>아래 버튼으로 색상 구분 방식을 전환하세요.
-        </div>
+        <div class="panel-title">🗂️ 레이어</div>
+
+        <!-- 색상 모드 토글 -->
         <div style="display:flex;gap:6px;margin-bottom:12px">
           <button id="btn-mode-gubun" class="btn btn-main" style="flex:1;font-size:12px;padding:8px" onclick="setColorMode('gubun')">
             편입유형별
@@ -485,17 +512,112 @@ input[type="range"] {
           </button>
         </div>
 
-        <!-- 범례 -->
-        <div id="legend-gubun">
-          <div style="font-size:11px;font-weight:700;color:var(--ink3);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">편입유형 범례</div>
-          <div style="display:flex;flex-direction:column;gap:4px;font-size:12px">
-            <div style="display:flex;align-items:center;gap:8px"><div style="width:12px;height:12px;border-radius:2px;background:#1a5c3a;flex-shrink:0"></div>완전편입</div>
-            <div style="display:flex;align-items:center;gap:8px"><div style="width:12px;height:12px;border-radius:2px;background:#b45309;flex-shrink:0"></div>부분편입</div>
+        <!-- 레이어 목록 -->
+        <div id="layer-panel-list">
+
+          <!-- 구역계 레이어 -->
+          <div class="lyr-row" id="lyr-zone">
+            <button class="lyr-eye on" id="lyr-eye-zone" onclick="toggleLayerVis('zone')" title="가시성">👁</button>
+            <div class="lyr-swatch-wrap" onclick="openLayerEdit('zone')">
+              <svg class="lyr-swatch" id="lyr-sw-zone" viewBox="0 0 28 18" xmlns="http://www.w3.org/2000/svg">
+                <rect x="1" y="1" width="26" height="16" rx="2"
+                  fill="#1a5c3a" fill-opacity="0.08"
+                  stroke="#1a5c3a" stroke-width="2" stroke-dasharray="6,2"/>
+              </svg>
+            </div>
+            <span class="lyr-name">구역계</span>
+            <button class="lyr-edit-btn" onclick="openLayerEdit('zone')">✏️</button>
           </div>
+
+          <!-- 완전편입 레이어 -->
+          <div class="lyr-row" id="lyr-full">
+            <button class="lyr-eye on" id="lyr-eye-full" onclick="toggleLayerVis('full')" title="가시성">👁</button>
+            <div class="lyr-swatch-wrap" onclick="openLayerEdit('full')">
+              <svg class="lyr-swatch" id="lyr-sw-full" viewBox="0 0 28 18" xmlns="http://www.w3.org/2000/svg">
+                <rect x="1" y="1" width="26" height="16" rx="2"
+                  fill="#dc2626" fill-opacity="0.35"
+                  stroke="#991b1b" stroke-width="2"/>
+              </svg>
+            </div>
+            <span class="lyr-name">완전편입</span>
+            <button class="lyr-edit-btn" onclick="openLayerEdit('full')">✏️</button>
+          </div>
+
+          <!-- 부분편입 레이어 -->
+          <div class="lyr-row" id="lyr-part">
+            <button class="lyr-eye on" id="lyr-eye-part" onclick="toggleLayerVis('part')" title="가시성">👁</button>
+            <div class="lyr-swatch-wrap" onclick="openLayerEdit('part')">
+              <svg class="lyr-swatch" id="lyr-sw-part" viewBox="0 0 28 18" xmlns="http://www.w3.org/2000/svg">
+                <rect x="1" y="1" width="26" height="16" rx="2"
+                  fill="#ea580c" fill-opacity="0.30"
+                  stroke="#9a3412" stroke-width="2" stroke-dasharray="4,2"/>
+              </svg>
+            </div>
+            <span class="lyr-name">부분편입</span>
+            <button class="lyr-edit-btn" onclick="openLayerEdit('part')">✏️</button>
+          </div>
+
+          <!-- 지목별 레이어 (지목별 모드일 때 표시) -->
+          <div id="lyr-jimok-group" style="display:none">
+            <div style="font-size:11px;color:var(--ink3);margin:8px 0 4px;font-weight:700">지목별 색상</div>
+            <div id="lyr-jimok-rows"></div>
+          </div>
+
         </div>
-        <div id="legend-jimok" style="display:none">
-          <div style="font-size:11px;font-weight:700;color:var(--ink3);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">지목 범례</div>
-          <div id="jimok-legend-items" style="display:flex;flex-direction:column;gap:4px;font-size:12px"></div>
+      </div>
+
+      <!-- 레이어 편집 플로팅 패널 -->
+      <div id="layer-edit-panel" style="display:none;position:fixed;top:50%;left:260px;transform:translateY(-50%);
+        background:var(--white);border:1px solid var(--border);border-radius:12px;
+        box-shadow:0 8px 32px rgba(0,0,0,0.18);padding:18px;width:240px;z-index:500">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div style="font-size:13px;font-weight:800;color:var(--ink)" id="lep-title">레이어 편집</div>
+          <button onclick="closeLayerEdit()" style="background:none;border:none;font-size:16px;cursor:pointer;color:var(--ink3);padding:0 2px">✕</button>
+        </div>
+
+        <!-- 채우기 -->
+        <div style="font-size:11px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">채우기</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <input type="color" id="lep-fill-picker" style="width:36px;height:28px;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:2px"
+            oninput="lepSyncFillHex()">
+          <input type="text" id="lep-fill-hex" maxlength="7" placeholder="#rrggbb"
+            style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11.5px;font-family:'DM Mono',monospace;outline:none"
+            oninput="lepSyncFillPicker()">
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:11.5px;color:var(--ink2)">투명도</span>
+          <input type="number" id="lep-fill-opa-num" min="0" max="100" step="5" value="35"
+            style="width:54px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;font-size:11.5px;font-family:'DM Mono',monospace;text-align:center;outline:none"
+            oninput="lepNumToRange('lep-fill-opa-num','lep-fill-opa',0.01)">
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px">
+          <input type="range" id="lep-fill-opa" min="0" max="1" step="0.05" value="0.35" style="flex:1"
+            oninput="lepRangeToNum('lep-fill-opa','lep-fill-opa-num',100);lepApply()">
+        </div>
+
+        <!-- 외곽선 -->
+        <div style="font-size:11px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">외곽선</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <input type="color" id="lep-stroke-picker" style="width:36px;height:28px;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:2px"
+            oninput="lepSyncStrokeHex()">
+          <input type="text" id="lep-stroke-hex" maxlength="7" placeholder="#rrggbb"
+            style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11.5px;font-family:'DM Mono',monospace;outline:none"
+            oninput="lepSyncStrokePicker()">
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:11.5px;color:var(--ink2)">두께</span>
+          <input type="number" id="lep-stroke-w-num" min="0.5" max="8" step="0.5" value="2"
+            style="width:54px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;font-size:11.5px;font-family:'DM Mono',monospace;text-align:center;outline:none"
+            oninput="lepNumToRange('lep-stroke-w-num','lep-stroke-w',1)">
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:14px">
+          <input type="range" id="lep-stroke-w" min="0.5" max="8" step="0.5" value="2" style="flex:1"
+            oninput="lepRangeToNum('lep-stroke-w','lep-stroke-w-num',1);lepApply()">
+        </div>
+
+        <div style="display:flex;gap:8px">
+          <button onclick="lepApply()" style="flex:1;padding:8px;background:var(--teal);color:white;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif">적용</button>
+          <button onclick="closeLayerEdit()" style="padding:8px 12px;background:none;border:1px solid var(--border);border-radius:7px;font-size:12px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;color:var(--ink2)">닫기</button>
         </div>
       </div>
 
@@ -1396,8 +1518,11 @@ function initPyeonipMode() {
 
   // 통계 렌더
   renderPyeonipStats();
-  // 지목 범례 생성
+  // 지목 범례 + 레이어 행 생성
   buildJimokLegend();
+  buildJimokLayerRows();
+  // 레이어 스와치 초기화
+  updateAllSwatches();
   // 지도에 표시
   renderPyeonipLayers();
 }
@@ -1565,20 +1690,141 @@ function setColorMode(mode) {
     'btn ' + (mode === 'jimok' ? 'btn-main' : 'btn-outline') + ' ';
   document.getElementById('btn-mode-gubun').style.cssText = 'flex:1;font-size:12px;padding:8px';
   document.getElementById('btn-mode-jimok').style.cssText = 'flex:1;font-size:12px;padding:8px';
-  document.getElementById('legend-gubun').style.display = mode === 'gubun' ? 'block' : 'none';
-  document.getElementById('legend-jimok').style.display = mode === 'jimok' ? 'block' : 'none';
+  document.getElementById('lyr-jimok-group').style.display = mode === 'jimok' ? 'block' : 'none';
   renderPyeonipLayers();
 }
 
-// 지목 범례 생성
+// ── 레이어 가시성 ────────────────────────────────────
+const layerVis = { full:true, part:true, zone:true };
+
+function toggleLayerVis(key) {
+  layerVis[key] = !layerVis[key];
+  const btn = document.getElementById('lyr-eye-' + key);
+  if (btn) btn.classList.toggle('off', !layerVis[key]);
+  renderPyeonipLayers();
+}
+
+// ── 레이어 스와치 SVG 업데이트 ────────────────────────
+function updateLayerSwatch(key) {
+  const svg = document.getElementById('lyr-sw-' + key);
+  if (!svg) return;
+  const s = psStyles[key];
+  const dash = scaleDash(s.strokeDash, s.strokeWidth);
+  const dashAttr = dash ? `stroke-dasharray="${dash}"` : '';
+  svg.innerHTML = `<rect x="1" y="1" width="26" height="16" rx="2"
+    fill="${s.fillColor}" fill-opacity="${s.fillOpacity}"
+    stroke="${s.strokeColor}" stroke-width="${Math.min(s.strokeWidth,3)}" ${dashAttr}/>`;
+}
+
+function updateAllSwatches() {
+  ['full','part','zone'].forEach(updateLayerSwatch);
+}
+
+// ── 지목별 레이어 행 생성 ─────────────────────────────
+function buildJimokLayerRows() {
+  const jimokSet = [...new Set(pyeonipData.map(r => r.jimok).filter(Boolean))].sort();
+  const el = document.getElementById('lyr-jimok-rows');
+  if (!el) return;
+  el.innerHTML = jimokSet.map(j => {
+    const c = jimokUserColors[j] || getJimokColor(j);
+    return `
+    <div class="lyr-jimok-row" id="lyr-jimok-${j}">
+      <div style="position:relative;flex-shrink:0">
+        <div style="width:18px;height:18px;border-radius:3px;background:${c};border:1.5px solid rgba(0,0,0,0.15);cursor:pointer"
+          onclick="document.getElementById('jcp-${j}').click()"></div>
+        <input type="color" id="jcp-${j}" value="${c}"
+          style="position:absolute;opacity:0;width:0;height:0;pointer-events:none"
+          oninput="setJimokColor('${j}',this.value)">
+      </div>
+      <span style="flex:1;font-size:12px;font-weight:600;color:var(--ink2)">${j}</span>
+    </div>`;
+  }).join('');
+}
+
+// 지목 색상 사용자 커스텀
+const jimokUserColors = {};
+function setJimokColor(jimok, color) {
+  jimokUserColors[jimok] = color;
+  const row = document.getElementById('lyr-jimok-' + jimok);
+  if (row) row.querySelector('div[style]').style.background = color;
+  renderPyeonipLayers();
+}
+
+// ── 레이어 편집 플로팅 패널 ──────────────────────────
+let lepCurrentKey = null;
+
+function openLayerEdit(key) {
+  lepCurrentKey = key;
+  const s = psStyles[key];
+  const names = { full:'완전편입', part:'부분편입', zone:'구역계' };
+  document.getElementById('lep-title').textContent = '✏️ ' + names[key];
+  document.getElementById('lep-fill-picker').value    = s.fillColor;
+  document.getElementById('lep-fill-hex').value       = s.fillColor;
+  document.getElementById('lep-fill-opa').value       = s.fillOpacity;
+  document.getElementById('lep-fill-opa-num').value   = Math.round(s.fillOpacity * 100);
+  document.getElementById('lep-stroke-picker').value  = s.strokeColor;
+  document.getElementById('lep-stroke-hex').value     = s.strokeColor;
+  document.getElementById('lep-stroke-w').value       = s.strokeWidth;
+  document.getElementById('lep-stroke-w-num').value   = s.strokeWidth;
+  document.getElementById('layer-edit-panel').style.display = 'block';
+  // 스타일 탭도 동기화
+  switchStab(key);
+}
+
+function closeLayerEdit() {
+  document.getElementById('layer-edit-panel').style.display = 'none';
+  lepCurrentKey = null;
+}
+
+function lepSyncFillHex() {
+  document.getElementById('lep-fill-hex').value = document.getElementById('lep-fill-picker').value;
+  lepApply();
+}
+function lepSyncFillPicker() {
+  const v = document.getElementById('lep-fill-hex').value;
+  if (/^#[0-9a-fA-F]{6}$/.test(v)) { document.getElementById('lep-fill-picker').value = v; lepApply(); }
+}
+function lepSyncStrokeHex() {
+  document.getElementById('lep-stroke-hex').value = document.getElementById('lep-stroke-picker').value;
+  lepApply();
+}
+function lepSyncStrokePicker() {
+  const v = document.getElementById('lep-stroke-hex').value;
+  if (/^#[0-9a-fA-F]{6}$/.test(v)) { document.getElementById('lep-stroke-picker').value = v; lepApply(); }
+}
+function lepNumToRange(numId, rangeId, div) {
+  const v = parseFloat(document.getElementById(numId).value);
+  const rangeEl = document.getElementById(rangeId);
+  if (isNaN(v) || !rangeEl) return;
+  rangeEl.value = Math.min(Math.max(v * div, parseFloat(rangeEl.min)), parseFloat(rangeEl.max));
+  lepApply();
+}
+function lepRangeToNum(rangeId, numId, mul) {
+  const v = parseFloat(document.getElementById(rangeId).value);
+  const numEl = document.getElementById(numId);
+  if (numEl) numEl.value = Math.round(v * mul * 10) / 10;
+}
+
+function lepApply() {
+  if (!lepCurrentKey) return;
+  const s = psStyles[lepCurrentKey];
+  const fhex = document.getElementById('lep-fill-hex').value;
+  const shex = document.getElementById('lep-stroke-hex').value;
+  if (/^#[0-9a-fA-F]{6}$/.test(fhex)) s.fillColor   = fhex;
+  if (/^#[0-9a-fA-F]{6}$/.test(shex)) s.strokeColor = shex;
+  s.fillOpacity = parseFloat(document.getElementById('lep-fill-opa').value);
+  s.strokeWidth = parseFloat(document.getElementById('lep-stroke-w').value);
+  // 기존 스타일 패널도 동기화
+  psLoadUI(lepCurrentKey);
+  updateLayerSwatch(lepCurrentKey);
+  renderPyeonipLayers();
+}
+
+// 지목 범례 생성 (통계 패널용 - 기존 유지)
 function buildJimokLegend() {
   const jimokSet = [...new Set(pyeonipData.map(r => r.jimok).filter(Boolean))].sort();
-  const el = document.getElementById('jimok-legend-items');
-  el.innerHTML = jimokSet.map(j => `
-    <div style="display:flex;align-items:center;gap:8px">
-      <div style="width:12px;height:12px;border-radius:2px;background:${getJimokColor(j)};flex-shrink:0"></div>
-      ${j}
-    </div>`).join('');
+  // lyr-jimok-rows가 있으면 레이어 행도 같이 구성
+  buildJimokLayerRows();
 }
 
 // 통계 렌더
@@ -1644,10 +1890,15 @@ function renderPyeonipLayers() {
 
     // 편입구분에 따른 스타일 선택
     const sKey = row.gubun === '완전편입' ? 'full' : 'part';
+
+    // 가시성 체크
+    if (!layerVis[sKey]) { skipped++; return; }
+
     const s = psStyles[sKey];
 
-    // 색상 모드: gubun=스타일설정 색상 / jimok=지목색상
-    const baseColor = colorMode === 'gubun' ? s.fillColor : getJimokColor(row.jimok);
+    // 색상 모드: gubun=스타일설정 색상 / jimok=지목색상(커스텀 우선)
+    const baseColor = colorMode === 'gubun' ? s.fillColor
+      : (jimokUserColors[row.jimok] || getJimokColor(row.jimok));
     const strokeColor = colorMode === 'gubun' ? s.strokeColor : baseColor;
 
     row.rings.forEach(ring => {
@@ -1740,7 +1991,7 @@ function renderPyeonipLayers() {
   console.log(`[pyeonip] 렌더 완료: ${rendered}개 표시 / ${skipped}개 스킵`);
 
   // ── 구역계 렌더링 (편입 필지와 동일한 좌표계/변환 방식) ──
-  if (zoneData && zoneData.length > 0) {
+  if (zoneData && zoneData.length > 0 && layerVis['zone']) {
     const sz = psStyles['zone'];
     const dashArray = scaleDash(sz.strokeDash, sz.strokeWidth);
     let zoneRendered = 0;
