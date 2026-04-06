@@ -152,7 +152,7 @@ body {
 }
 .file-chip.show { display:block; }
 .file-chip .fn { font-family:'DM Mono',monospace; font-weight:600; word-break:break-all; }
-.file-chip .fm { color:var(--ink3); margin-top:2px; font-size:10px; }
+.file-chip .fm { color:var(--ink3); margin-top:2px; font-size:11.5px; }
 
 /* 폼 요소 */
 .field-label {
@@ -175,7 +175,7 @@ input[type="range"] {
   width:100%; accent-color:var(--teal); cursor:pointer; margin-top:2px;
 }
 .range-val {
-  font-size:10px; font-family:'DM Mono',monospace;
+  font-size:11.5px; font-family:'DM Mono',monospace;
   color:var(--ink3); float:right; margin-top:-14px;
 }
 
@@ -210,14 +210,14 @@ input[type="range"] {
 .layer-item.selected { border-color:rgba(15,118,110,.25); background:var(--teal-light); }
 .layer-swatch { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
 .layer-name { flex:1; font-family:'DM Mono',monospace; color:var(--ink2); }
-.layer-cnt { font-size:10px; color:var(--ink3); }
+.layer-cnt { font-size:11.5px; color:var(--ink3); }
 
 /* 진행바 */
 .prog-wrap { display:none; margin-bottom:8px; }
 .prog-wrap.show { display:block; }
 .prog-bg { height:3px; background:var(--border2); border-radius:2px; overflow:hidden; }
 .prog-fill { height:100%; background:var(--teal); border-radius:2px; width:0%; transition:width .4s; }
-.prog-label { font-size:10px; color:var(--ink3); margin-top:4px; font-family:'DM Mono',monospace; }
+.prog-label { font-size:11.5px; color:var(--ink3); margin-top:4px; font-family:'DM Mono',monospace; }
 
 /* 버튼 */
 .btn {
@@ -292,7 +292,7 @@ input[type="range"] {
   border-color:var(--ink3) !important;
   color:var(--ink) !important;
   font-family:'DM Mono',monospace !important;
-  font-size:10px !important;
+  font-size:11.5px !important;
   border-radius:0 0 3px 3px !important;
 }
 .leaflet-control-attribution {
@@ -330,7 +330,7 @@ input[type="range"] {
 .coord-info {
   background:var(--green-light); border:1px solid rgba(26,92,58,.15);
   border-radius:6px; padding:7px 10px; margin-top:8px;
-  font-size:10px; font-family:'DM Mono',monospace; color:var(--green);
+  font-size:11.5px; font-family:'DM Mono',monospace; color:var(--green);
   display:none;
 }
 .coord-info.show { display:block; }
@@ -342,7 +342,7 @@ input[type="range"] {
 .style-type-tab {
   flex:1; padding:5px 4px; border-radius:6px;
   border:1px solid var(--border); background:var(--white);
-  font-size:10px; font-weight:700; cursor:pointer;
+  font-size:11.5px; font-weight:700; cursor:pointer;
   font-family:'Noto Sans KR',sans-serif; color:var(--ink3);
   transition:all .15s; text-align:center; white-space:nowrap;
 }
@@ -358,7 +358,7 @@ input[type="range"] {
 }
 .color-hex {
   flex:1; padding:5px 7px; border:1px solid var(--border);
-  border-radius:6px; font-size:10px; font-family:'DM Mono',monospace;
+  border-radius:6px; font-size:11.5px; font-family:'DM Mono',monospace;
   color:var(--ink); background:var(--white); outline:none;
 }
 .color-hex:focus { border-color:var(--teal); }
@@ -392,12 +392,12 @@ input[type="range"] {
 }
 .range-row input[type="range"] { flex:1; margin:0; }
 .range-num {
-  font-size:10px; font-family:'DM Mono',monospace;
+  font-size:11.5px; font-family:'DM Mono',monospace;
   color:var(--ink2); font-weight:700; min-width:28px; text-align:right;
 }
 
 .style-reset-btn {
-  font-size:10px; padding:4px 8px; border-radius:5px;
+  font-size:11.5px; padding:4px 8px; border-radius:5px;
   border:1px solid var(--border); background:var(--white);
   cursor:pointer; color:var(--ink3); font-family:'Noto Sans KR',sans-serif;
   transition:all .15s; margin-top:6px; width:100%;
@@ -405,7 +405,7 @@ input[type="range"] {
 .style-reset-btn:hover { background:var(--red-light); color:var(--red); border-color:var(--red); }
 
 .sub-label {
-  font-size:10px; font-weight:700; color:var(--ink3);
+  font-size:11.5px; font-weight:700; color:var(--ink3);
   text-transform:uppercase; letter-spacing:.5px;
   font-family:'DM Mono',monospace; margin:10px 0 5px;
   display:flex; align-items:center; gap:5px;
@@ -499,7 +499,7 @@ input[type="range"] {
             </div>
           </div>
           <div>
-            <label class="field-label">투명도 &nbsp;<span id="ps-fill-opa-val" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--teal)">35%</span></label>
+            <label class="field-label">투명도 &nbsp;<span id="ps-fill-opa-val" style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--teal)">35%</span></label>
             <div class="range-row">
               <input type="range" id="ps-fill-opa" min="0" max="1" step="0.05" value="0.35" oninput="psRangeLabel('ps-fill-opa','ps-fill-opa-val','%',100);psApply()">
             </div>
@@ -521,7 +521,7 @@ input[type="range"] {
             </div>
           </div>
           <div>
-            <label class="field-label">두께 &nbsp;<span id="ps-stroke-w-val" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--teal)">2px</span></label>
+            <label class="field-label">두께 &nbsp;<span id="ps-stroke-w-val" style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--teal)">2px</span></label>
             <div class="range-row">
               <input type="range" id="ps-stroke-w" min="0.5" max="8" step="0.5" value="2" oninput="psRangeLabel('ps-stroke-w','ps-stroke-w-val','px',1);psApply()">
             </div>
@@ -552,7 +552,7 @@ input[type="range"] {
             </select>
           </div>
           <div>
-            <label class="field-label">크기 &nbsp;<span id="ps-label-sz-val" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--teal)">11px</span></label>
+            <label class="field-label">크기 &nbsp;<span id="ps-label-sz-val" style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--teal)">11px</span></label>
             <div class="range-row">
               <input type="range" id="ps-label-sz" min="7" max="18" step="1" value="11" oninput="psRangeLabel('ps-label-sz','ps-label-sz-val','px',1);psApply()">
             </div>
@@ -707,7 +707,7 @@ input[type="range"] {
       <div id="vworld-key-wrap" style="display:none; margin-top:4px;">
         <label class="field-label">Vworld API 키</label>
         <input type="text" id="vworld-key" placeholder="Vworld Open API 키 입력" style="font-family:'DM Mono',monospace;font-size:11px;">
-        <div style="font-size:10px;color:var(--ink3);margin-top:3px;">
+        <div style="font-size:11.5px;color:var(--ink3);margin-top:3px;">
           🔗 <a href="https://www.vworld.kr/dev/v4dv_oadc012_s001.do" target="_blank" style="color:var(--teal);">Vworld 개발자센터</a>에서 무료 발급
         </div>
       </div>
@@ -1546,11 +1546,11 @@ function renderPyeonipStats() {
   document.getElementById('pyeonip-stats').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
       <div style="background:var(--green-light);border-radius:6px;padding:8px 10px">
-        <div style="font-size:10px;color:var(--green);font-weight:700">완전편입</div>
+        <div style="font-size:11.5px;color:var(--green);font-weight:700">완전편입</div>
         <div style="font-size:16px;font-weight:800;font-family:'DM Mono',monospace">${cntFull}</div>
       </div>
       <div style="background:var(--amber-light);border-radius:6px;padding:8px 10px">
-        <div style="font-size:10px;color:var(--amber);font-weight:700">부분편입</div>
+        <div style="font-size:11.5px;color:var(--amber);font-weight:700">부분편입</div>
         <div style="font-size:16px;font-weight:800;font-family:'DM Mono',monospace">${cntPart}</div>
       </div>
     </div>
@@ -1626,7 +1626,7 @@ function renderPyeonipLayers() {
           <div style="font-family:'Noto Sans KR',sans-serif;font-size:12px;min-width:180px">
             <div style="font-weight:800;font-size:13px;margin-bottom:6px">${row.jibun || '-'} ${row.jimok || ''}</div>
             <table style="width:100%;border-collapse:collapse">
-              <tr><td style="color:#888;padding:2px 4px">PNU</td><td style="font-family:'DM Mono',monospace;font-size:10px;padding:2px 4px">${row.pnu || '-'}</td></tr>
+              <tr><td style="color:#888;padding:2px 4px">PNU</td><td style="font-family:'DM Mono',monospace;font-size:11.5px;padding:2px 4px">${row.pnu || '-'}</td></tr>
               <tr><td style="color:#888;padding:2px 4px">행정구역</td><td style="padding:2px 4px">${[row.sido,row.sigungu,row.emd].filter(Boolean).join(' ')}</td></tr>
               <tr><td style="color:#888;padding:2px 4px">대장구분</td><td style="padding:2px 4px">${row.daejang || '-'}</td></tr>
               <tr><td style="color:#888;padding:2px 4px">필지면적</td><td style="padding:2px 4px;font-family:'DM Mono',monospace">${(row.jijuArea||0).toLocaleString()} ㎡</td></tr>
