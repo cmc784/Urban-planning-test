@@ -558,21 +558,6 @@ input[type="range"] {
           </div>
         </div>
 
-        <!-- 미리보기 -->
-        <div class="sub-label">미리보기</div>
-        <div class="style-preview">
-          <svg id="ps-preview-svg" width="264" height="60" xmlns="http://www.w3.org/2000/svg">
-            <defs id="ps-preview-defs"></defs>
-            <rect width="264" height="60" fill="#d8d4cb"/>
-            <path id="ps-prev-p1" d="M8,4 L100,6 L98,54 L6,52 Z" fill="#ccc" stroke="#888" stroke-width="1.5"/>
-            <path id="ps-prev-p2" d="M108,4 L200,4 L198,54 L106,54 Z" fill="#ccc" stroke="#888" stroke-width="1.5"/>
-            <path id="ps-prev-p3" d="M208,6 L256,4 L254,54 L206,52 Z" fill="#ccc" stroke="#888" stroke-width="1.5"/>
-            <text id="ps-prev-l1" x="53" y="30" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif" font-size="10" fill="#444">123-45</text>
-            <text id="ps-prev-l2" x="153" y="30" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif" font-size="10" fill="#444">678-9</text>
-            <text id="ps-prev-l3" x="231" y="30" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif" font-size="10" fill="#444">100</text>
-          </svg>
-        </div>
-
         <button class="style-reset-btn" onclick="psReset()">↺ 기본값으로 초기화</button>
       </div>
 
@@ -1464,48 +1449,8 @@ function psReset() {
   toast('↺ 기본 스타일로 초기화되었습니다', 'success');
 }
 
-// 미리보기 업데이트
-function psUpdatePreview() {
-  const s = psStyles[psCurrentTab];
-  const defs = document.getElementById('ps-preview-defs');
-  if (!defs) return;
-
-  const pid = 'prev-pat';
-  const h = PS_HATCHES.find(h => h.id === s.hatch);
-
-  if (h && s.hatch !== 'none') {
-    const sp = h.sp || 8;
-    defs.innerHTML = `<pattern id="${pid}" patternUnits="userSpaceOnUse" width="${sp}" height="${sp}">${buildHatchInner(h, s.fillColor, sp)}</pattern>`;
-  } else {
-    defs.innerHTML = '';
-  }
-
-  const fillVal = (h && s.hatch !== 'none') ? `url(#${pid})` : s.fillColor;
-  const fillOpa = (h && s.hatch !== 'none') ? s.fillOpacity : s.fillOpacity;
-  const dash = s.strokeDash === 'none' ? '' : s.strokeDash;
-
-  const labels = ['123-45', '678-9', '100'];
-  [1,2,3].forEach(i => {
-    const p = document.getElementById('ps-prev-p' + i);
-    if (p) {
-      p.setAttribute('fill', fillVal);
-      p.setAttribute('fill-opacity', fillOpa);
-      p.setAttribute('stroke', s.strokeColor);
-      p.setAttribute('stroke-width', s.strokeWidth);
-      p.setAttribute('stroke-dasharray', dash);
-    }
-    const l = document.getElementById('ps-prev-l' + i);
-    if (l) {
-      if (s.labelContent !== 'none') {
-        l.setAttribute('font-size', Math.min(s.labelSize, 11));
-        l.setAttribute('fill', s.strokeColor);
-        l.textContent = labels[i-1];
-      } else {
-        l.textContent = '';
-      }
-    }
-  });
-}
+// 미리보기 제거됨 — 함수는 호환성 유지를 위해 빈 함수로 유지
+function psUpdatePreview() {}
 
 // 색상 모드 전환
 function setColorMode(mode) {
