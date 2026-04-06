@@ -1536,30 +1536,26 @@ function updateAllSwatches() {
   ['full','part','zone'].forEach(updateLayerSwatch);
 }
 
-// ── 지목별 레이어 행 생성 ─────────────────────────────
-function buildJimokLayerRows() {
-  const jimokSet = [...new Set(pyeonipData.map(r => r.jimok).filter(Boolean))].sort();
-  const el = document.getElementById('lyr-jimok-rows');
-  if (!el) return;
-  el.innerHTML = jimokSet.map(j => {
-    const c = jimokUserColors[j] || getJimokColor(j);
-    return `
-    <div class="lyr-jimok-row" id="lyr-jimok-${j}">
-      <div style="position:relative;flex-shrink:0">
-        <div style="width:18px;height:18px;border-radius:3px;background:${c};border:1.5px solid rgba(0,0,0,0.15);cursor:pointer"
-          onclick="document.getElementById('jcp-${j}').click()"></div>
-        <input type="color" id="jcp-${j}" value="${c}"
-          style="position:absolute;opacity:0;width:0;height:0;pointer-events:none"
-          oninput="setJimokColor('${j}',this.value)">
-      </div>
-      <span style="flex:1;font-size:12px;font-weight:600;color:var(--ink2)">${j}</span>
-    </div>`;
-  }).join('');
+function updateJimokSwatch(jimok) {
+  const svg = document.getElementById('jsw-' + jimok);
+  if (!svg) return;
+  const c  = jimokUserColors[jimok] || getJimokColor(jimok);
+  const js = jimokUserStyles[jimok] || {};
+  const sc = js.strokeColor || c;
+  const sw = js.strokeWidth !== undefined ? Math.min(js.strokeWidth, 3) : 2;
+  const dash = scaleDash(js.strokeDash || 'none', sw);
+  const dashAttr = dash ? `stroke-dasharray="${dash}"` : '';
+  const opa = js.fillOpacity !== undefined ? js.fillOpacity : 0.7;
+  svg.innerHTML = `<rect x="1" y="1" width="26" height="16" rx="2"
+    fill="${c}" fill-opacity="${opa}" stroke="${sc}" stroke-width="${sw}" ${dashAttr}/>`;
 }
+
+// ── 지목별 레이어 행 생성 (아래에 정의됨) ─────────────
 
 // 지목 색상 사용자 커스텀
 const jimokUserColors = {};
 const jimokLayerVis = {};   // 지목별 가시성 (기본 true)
+const jimokUserStyles = {}; // 지목별 스타일 (strokeColor, strokeWidth, strokeDash, hatch)
 
 function setJimokColor(jimok, color) {
   jimokUserColors[jimok] = color;
@@ -1584,20 +1580,44 @@ function buildJimokLayerRows() {
     const c = jimokUserColors[j] || getJimokColor(j);
     const vis = jimokLayerVis[j] !== false;
     return `
-    <div class="lyr-jimok-row">
+    <div class="lyr-row" style="padding:5px 4px">
       <button class="lyr-eye${vis ? ' on' : ' off'}" id="jve-${j}" onclick="toggleJimokVis('${j}')" title="가시성">👁</button>
-      <div style="position:relative;flex-shrink:0">
-        <div id="jcs-${j}" style="width:28px;height:18px;border-radius:3px;background:${c};border:1.5px solid rgba(0,0,0,0.12);cursor:pointer"
-          onclick="document.getElementById('jcp-${j}').click()"></div>
-        <input type="color" id="jcp-${j}" value="${c}"
-          style="position:absolute;opacity:0;width:0;height:0;pointer-events:none"
-          oninput="setJimokColor('${j}',this.value)">
+      <div class="lyr-swatch-wrap" onclick="openJimokEdit('${j}')">
+        <svg style="width:36px;height:22px;display:block;overflow:visible" id="jsw-${j}" viewBox="0 0 28 18" xmlns="http://www.w3.org/2000/svg">
+          <rect x="1" y="1" width="26" height="16" rx="2"
+            fill="${c}" fill-opacity="0.7" stroke="${c}" stroke-width="2"/>
+        </svg>
       </div>
-      <span style="flex:1;font-size:12px;font-weight:600;color:var(--ink2)">${j}</span>
+      <span class="lyr-name">${j}</span>
+      <button class="lyr-edit-btn" onclick="openJimokEdit('${j}')">✏️</button>
+      <input type="color" id="jcp-${j}" value="${c}"
+        style="position:absolute;opacity:0;width:0;height:0;pointer-events:none"
+        oninput="setJimokColor('${j}',this.value)">
     </div>`;
   }).join('');
 }
 let lepCurrentKey = null;
+let lepCurrentJimok = null; // 지목별 편집 시 현재 지목
+
+function openJimokEdit(jimok) {
+  lepCurrentKey = null;
+  lepCurrentJimok = jimok;
+  const c = jimokUserColors[jimok] || getJimokColor(jimok);
+  const js = jimokUserStyles[jimok] || {};
+  document.getElementById('lep-title').textContent = '✏️ ' + jimok;
+  document.getElementById('lep-fill-picker').value   = c;
+  document.getElementById('lep-fill-hex').value      = c;
+  document.getElementById('lep-fill-opa').value      = js.fillOpacity !== undefined ? js.fillOpacity : 0.7;
+  document.getElementById('lep-fill-opa-num').value  = Math.round((js.fillOpacity !== undefined ? js.fillOpacity : 0.7) * 100);
+  document.getElementById('lep-stroke-picker').value = js.strokeColor || c;
+  document.getElementById('lep-stroke-hex').value    = js.strokeColor || c;
+  document.getElementById('lep-stroke-w').value      = js.strokeWidth !== undefined ? js.strokeWidth : 2;
+  document.getElementById('lep-stroke-w-num').value  = js.strokeWidth !== undefined ? js.strokeWidth : 2;
+  const dashSel = document.getElementById('lep-stroke-dash');
+  dashSel.value = js.strokeDash || 'none';
+  lepInitHatchGrid(js.hatch || 'none');
+  document.getElementById('layer-edit-panel').style.display = 'block';
+}
 
 function openLayerEdit(key) {
   lepCurrentKey = key;
@@ -1624,6 +1644,7 @@ function openLayerEdit(key) {
 function closeLayerEdit() {
   document.getElementById('layer-edit-panel').style.display = 'none';
   lepCurrentKey = null;
+  lepCurrentJimok = null;
 }
 
 function lepSyncFillHex() {
@@ -1656,17 +1677,34 @@ function lepRangeToNum(rangeId, numId, mul) {
 }
 
 function lepApply() {
-  if (!lepCurrentKey) return;
-  const s = psStyles[lepCurrentKey];
   const fhex = document.getElementById('lep-fill-hex').value;
   const shex = document.getElementById('lep-stroke-hex').value;
-  if (/^#[0-9a-fA-F]{6}$/.test(fhex)) s.fillColor   = fhex;
-  if (/^#[0-9a-fA-F]{6}$/.test(shex)) s.strokeColor = shex;
-  s.fillOpacity = parseFloat(document.getElementById('lep-fill-opa').value);
-  s.strokeWidth = parseFloat(document.getElementById('lep-stroke-w').value);
-  s.strokeDash  = document.getElementById('lep-stroke-dash').value;
-  // hatch는 lepSelectHatch에서 직접 저장
-  updateLayerSwatch(lepCurrentKey);
+  const fillOpa = parseFloat(document.getElementById('lep-fill-opa').value);
+  const strokeW = parseFloat(document.getElementById('lep-stroke-w').value);
+  const strokeD = document.getElementById('lep-stroke-dash').value;
+
+  if (lepCurrentKey) {
+    // 편입유형별(구역계/완전편입/부분편입) 편집
+    const s = psStyles[lepCurrentKey];
+    if (/^#[0-9a-fA-F]{6}$/.test(fhex)) s.fillColor   = fhex;
+    if (/^#[0-9a-fA-F]{6}$/.test(shex)) s.strokeColor = shex;
+    s.fillOpacity = fillOpa;
+    s.strokeWidth = strokeW;
+    s.strokeDash  = strokeD;
+    updateLayerSwatch(lepCurrentKey);
+  } else if (lepCurrentJimok) {
+    // 지목별 편집
+    const j = lepCurrentJimok;
+    if (/^#[0-9a-fA-F]{6}$/.test(fhex)) jimokUserColors[j] = fhex;
+    if (!jimokUserStyles[j]) jimokUserStyles[j] = {};
+    jimokUserStyles[j].fillOpacity  = fillOpa;
+    jimokUserStyles[j].strokeColor  = /^#[0-9a-fA-F]{6}$/.test(shex) ? shex : (jimokUserColors[j] || getJimokColor(j));
+    jimokUserStyles[j].strokeWidth  = strokeW;
+    jimokUserStyles[j].strokeDash   = strokeD;
+    // hatch는 lepSelectHatch에서 직접 저장
+    // 스와치 업데이트
+    updateJimokSwatch(j);
+  }
   renderPyeonipLayers();
 }
 
@@ -1690,14 +1728,19 @@ function lepInitHatchGrid(currentHatch) {
 }
 
 function lepSelectHatch(id) {
-  if (!lepCurrentKey) return;
-  psStyles[lepCurrentKey].hatch = id;
+  if (lepCurrentKey) {
+    psStyles[lepCurrentKey].hatch = id;
+    updateLayerSwatch(lepCurrentKey);
+  } else if (lepCurrentJimok) {
+    if (!jimokUserStyles[lepCurrentJimok]) jimokUserStyles[lepCurrentJimok] = {};
+    jimokUserStyles[lepCurrentJimok].hatch = id;
+    updateJimokSwatch(lepCurrentJimok);
+  }
   document.querySelectorAll('#lep-hatch-grid .hatch-opt').forEach(b => {
     b.classList.toggle('sel', b.id === 'lh-' + id);
     b.style.borderColor = b.id === 'lh-' + id ? 'var(--teal)' : 'var(--border)';
     b.style.background  = b.id === 'lh-' + id ? 'var(--teal-light)' : 'var(--white)';
   });
-  updateLayerSwatch(lepCurrentKey);
   renderPyeonipLayers();
 }
 
@@ -1771,18 +1814,6 @@ function renderPyeonipStats() {
         <span>전체 <b>${total}</b>필지</span>
         <span>편입면적 <b>${Math.round(sumPyeon).toLocaleString()} ㎡</b></span>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
-        <div style="background:var(--green-light);border-radius:6px;padding:6px 8px">
-          <div style="font-size:11px;color:var(--green);font-weight:700">완전편입</div>
-          <div style="font-size:14px;font-weight:800;font-family:'DM Mono',monospace">${cntFull}필지</div>
-          <div style="font-size:11px;color:var(--green);font-family:'DM Mono',monospace">${Math.round(sumFull).toLocaleString()} ㎡</div>
-        </div>
-        <div style="background:var(--amber-light);border-radius:6px;padding:6px 8px">
-          <div style="font-size:11px;color:var(--amber);font-weight:700">부분편입</div>
-          <div style="font-size:14px;font-weight:800;font-family:'DM Mono',monospace">${cntPart}필지</div>
-          <div style="font-size:11px;color:var(--amber);font-family:'DM Mono',monospace">${Math.round(sumPart).toLocaleString()} ㎡</div>
-        </div>
-      </div>
       <div style="font-size:11.5px;font-weight:700;color:var(--ink3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">지목별 편입 현황</div>
       ${jimokRows}`;
   }
@@ -1816,7 +1847,21 @@ function renderPyeonipLayers() {
     // 색상 모드: gubun=스타일설정 색상 / jimok=지목색상(커스텀 우선)
     const baseColor = colorMode === 'gubun' ? s.fillColor
       : (jimokUserColors[row.jimok] || getJimokColor(row.jimok));
-    const strokeColor = colorMode === 'gubun' ? s.strokeColor : baseColor;
+    const strokeColor = colorMode === 'gubun' ? s.strokeColor : (jimokUserStyles[row.jimok]?.strokeColor || baseColor);
+
+    // 지목별 모드일 때 해치/투명도/선스타일은 jimokUserStyles 우선, 없으면 기본값
+    const effectiveFillOpacity = colorMode === 'jimok'
+      ? (jimokUserStyles[row.jimok]?.fillOpacity !== undefined ? jimokUserStyles[row.jimok].fillOpacity : 0.7)
+      : s.fillOpacity;
+    const effectiveHatch = colorMode === 'jimok'
+      ? (jimokUserStyles[row.jimok]?.hatch || 'none')
+      : s.hatch;
+    const effectiveStrokeWidth = colorMode === 'jimok'
+      ? (jimokUserStyles[row.jimok]?.strokeWidth !== undefined ? jimokUserStyles[row.jimok].strokeWidth : 2)
+      : s.strokeWidth;
+    const effectiveStrokeDash = colorMode === 'jimok'
+      ? (jimokUserStyles[row.jimok]?.strokeDash || 'none')
+      : s.strokeDash;
 
     row.rings.forEach(ring => {
       if (!ring || ring.length < 3) return;
@@ -1834,25 +1879,25 @@ function renderPyeonipLayers() {
 
         // 해치 패턴 SVG icon (Leaflet DivIcon 방식)
         let fillColor = baseColor;
-        let fillOpacity = s.fillOpacity;
+        let fillOpacity = effectiveFillOpacity;
 
-        const dashArray = scaleDash(s.strokeDash, s.strokeWidth);
+        const dashArray = scaleDash(effectiveStrokeDash, effectiveStrokeWidth);
 
         const layer = L.polygon(latlngs, {
           color: strokeColor,
-          weight: s.strokeWidth,
+          weight: effectiveStrokeWidth,
           dashArray,
           fillColor,
-          fillOpacity: s.hatch !== 'none' ? 0 : fillOpacity,
+          fillOpacity: effectiveHatch !== 'none' ? 0 : fillOpacity,
           opacity: 1,
         });
 
         // 해치는 SVG 패턴 오버레이로 구현
-        if (s.hatch !== 'none') {
+        if (effectiveHatch !== 'none') {
           layer.on('add', function() {
             const paths = layer.getElement ? [layer.getElement()] : [];
             // Leaflet SVG path에 패턴 fill 적용
-            layer._path && applyHatchToPath(layer._path, s.hatch, baseColor, fillOpacity, sKey + row.pnu);
+            layer._path && applyHatchToPath(layer._path, effectiveHatch, baseColor, fillOpacity, sKey + row.pnu);
           });
         }
 
@@ -1874,9 +1919,9 @@ function renderPyeonipLayers() {
         pyeonipLayers.push(layer);
 
         // 해치 패턴: layer add 후 즉시 적용
-        if (s.hatch !== 'none') {
+        if (effectiveHatch !== 'none') {
           setTimeout(() => {
-            if (layer._path) applyHatchToPath(layer._path, s.hatch, baseColor, fillOpacity, sKey + '_' + row.pnu);
+            if (layer._path) applyHatchToPath(layer._path, effectiveHatch, baseColor, fillOpacity, sKey + '_' + row.pnu);
           }, 0);
         }
 
