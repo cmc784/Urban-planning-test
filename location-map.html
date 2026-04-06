@@ -809,6 +809,26 @@ const PS_DEFAULTS = {
 };
 let psStyles = JSON.parse(JSON.stringify(PS_DEFAULTS));
 
+// ── 선 스타일 자동 축척 함수 ──────────────────────────
+// strokeDash 패턴의 각 값을 strokeWidth에 비례해 스케일
+// 선 굵기가 달라져도 대시/간격 비율이 유지됨
+const DASH_RATIOS = {
+  'none':              null,
+  '4,4':              [3,   3  ],   // 점선:    대시=3w, 간격=3w
+  '8,4':              [5,   3  ],   // 파선:    대시=5w, 간격=3w
+  '16,4':             [10,  3  ],   // 긴 파선: 대시=10w, 간격=3w
+  '12,4,2,4':         [8,   3, 1.5, 3  ],  // 일점쇄선
+  '12,3,2,3,2,3':     [8,   2.5, 1.5, 2.5, 1.5, 2.5 ],  // 이점쇄선
+};
+
+function scaleDash(strokeDash, strokeWidth) {
+  if (!strokeDash || strokeDash === 'none') return null;
+  const ratios = DASH_RATIOS[strokeDash];
+  if (!ratios) return strokeDash; // 알 수 없는 패턴은 그대로
+  const w = Math.max(strokeWidth, 1);
+  return ratios.map(r => Math.round(r * w * 10) / 10).join(',');
+}
+
 const PS_HATCHES = [
   { id:'none',       lbl:'없음' },
   { id:'diagonal',   lbl:'사선',   angle:45,  sp:6 },
@@ -1582,7 +1602,7 @@ function renderPyeonipLayers() {
         let fillColor = baseColor;
         let fillOpacity = s.fillOpacity;
 
-        const dashArray = (s.strokeDash === 'none' || !s.strokeDash) ? null : s.strokeDash;
+        const dashArray = scaleDash(s.strokeDash, s.strokeWidth);
 
         const layer = L.polygon(latlngs, {
           color: strokeColor,
@@ -1656,7 +1676,7 @@ function renderPyeonipLayers() {
   // ── 구역계 렌더링 (편입 필지와 동일한 좌표계/변환 방식) ──
   if (zoneData && zoneData.length > 0) {
     const sz = psStyles['zone'];
-    const dashArray = (sz.strokeDash === 'none' || !sz.strokeDash) ? null : sz.strokeDash;
+    const dashArray = scaleDash(sz.strokeDash, sz.strokeWidth);
     let zoneRendered = 0;
     zoneData.forEach(ring => {
       if (!ring || ring.length < 3) return;

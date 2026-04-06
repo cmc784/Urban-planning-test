@@ -1685,6 +1685,23 @@ const DEFAULT_STYLES = {
 let parcelStyles = JSON.parse(JSON.stringify(DEFAULT_STYLES));
 let currentStyleTab = 'full';
 
+// ── 선 스타일 자동 축척 함수 ──────────────────────────
+const DASH_RATIOS = {
+  'none':              null,
+  '4,4':              [3,   3  ],
+  '8,4':              [5,   3  ],
+  '16,4':             [10,  3  ],
+  '12,4,2,4':         [8,   3, 1.5, 3  ],
+  '12,3,2,3,2,3':     [8,   2.5, 1.5, 2.5, 1.5, 2.5 ],
+};
+function scaleDash(strokeDash, strokeWidth) {
+  if (!strokeDash || strokeDash === 'none') return null;
+  const ratios = DASH_RATIOS[strokeDash];
+  if (!ratios) return strokeDash;
+  const w = Math.max(strokeWidth, 1);
+  return ratios.map(r => Math.round(r * w * 10) / 10).join(',');
+}
+
 const HATCH_DEFS = [
   { id: 'none',       label: '없음',     svg: '' },
   { id: 'diagonal',   label: '사선',     angle: 45,  spacing: 6 },
@@ -1899,7 +1916,7 @@ function updatePreview() {
     pathEl.setAttribute('fill-opacity', s.hatch !== 'none' ? 1 : s.fillOpacity);
     pathEl.setAttribute('stroke', s.strokeColor);
     pathEl.setAttribute('stroke-width', s.strokeWidth);
-    pathEl.setAttribute('stroke-dasharray', s.strokeDash === 'none' ? '' : s.strokeDash);
+    pathEl.setAttribute('stroke-dasharray', scaleDash(s.strokeDash, s.strokeWidth) || '');
 
     const labelEl = document.getElementById('previewLabel' + (i+1));
     if (!labelEl) return;
