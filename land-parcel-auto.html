@@ -807,10 +807,11 @@ tbody.result-body td:last-child { border-right:none; }
                 <div class="style-label">선 스타일</div>
                 <select class="map-select" id="strokeDash" onchange="updatePreview()">
                   <option value="none">실선</option>
-                  <option value="6,3">짧은 점선</option>
-                  <option value="10,4">긴 점선</option>
-                  <option value="2,4">점점선</option>
-                  <option value="12,4,3,4">1점쇄선</option>
+                  <option value="4,4">점선</option>
+                  <option value="8,4">파선</option>
+                  <option value="16,4">긴 파선</option>
+                  <option value="12,4,2,4">일점쇄선</option>
+                  <option value="12,3,2,3,2,3">이점쇄선</option>
                 </select>
               </div>
             </div>
@@ -1667,7 +1668,7 @@ const DEFAULT_STYLES = {
   },
   zone: {
     fillColor: '#1a5c3a', fillOpacity: 0.08, hatch: 'none',
-    strokeColor: '#1a5c3a', strokeWidth: 2.5, strokeDash: '8,4',
+    strokeColor: '#1a5c3a', strokeWidth: 2.5, strokeDash: '12,4,2,4',
     labelContent: 'none', labelSize: 11,
   },
 };
@@ -1932,6 +1933,20 @@ function sendToLocationMap() {
       return;
     }
     sessionStorage.setItem('pyeonipData', json);
+
+    // ── 구역계 rings 전달 ──
+    sessionStorage.removeItem('pyeonipZone');
+    if (shpGuyeokGeo && shpGuyeokGeo.features) {
+      const zoneRings = [];
+      shpGuyeokGeo.features.forEach(feat => {
+        if (!feat.geometry) return;
+        extractRings(feat.geometry).forEach(ring => zoneRings.push(ring));
+      });
+      const zoneJson = JSON.stringify(zoneRings);
+      if (json.length + zoneJson.length < 4.5 * 1024 * 1024) {
+        sessionStorage.setItem('pyeonipZone', zoneJson);
+      }
+    }
 
     // ── 스타일 설정도 함께 전달 ──
     saveUIToStyle();

@@ -530,10 +530,11 @@ input[type="range"] {
         <label class="field-label" style="margin-top:6px">선 스타일</label>
         <select id="ps-stroke-dash" onchange="psApply()" style="font-size:11px;padding:6px 8px">
           <option value="none">실선</option>
-          <option value="6,3">짧은 점선</option>
-          <option value="10,4">긴 점선</option>
-          <option value="2,4">점점선</option>
-          <option value="12,4,3,4">1점쇄선</option>
+          <option value="4,4">점선</option>
+          <option value="8,4">파선</option>
+          <option value="16,4">긴 파선</option>
+          <option value="12,4,2,4">일점쇄선</option>
+          <option value="12,3,2,3,2,3">이점쇄선</option>
         </select>
 
         <!-- 라벨 -->
@@ -797,12 +798,14 @@ let currentTileSat = null, currentTileLabel = null, currentTileBase = null;
 
 /* ── 편입 필지 시각화 상태 ── */
 let pyeonipData = [], pyeonipLayers = [], pyeonipLabelLayers = [], colorMode = 'gubun';
+let zoneData = [];      // 구역계 rings
+let zoneLayers = [];    // 구역계 Leaflet layers
 let psCurrentTab = 'full';
 
 const PS_DEFAULTS = {
   full: { fillColor:'#dc2626', fillOpacity:0.35, hatch:'none', strokeColor:'#991b1b', strokeWidth:2, strokeDash:'none', labelContent:'jibun', labelSize:11 },
   part: { fillColor:'#ea580c', fillOpacity:0.30, hatch:'diagonal', strokeColor:'#9a3412', strokeWidth:2, strokeDash:'none', labelContent:'jibun', labelSize:11 },
-  zone: { fillColor:'#1a5c3a', fillOpacity:0.08, hatch:'none', strokeColor:'#1a5c3a', strokeWidth:2.5, strokeDash:'8,4', labelContent:'none', labelSize:11 },
+  zone: { fillColor:'#1a5c3a', fillOpacity:0.08, hatch:'none', strokeColor:'#1a5c3a', strokeWidth:2.5, strokeDash:'12,4,2,4', labelContent:'none', labelSize:11 },
 };
 let psStyles = JSON.parse(JSON.stringify(PS_DEFAULTS));
 
@@ -1302,6 +1305,15 @@ function initPyeonipMode() {
 
   pyeonipMode = true;
 
+  // 구역계 데이터 로드
+  try {
+    const rawZone = sessionStorage.getItem('pyeonipZone');
+    if (rawZone) {
+      zoneData = JSON.parse(rawZone);
+      console.log(`[pyeonip] 구역계 rings: ${zoneData.length}개`);
+    }
+  } catch(e) { console.warn('[pyeonip] 구역계 데이터 로드 실패:', e); }
+
   // UI 전환
   document.getElementById('dxf-sidebar').style.display    = 'none';
   document.getElementById('pyeonip-sidebar').style.display = 'block';
@@ -1400,7 +1412,10 @@ function psLoadUI(tab) {
   document.getElementById('ps-stroke-hex').value    = s.strokeColor;
   document.getElementById('ps-stroke-w').value      = s.strokeWidth;
   document.getElementById('ps-stroke-w-val').textContent = s.strokeWidth + 'px';
-  document.getElementById('ps-stroke-dash').value   = s.strokeDash;
+  const dashSel = document.getElementById('ps-stroke-dash');
+  dashSel.value = s.strokeDash;
+  // 옵션에 없는 구버전 값이면 실선으로 폴백
+  if (dashSel.value !== s.strokeDash) dashSel.value = 'none';
   document.getElementById('ps-label-content').value = s.labelContent;
   document.getElementById('ps-label-sz').value      = s.labelSize;
   document.getElementById('ps-label-sz-val').textContent = s.labelSize + 'px';
@@ -1529,6 +1544,8 @@ function renderPyeonipLayers() {
   pyeonipLayers = [];
   pyeonipLabelLayers.forEach(l => map.removeLayer(l));
   pyeonipLabelLayers = [];
+  zoneLayers.forEach(l => map.removeLayer(l));
+  zoneLayers = [];
 
   const allLL = [];
   let rendered = 0, skipped = 0;
@@ -1632,6 +1649,38 @@ function renderPyeonipLayers() {
   });
 
   console.log(`[pyeonip] 렌더 완료: ${rendered}개 표시 / ${skipped}개 스킵`);
+
+  // ── 구역계 렌더링 ──
+  if (zoneData && zoneData.length > 0) {
+    const sz = psStyles['zone'];
+    const dashArray = (sz.strokeDash === 'none' || !sz.strokeDash) ? null : sz.strokeDash;
+    zoneData.forEach(ring => {
+      if (!ring || ring.length < 3) return;
+      try {
+        const latlngs = [];
+        for (const coord of ring) {
+          const [x, y] = coord;
+          if (x < 50000 || x > 500000 || y < 100000 || y > 900000) continue;
+          const [lng, lat] = proj4('EPSG:5174', 'EPSG:4326', [x, y]);
+          if (lat < 33 || lat > 39 || lng < 124 || lng > 131) continue;
+          latlngs.push([lat, lng]);
+        }
+        if (latlngs.length < 3) return;
+        const zoneLayer = L.polygon(latlngs, {
+          color: sz.strokeColor,
+          weight: sz.strokeWidth,
+          dashArray,
+          fillColor: sz.fillColor,
+          fillOpacity: sz.fillOpacity,
+          opacity: 1,
+        });
+        zoneLayer.addTo(map);
+        zoneLayers.push(zoneLayer);
+        if (allLL.length === 0) allLL.push(...latlngs);
+      } catch(e) {}
+    });
+    console.log(`[pyeonip] 구역계 렌더 완료: ${zoneLayers.length}개`);
+  }
 
   if (allLL.length > 0) {
     try { map.fitBounds(L.latLngBounds(allLL), { padding:[50,50] }); } catch(e) {}
