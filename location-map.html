@@ -1310,9 +1310,12 @@ function initPyeonipMode() {
     const rawZone = sessionStorage.getItem('pyeonipZone');
     if (rawZone) {
       zoneData = JSON.parse(rawZone);
-      console.log(`[pyeonip] 구역계 rings: ${zoneData.length}개`);
+      console.log(`[pyeonip] 구역계 rings 로드: ${zoneData.length}개, 첫 좌표 샘플:`, zoneData[0] && zoneData[0][0]);
+    } else {
+      console.warn('[pyeonip] 구역계 데이터(pyeonipZone) 없음 — land-parcel-auto에서 구역계 SHP 업로드 후 위치도에서 보기 클릭 필요');
+      zoneData = [];
     }
-  } catch(e) { console.warn('[pyeonip] 구역계 데이터 로드 실패:', e); }
+  } catch(e) { console.warn('[pyeonip] 구역계 데이터 로드 실패:', e); zoneData = []; }
 
   // UI 전환
   document.getElementById('dxf-sidebar').style.display    = 'none';
@@ -1650,10 +1653,11 @@ function renderPyeonipLayers() {
 
   console.log(`[pyeonip] 렌더 완료: ${rendered}개 표시 / ${skipped}개 스킵`);
 
-  // ── 구역계 렌더링 ──
+  // ── 구역계 렌더링 (편입 필지와 동일한 좌표계/변환 방식) ──
   if (zoneData && zoneData.length > 0) {
     const sz = psStyles['zone'];
     const dashArray = (sz.strokeDash === 'none' || !sz.strokeDash) ? null : sz.strokeDash;
+    let zoneRendered = 0;
     zoneData.forEach(ring => {
       if (!ring || ring.length < 3) return;
       try {
@@ -1662,10 +1666,11 @@ function renderPyeonipLayers() {
           const [x, y] = coord;
           if (x < 50000 || x > 500000 || y < 100000 || y > 900000) continue;
           const [lng, lat] = proj4('EPSG:5174', 'EPSG:4326', [x, y]);
-          if (lat < 33 || lat > 39 || lng < 124 || lng > 131) continue;
+          if (lat < 33 || lat > 39 || lng < 124 || lng > 132) continue;
           latlngs.push([lat, lng]);
         }
         if (latlngs.length < 3) return;
+        allLL.push(...latlngs);
         const zoneLayer = L.polygon(latlngs, {
           color: sz.strokeColor,
           weight: sz.strokeWidth,
@@ -1676,10 +1681,10 @@ function renderPyeonipLayers() {
         });
         zoneLayer.addTo(map);
         zoneLayers.push(zoneLayer);
-        if (allLL.length === 0) allLL.push(...latlngs);
+        zoneRendered++;
       } catch(e) {}
     });
-    console.log(`[pyeonip] 구역계 렌더 완료: ${zoneLayers.length}개`);
+    console.log(`[pyeonip] 구역계 렌더 완료: ${zoneRendered}/${zoneData.length}개`);
   }
 
   if (allLL.length > 0) {

@@ -1155,6 +1155,7 @@ async function extractPrjFromZip(arrayBuffer) {
 // ─── SHP 모드 상태 ─────────────────────────────────────
 let shpJijukGeo   = null;  // 연속지적도 GeoJSON (원본 좌표 그대로)
 let shpGuyeokGeo  = null;  // 구역계 GeoJSON (원본 좌표 그대로)
+let shpZoneRings  = [];    // 구역계 Union rings (위치도 전달용)
 let shpStep1Rows  = [];    // Step1 산출: 필지면적·행정구역·지번·지목
 let shpResultRows = [];    // Step2 산출: 편입면적·편입구분 포함 최종
 let shpSortKey    = null;  // 현재 정렬 컬럼
@@ -1529,6 +1530,14 @@ async function processGuyeokShp(file) {
     }
     log(`  ✅ 구역계 준비 완료 (${guyeokReadOk}개 피처)`);
     bar(25);
+
+    // ── 구역계 rings 전역 저장 (위치도 전달용) ──
+    try {
+      const zoneGeo = jstsWriter.write(_guyeokJsts);
+      shpZoneRings = extractRings(zoneGeo);
+    } catch(e) {
+      shpZoneRings = [];
+    }
 
     // ── 교차분석(Clip) ──
     log('▸ STEP 3  교차분석(Clip) 및 편입면적 산출 중...');
@@ -1934,17 +1943,14 @@ function sendToLocationMap() {
     }
     sessionStorage.setItem('pyeonipData', json);
 
-    // ── 구역계 rings 전달 ──
+    // ── 구역계 rings 전달 (CLIP 연산 시 생성된 Union 결과 그대로) ──
     sessionStorage.removeItem('pyeonipZone');
-    if (shpGuyeokGeo && shpGuyeokGeo.features) {
-      const zoneRings = [];
-      shpGuyeokGeo.features.forEach(feat => {
-        if (!feat.geometry) return;
-        extractRings(feat.geometry).forEach(ring => zoneRings.push(ring));
-      });
-      const zoneJson = JSON.stringify(zoneRings);
+    if (shpZoneRings && shpZoneRings.length > 0) {
+      const zoneJson = JSON.stringify(shpZoneRings);
       if (json.length + zoneJson.length < 4.5 * 1024 * 1024) {
         sessionStorage.setItem('pyeonipZone', zoneJson);
+      } else {
+        showToast('⚠️ 구역계 데이터가 커서 위치도에서 제외됩니다.');
       }
     }
 
