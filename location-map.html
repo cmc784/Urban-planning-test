@@ -390,11 +390,39 @@ input[type="range"] {
 .range-row {
   display:flex; align-items:center; gap:6px; margin-top:3px;
 }
-.range-row input[type="range"] { flex:1; margin:0; }
+.range-row input[type="range"] {
+  flex:1; margin:0;
+  -webkit-appearance:none; appearance:none;
+  height:4px; border-radius:2px;
+  background:var(--border); outline:none; cursor:pointer;
+}
+.range-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance:none;
+  width:14px; height:14px; border-radius:50%;
+  background:var(--teal); border:2px solid white;
+  box-shadow:0 1px 3px rgba(0,0,0,0.25);
+  cursor:pointer; margin-top:-5px;
+}
+.range-row input[type="range"]::-moz-range-thumb {
+  width:14px; height:14px; border-radius:50%;
+  background:var(--teal); border:2px solid white;
+  box-shadow:0 1px 3px rgba(0,0,0,0.25); cursor:pointer;
+}
+.range-row input[type="range"]::-webkit-slider-runnable-track {
+  height:4px; border-radius:2px; background:var(--border);
+}
 .range-num {
   font-size:11.5px; font-family:'DM Mono',monospace;
   color:var(--ink2); font-weight:700; min-width:28px; text-align:right;
 }
+.range-num-input {
+  width:46px; padding:3px 5px;
+  border:1px solid var(--border); border-radius:5px;
+  font-size:11.5px; font-family:'DM Mono',monospace;
+  color:var(--ink); text-align:center; outline:none;
+  background:var(--white);
+}
+.range-num-input:focus { border-color:var(--teal); }
 
 .style-reset-btn {
   font-size:11.5px; padding:4px 8px; border-radius:5px;
@@ -499,9 +527,15 @@ input[type="range"] {
             </div>
           </div>
           <div>
-            <label class="field-label">투명도 &nbsp;<span id="ps-fill-opa-val" style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--teal)">35%</span></label>
+            <label class="field-label" style="display:flex;align-items:center;justify-content:space-between">
+              <span>투명도</span>
+              <input type="number" class="range-num-input" id="ps-fill-opa-num"
+                min="0" max="100" step="5" value="35"
+                oninput="psNumToRange('ps-fill-opa-num','ps-fill-opa',0.01)">
+            </label>
             <div class="range-row">
-              <input type="range" id="ps-fill-opa" min="0" max="1" step="0.05" value="0.35" oninput="psRangeLabel('ps-fill-opa','ps-fill-opa-val','%',100);psApply()">
+              <input type="range" id="ps-fill-opa" min="0" max="1" step="0.05" value="0.35"
+                oninput="psRangeToNum('ps-fill-opa','ps-fill-opa-num',100);psApply()">
             </div>
           </div>
         </div>
@@ -521,9 +555,15 @@ input[type="range"] {
             </div>
           </div>
           <div>
-            <label class="field-label">두께 &nbsp;<span id="ps-stroke-w-val" style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--teal)">2px</span></label>
+            <label class="field-label" style="display:flex;align-items:center;justify-content:space-between">
+              <span>두께</span>
+              <input type="number" class="range-num-input" id="ps-stroke-w-num"
+                min="0.5" max="8" step="0.5" value="2"
+                oninput="psNumToRange('ps-stroke-w-num','ps-stroke-w',1)">
+            </label>
             <div class="range-row">
-              <input type="range" id="ps-stroke-w" min="0.5" max="8" step="0.5" value="2" oninput="psRangeLabel('ps-stroke-w','ps-stroke-w-val','px',1);psApply()">
+              <input type="range" id="ps-stroke-w" min="0.5" max="8" step="0.5" value="2"
+                oninput="psRangeToNum('ps-stroke-w','ps-stroke-w-num',1);psApply()">
             </div>
           </div>
         </div>
@@ -552,9 +592,15 @@ input[type="range"] {
             </select>
           </div>
           <div>
-            <label class="field-label">크기 &nbsp;<span id="ps-label-sz-val" style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--teal)">11px</span></label>
+            <label class="field-label" style="display:flex;align-items:center;justify-content:space-between">
+              <span>크기</span>
+              <input type="number" class="range-num-input" id="ps-label-sz-num"
+                min="7" max="18" step="1" value="11"
+                oninput="psNumToRange('ps-label-sz-num','ps-label-sz',1)">
+            </label>
             <div class="range-row">
-              <input type="range" id="ps-label-sz" min="7" max="18" step="1" value="11" oninput="psRangeLabel('ps-label-sz','ps-label-sz-val','px',1);psApply()">
+              <input type="range" id="ps-label-sz" min="7" max="18" step="1" value="11"
+                oninput="psRangeToNum('ps-label-sz','ps-label-sz-num',1);psApply()">
             </div>
           </div>
         </div>
@@ -1430,18 +1476,17 @@ function psLoadUI(tab) {
   document.getElementById('ps-fill-picker').value   = s.fillColor;
   document.getElementById('ps-fill-hex').value      = s.fillColor;
   document.getElementById('ps-fill-opa').value      = s.fillOpacity;
-  document.getElementById('ps-fill-opa-val').textContent = Math.round(s.fillOpacity * 100) + '%';
+  document.getElementById('ps-fill-opa-num').value  = Math.round(s.fillOpacity * 100);
   document.getElementById('ps-stroke-picker').value = s.strokeColor;
   document.getElementById('ps-stroke-hex').value    = s.strokeColor;
   document.getElementById('ps-stroke-w').value      = s.strokeWidth;
-  document.getElementById('ps-stroke-w-val').textContent = s.strokeWidth + 'px';
+  document.getElementById('ps-stroke-w-num').value  = s.strokeWidth;
   const dashSel = document.getElementById('ps-stroke-dash');
   dashSel.value = s.strokeDash;
-  // 옵션에 없는 구버전 값이면 실선으로 폴백
   if (dashSel.value !== s.strokeDash) dashSel.value = 'none';
   document.getElementById('ps-label-content').value = s.labelContent;
   document.getElementById('ps-label-sz').value      = s.labelSize;
-  document.getElementById('ps-label-sz-val').textContent = s.labelSize + 'px';
+  document.getElementById('ps-label-sz-num').value  = s.labelSize;
   psUpdatePreview();
 }
 
@@ -1471,8 +1516,29 @@ function psSyncPicker(which) {
   }
 }
 function psRangeLabel(inputId, labelId, unit, mul) {
-  const v = document.getElementById(inputId).value;
-  document.getElementById(labelId).textContent = (parseFloat(v) * mul).toFixed(mul === 100 ? 0 : 1) + unit;
+  // 구버전 호환 (현재 사용 안 함, 빈 함수로 유지)
+}
+
+// 슬라이더 → 숫자 입력란 동기화
+function psRangeToNum(rangeId, numId, mul) {
+  const v = parseFloat(document.getElementById(rangeId).value);
+  const numEl = document.getElementById(numId);
+  if (numEl) numEl.value = Math.round(v * mul * 10) / 10;
+}
+
+// 숫자 입력란 → 슬라이더 동기화
+function psNumToRange(numId, rangeId, div) {
+  const numEl   = document.getElementById(numId);
+  const rangeEl = document.getElementById(rangeId);
+  if (!numEl || !rangeEl) return;
+  let v = parseFloat(numEl.value);
+  if (isNaN(v)) return;
+  const rMin = parseFloat(rangeEl.min);
+  const rMax = parseFloat(rangeEl.max);
+  // 숫자 입력란은 사용자 단위(%), 슬라이더는 raw 단위(0~1 등)
+  const raw = v * div;
+  rangeEl.value = Math.min(Math.max(raw, rMin), rMax);
+  psApply();
 }
 function psApply() {
   psSaveUI();
