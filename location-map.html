@@ -1691,6 +1691,7 @@ function setColorMode(mode) {
   document.getElementById('btn-mode-gubun').style.cssText = 'flex:1;font-size:12px;padding:8px';
   document.getElementById('btn-mode-jimok').style.cssText = 'flex:1;font-size:12px;padding:8px';
   document.getElementById('lyr-jimok-group').style.display = mode === 'jimok' ? 'block' : 'none';
+  renderPyeonipStats();
   renderPyeonipLayers();
 }
 
@@ -1743,14 +1744,44 @@ function buildJimokLayerRows() {
 
 // 지목 색상 사용자 커스텀
 const jimokUserColors = {};
+const jimokLayerVis = {};   // 지목별 가시성 (기본 true)
+
 function setJimokColor(jimok, color) {
   jimokUserColors[jimok] = color;
-  const row = document.getElementById('lyr-jimok-' + jimok);
-  if (row) row.querySelector('div[style]').style.background = color;
+  const swatch = document.getElementById('jcs-' + jimok);
+  if (swatch) swatch.style.background = color;
+  renderPyeonipLayers();
+  renderPyeonipStats();
+}
+
+function toggleJimokVis(jimok) {
+  jimokLayerVis[jimok] = jimokLayerVis[jimok] === false ? true : false;
+  const btn = document.getElementById('jve-' + jimok);
+  if (btn) btn.classList.toggle('off', jimokLayerVis[jimok] === false);
   renderPyeonipLayers();
 }
 
-// ── 레이어 편집 플로팅 패널 ──────────────────────────
+function buildJimokLayerRows() {
+  const jimokSet = [...new Set(pyeonipData.map(r => r.jimok).filter(Boolean))].sort();
+  const el = document.getElementById('lyr-jimok-rows');
+  if (!el) return;
+  el.innerHTML = jimokSet.map(j => {
+    const c = jimokUserColors[j] || getJimokColor(j);
+    const vis = jimokLayerVis[j] !== false;
+    return `
+    <div class="lyr-jimok-row">
+      <button class="lyr-eye${vis ? ' on' : ' off'}" id="jve-${j}" onclick="toggleJimokVis('${j}')" title="가시성">👁</button>
+      <div style="position:relative;flex-shrink:0">
+        <div id="jcs-${j}" style="width:28px;height:18px;border-radius:3px;background:${c};border:1.5px solid rgba(0,0,0,0.12);cursor:pointer"
+          onclick="document.getElementById('jcp-${j}').click()"></div>
+        <input type="color" id="jcp-${j}" value="${c}"
+          style="position:absolute;opacity:0;width:0;height:0;pointer-events:none"
+          oninput="setJimokColor('${j}',this.value)">
+      </div>
+      <span style="flex:1;font-size:12px;font-weight:600;color:var(--ink2)">${j}</span>
+    </div>`;
+  }).join('');
+}
 let lepCurrentKey = null;
 
 function openLayerEdit(key) {
@@ -1827,49 +1858,85 @@ function buildJimokLegend() {
   buildJimokLayerRows();
 }
 
-// 통계 렌더
+// 통계 렌더 — colorMode에 따라 편입유형별/지목별로 전환
 function renderPyeonipStats() {
-  const total     = pyeonipData.length;
-  const cntFull   = pyeonipData.filter(r => r.gubun === '완전편입').length;
-  const cntPart   = pyeonipData.filter(r => r.gubun === '부분편입').length;
-  const sumArea   = pyeonipData.reduce((s, r) => s + (r.jijuArea || 0), 0);
-  const sumPyeon  = pyeonipData.reduce((s, r) => s + (r.pyeonipArea || 0), 0);
+  const total    = pyeonipData.length;
+  const cntFull  = pyeonipData.filter(r => r.gubun === '완전편입').length;
+  const cntPart  = pyeonipData.filter(r => r.gubun === '부분편입').length;
+  const sumPyeon = pyeonipData.reduce((s, r) => s + (r.pyeonipArea || 0), 0);
+  const sumFull  = pyeonipData.filter(r => r.gubun === '완전편입').reduce((s, r) => s + (r.pyeonipArea || 0), 0);
+  const sumPart  = pyeonipData.filter(r => r.gubun === '부분편입').reduce((s, r) => s + (r.pyeonipArea || 0), 0);
 
-  // 지목별 집계
-  const jimokMap = {};
-  pyeonipData.forEach(r => {
-    const j = r.jimok || '미상';
-    if (!jimokMap[j]) jimokMap[j] = { cnt: 0, area: 0 };
-    jimokMap[j].cnt++;
-    jimokMap[j].area += r.pyeonipArea || 0;
-  });
+  const el = document.getElementById('pyeonip-stats');
 
-  const jimokRows = Object.entries(jimokMap)
-    .sort((a, b) => b[1].area - a[1].area)
-    .map(([j, v]) => `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--border2)">
-        <div style="display:flex;align-items:center;gap:6px">
-          <div style="width:8px;height:8px;border-radius:2px;background:${getJimokColor(j)}"></div>
-          <span>${j}</span>
+  if (colorMode === 'gubun') {
+    // ── 편입유형별 현황 ──
+    el.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
+        <div style="background:var(--green-light);border-radius:6px;padding:8px 10px">
+          <div style="font-size:11.5px;color:var(--green);font-weight:700">완전편입</div>
+          <div style="font-size:16px;font-weight:800;font-family:'DM Mono',monospace">${cntFull}<span style="font-size:11px;font-weight:400;margin-left:2px">필지</span></div>
+          <div style="font-size:11px;color:var(--green);margin-top:2px;font-family:'DM Mono',monospace">${Math.round(sumFull).toLocaleString()} ㎡</div>
         </div>
-        <span style="font-family:'DM Mono',monospace;font-size:11px">${v.cnt}필지 / ${Math.round(v.area).toLocaleString()}㎡</span>
-      </div>`).join('');
+        <div style="background:var(--amber-light);border-radius:6px;padding:8px 10px">
+          <div style="font-size:11.5px;color:var(--amber);font-weight:700">부분편입</div>
+          <div style="font-size:16px;font-weight:800;font-family:'DM Mono',monospace">${cntPart}<span style="font-size:11px;font-weight:400;margin-left:2px">필지</span></div>
+          <div style="font-size:11px;color:var(--amber);margin-top:2px;font-family:'DM Mono',monospace">${Math.round(sumPart).toLocaleString()} ㎡</div>
+        </div>
+      </div>
+      <div style="font-size:11.5px;color:var(--ink2);padding:6px 8px;background:var(--bg);border-radius:6px;display:flex;justify-content:space-between">
+        <span>전체 <b>${total}</b>필지</span>
+        <span>편입면적 합계 <b>${Math.round(sumPyeon).toLocaleString()} ㎡</b></span>
+      </div>`;
+  } else {
+    // ── 지목별 현황 ──
+    const jimokMap = {};
+    pyeonipData.forEach(r => {
+      const j = r.jimok || '미상';
+      if (!jimokMap[j]) jimokMap[j] = { cnt:0, area:0, full:0, part:0 };
+      jimokMap[j].cnt++;
+      jimokMap[j].area += r.pyeonipArea || 0;
+      if (r.gubun === '완전편입') jimokMap[j].full++;
+      else jimokMap[j].part++;
+    });
 
-  document.getElementById('pyeonip-stats').innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
-      <div style="background:var(--green-light);border-radius:6px;padding:8px 10px">
-        <div style="font-size:11.5px;color:var(--green);font-weight:700">완전편입</div>
-        <div style="font-size:16px;font-weight:800;font-family:'DM Mono',monospace">${cntFull}</div>
+    const jimokRows = Object.entries(jimokMap)
+      .sort((a, b) => b[1].area - a[1].area)
+      .map(([j, v]) => {
+        const c = jimokUserColors[j] || getJimokColor(j);
+        const vis = jimokLayerVis[j] !== false;
+        return `
+        <div style="display:flex;align-items:center;gap:7px;padding:5px 2px;border-bottom:1px solid var(--border2)">
+          <div style="width:10px;height:10px;border-radius:2px;background:${c};flex-shrink:0;border:1px solid rgba(0,0,0,0.1)"></div>
+          <span style="flex:1;font-size:12px;font-weight:600">${j}</span>
+          <div style="text-align:right">
+            <div style="font-size:11.5px;font-family:'DM Mono',monospace;color:var(--ink2)">${v.cnt}필지</div>
+            <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--ink3)">${Math.round(v.area).toLocaleString()} ㎡</div>
+            <div style="font-size:10.5px;color:var(--ink3)">완전 ${v.full} / 부분 ${v.part}</div>
+          </div>
+        </div>`;
+      }).join('');
+
+    el.innerHTML = `
+      <div style="font-size:11.5px;color:var(--ink2);padding:6px 8px;background:var(--bg);border-radius:6px;display:flex;justify-content:space-between;margin-bottom:8px">
+        <span>전체 <b>${total}</b>필지</span>
+        <span>편입면적 <b>${Math.round(sumPyeon).toLocaleString()} ㎡</b></span>
       </div>
-      <div style="background:var(--amber-light);border-radius:6px;padding:8px 10px">
-        <div style="font-size:11.5px;color:var(--amber);font-weight:700">부분편입</div>
-        <div style="font-size:16px;font-weight:800;font-family:'DM Mono',monospace">${cntPart}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
+        <div style="background:var(--green-light);border-radius:6px;padding:6px 8px">
+          <div style="font-size:11px;color:var(--green);font-weight:700">완전편입</div>
+          <div style="font-size:14px;font-weight:800;font-family:'DM Mono',monospace">${cntFull}필지</div>
+          <div style="font-size:11px;color:var(--green);font-family:'DM Mono',monospace">${Math.round(sumFull).toLocaleString()} ㎡</div>
+        </div>
+        <div style="background:var(--amber-light);border-radius:6px;padding:6px 8px">
+          <div style="font-size:11px;color:var(--amber);font-weight:700">부분편입</div>
+          <div style="font-size:14px;font-weight:800;font-family:'DM Mono',monospace">${cntPart}필지</div>
+          <div style="font-size:11px;color:var(--amber);font-family:'DM Mono',monospace">${Math.round(sumPart).toLocaleString()} ㎡</div>
+        </div>
       </div>
-    </div>
-    <div style="font-size:11px;margin-bottom:2px">전체 <b>${total}</b>필지 &nbsp;|&nbsp; 편입면적 합계 <b>${Math.round(sumPyeon).toLocaleString()} ㎡</b></div>
-    <div style="margin-top:8px;font-size:11px;font-weight:700;color:var(--ink3);margin-bottom:4px">지목별 편입 현황</div>
-    ${jimokRows}
-  `;
+      <div style="font-size:11.5px;font-weight:700;color:var(--ink3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">지목별 편입 현황</div>
+      ${jimokRows}`;
+  }
 }
 
 // 편입 필지 지도 레이어 렌더
@@ -1891,8 +1958,9 @@ function renderPyeonipLayers() {
     // 편입구분에 따른 스타일 선택
     const sKey = row.gubun === '완전편입' ? 'full' : 'part';
 
-    // 가시성 체크
-    if (!layerVis[sKey]) { skipped++; return; }
+    // 가시성 체크 — 편입유형별: layerVis / 지목별: jimokLayerVis
+    if (colorMode === 'gubun' && !layerVis[sKey]) { skipped++; return; }
+    if (colorMode === 'jimok' && jimokLayerVis[row.jimok] === false) { skipped++; return; }
 
     const s = psStyles[sKey];
 
