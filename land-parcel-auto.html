@@ -726,6 +726,65 @@ tbody.result-body td:last-child { border-right:none; }
         </div>
       </div>
 
+      <!-- ── 토지대장 연계 패널 ── -->
+      <div class="sec-card" style="padding:18px 20px;margin-bottom:16px">
+        <div class="sec-card-title">
+          <div class="dot"></div>
+          토지대장 연계 (선택)
+          <span style="font-size:11px;color:var(--ink3);font-weight:400;text-transform:none;letter-spacing:0;margin-left:6px">토지대장 엑셀을 업로드하면 PNU 기준으로 데이터를 병합합니다</span>
+        </div>
+
+        <!-- 업로드 영역 -->
+        <div id="ldLink-upload-area">
+          <div class="upload-box" id="ldLinkDropZone"
+            onclick="document.getElementById('ldLinkFile').click()"
+            ondragover="dragOver(event,'ldLinkDropZone')" ondragleave="dragLeave('ldLinkDropZone')"
+            ondrop="ldLinkDrop(event)">
+            <div class="upload-icon">📊</div>
+            <div class="upload-title">토지대장 엑셀 업로드</div>
+            <div class="upload-desc">.xlsx 파일을 올려주세요 · 드래그&드롭 가능</div>
+            <label class="upload-label">📎 파일 선택</label>
+          </div>
+          <input type="file" id="ldLinkFile" accept=".xlsx,.xls" style="display:none" onchange="ldLinkHandle(event)">
+        </div>
+
+        <!-- 컬럼 선택 UI (업로드 후 표시) -->
+        <div id="ldLink-col-area" style="display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div style="font-size:12px;font-weight:700;color:var(--ink2)" id="ldLink-file-info"></div>
+            <button onclick="ldLinkReset()" style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;color:var(--ink3)">✕ 파일 변경</button>
+          </div>
+
+          <!-- PNU 컬럼 지정 -->
+          <div style="background:var(--blue-light);border:1px solid #b8ccf0;border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px">
+            <span style="font-size:12px;font-weight:700;color:var(--blue)">🔑 PNU 컬럼 지정</span>
+            <select id="ldLink-pnu-col" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:'Noto Sans KR',sans-serif;outline:none;background:var(--white)">
+              <option value="">-- 선택 --</option>
+            </select>
+            <span style="font-size:11px;color:var(--blue)">토지대장에서 PNU(19자리)가 있는 컬럼을 선택하세요</span>
+          </div>
+
+          <!-- 가져올 컬럼 선택 -->
+          <div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:8px">가져올 항목 선택</div>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <div style="display:grid;grid-template-columns:32px 1fr 1fr 100px;gap:0;background:var(--ink);color:white;font-size:11px;font-weight:700;font-family:'DM Mono',monospace">
+              <div style="padding:7px 8px;text-align:center">✓</div>
+              <div style="padding:7px 10px">출력 항목명</div>
+              <div style="padding:7px 10px">토지대장 컬럼</div>
+              <div style="padding:7px 10px;text-align:center">미리보기</div>
+            </div>
+            <div id="ldLink-col-rows"></div>
+          </div>
+
+          <div style="display:flex;gap:8px;margin-top:14px">
+            <button onclick="ldLinkApply()" class="btn-next" style="padding:10px 24px">✅ 결과에 반영</button>
+            <button onclick="ldLinkReset()" style="padding:10px 16px;border:1px solid var(--border);border-radius:8px;background:none;font-size:13px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;color:var(--ink2)">초기화</button>
+          </div>
+
+          <div id="ldLink-result" style="display:none;margin-top:10px"></div>
+        </div>
+      </div>
+
       <!-- 결과 테이블 -->
       <div class="sec-card" style="padding:16px 20px">
         <div class="toolbar" style="margin-bottom:12px">
@@ -740,7 +799,6 @@ tbody.result-body td:last-child { border-right:none; }
           </select>
           <button class="btn-sm" onclick="sendToLocationMap()" style="background:var(--teal,#0f766e);color:white;border-color:var(--teal,#0f766e)">🗺️ 위치도에서 보기</button>
         </div>
-        <!-- ── 필지 스타일 설정 패널 ── -->
         <div class="style-panel-wrap" id="stylePanelWrap" style="display:none;margin-bottom:12px">
           <button class="style-panel-header" onclick="toggleStyleBody()">
             <span class="style-panel-header-left">
@@ -866,68 +924,6 @@ tbody.result-body td:last-child { border-right:none; }
             </thead>
             <tbody id="shpResultBody"></tbody>
           </table>
-        </div>
-      </div>
-
-      <!-- ── 토지대장 연계 패널 ── -->
-      <div class="sec-card" style="padding:18px 20px;margin-top:12px">
-        <div class="sec-card-title">
-          <div class="dot"></div>
-          토지대장 연계 (선택)
-          <span style="font-size:11px;color:var(--ink3);font-weight:400;text-transform:none;letter-spacing:0;margin-left:6px">토지대장 엑셀을 업로드하면 PNU 기준으로 데이터를 병합합니다</span>
-        </div>
-
-        <!-- 업로드 영역 -->
-        <div id="ldLink-upload-area">
-          <div class="upload-box" id="ldLinkDropZone"
-            onclick="document.getElementById('ldLinkFile').click()"
-            ondragover="dragOver(event,'ldLinkDropZone')" ondragleave="dragLeave('ldLinkDropZone')"
-            ondrop="ldLinkDrop(event)">
-            <div class="upload-icon">📊</div>
-            <div class="upload-title">토지대장 엑셀 업로드</div>
-            <div class="upload-desc">.xlsx 파일을 올려주세요 · 드래그&드롭 가능</div>
-            <label class="upload-label">📎 파일 선택</label>
-          </div>
-          <input type="file" id="ldLinkFile" accept=".xlsx,.xls" style="display:none" onchange="ldLinkHandle(event)">
-        </div>
-
-        <!-- 컬럼 선택 UI (업로드 후 표시) -->
-        <div id="ldLink-col-area" style="display:none">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-            <div style="font-size:12px;font-weight:700;color:var(--ink2)" id="ldLink-file-info"></div>
-            <button onclick="ldLinkReset()" style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;color:var(--ink3)">✕ 파일 변경</button>
-          </div>
-
-          <!-- PNU 컬럼 지정 -->
-          <div style="background:var(--blue-light);border:1px solid #b8ccf0;border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px">
-            <span style="font-size:12px;font-weight:700;color:var(--blue)">🔑 PNU 컬럼 지정</span>
-            <select id="ldLink-pnu-col" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:'Noto Sans KR',sans-serif;outline:none;background:var(--white)">
-              <option value="">-- 선택 --</option>
-            </select>
-            <span style="font-size:11px;color:var(--blue)">토지대장에서 PNU(19자리)가 있는 컬럼을 선택하세요</span>
-          </div>
-
-          <!-- 가져올 컬럼 선택 -->
-          <div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:8px">가져올 항목 선택</div>
-          <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;overflow:hidden">
-            <!-- 헤더 -->
-            <div style="display:grid;grid-template-columns:32px 1fr 1fr 100px;gap:0;background:var(--ink);color:white;font-size:11px;font-weight:700;font-family:'DM Mono',monospace">
-              <div style="padding:7px 8px;text-align:center">✓</div>
-              <div style="padding:7px 10px">출력 항목명</div>
-              <div style="padding:7px 10px">토지대장 컬럼</div>
-              <div style="padding:7px 10px;text-align:center">미리보기</div>
-            </div>
-            <!-- 항목 행 -->
-            <div id="ldLink-col-rows"></div>
-          </div>
-
-          <div style="display:flex;gap:8px;margin-top:14px">
-            <button onclick="ldLinkApply()" class="btn-next" style="padding:10px 24px">✅ 결과에 반영</button>
-            <button onclick="ldLinkReset()" style="padding:10px 16px;border:1px solid var(--border);border-radius:8px;background:none;font-size:13px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;color:var(--ink2)">초기화</button>
-          </div>
-
-          <!-- 반영 결과 -->
-          <div id="ldLink-result" style="display:none;margin-top:10px"></div>
         </div>
       </div>
 
