@@ -18,15 +18,37 @@ function listZipFiles(buffer) {
   const bytes = new Uint8Array(buffer);
   const entries = [];
   const sig = [0x50,0x4B,0x03,0x04];
+
+  // ── Central Directory에서 실제 크기 읽기 ──────────────
+  // Data Descriptor 방식(compSize=0)일 때 Central Directory가 정확한 값을 가짐
+  const cdMap = {}; // fname → { compSize, uncompSize, localOffset }
+  const cdSig = [0x50,0x4B,0x01,0x02];
+  for (let j = 0; j < bytes.length - 46; j++) {
+    if (bytes[j]===cdSig[0]&&bytes[j+1]===cdSig[1]&&bytes[j+2]===cdSig[2]&&bytes[j+3]===cdSig[3]) {
+      const cdCompSize   = bytes[j+20]|(bytes[j+21]<<8)|(bytes[j+22]<<16)|(bytes[j+23]<<24);
+      const cdUncompSize = bytes[j+24]|(bytes[j+25]<<8)|(bytes[j+26]<<16)|(bytes[j+27]<<24);
+      const cdFnLen      = bytes[j+28]|(bytes[j+29]<<8);
+      const cdExLen      = bytes[j+30]|(bytes[j+31]<<8);
+      const cdCmLen      = bytes[j+32]|(bytes[j+33]<<8);
+      const localOffset  = bytes[j+42]|(bytes[j+43]<<8)|(bytes[j+44]<<16)|(bytes[j+45]<<24);
+      let cdFname;
+      try { cdFname = new TextDecoder('utf-8',{fatal:true}).decode(bytes.slice(j+46,j+46+cdFnLen)); }
+      catch(e) { try { cdFname = new TextDecoder('euc-kr').decode(bytes.slice(j+46,j+46+cdFnLen)); } catch(e2) { cdFname = ''; } }
+      if (cdFname) cdMap[cdFname] = { compSize: cdCompSize, uncompSize: cdUncompSize, localOffset };
+      j += 46 + cdFnLen + cdExLen + cdCmLen - 1;
+    }
+  }
+
+  // ── Local File Header 순서대로 entries 구성 ───────────
   let i = 0;
   while (i < bytes.length - 30) {
     if (bytes[i]===sig[0]&&bytes[i+1]===sig[1]&&bytes[i+2]===sig[2]&&bytes[i+3]===sig[3]) {
+      const flags      = bytes[i+6]|(bytes[i+7]<<8);
       const compMethod = bytes[i+8]|(bytes[i+9]<<8);
-      const compSize   = bytes[i+18]|(bytes[i+19]<<8)|(bytes[i+20]<<16)|(bytes[i+21]<<24);
-      const uncompSize = bytes[i+22]|(bytes[i+23]<<8)|(bytes[i+24]<<16)|(bytes[i+25]<<24);
+      let   compSize   = bytes[i+18]|(bytes[i+19]<<8)|(bytes[i+20]<<16)|(bytes[i+21]<<24);
+      let   uncompSize = bytes[i+22]|(bytes[i+23]<<8)|(bytes[i+24]<<16)|(bytes[i+25]<<24);
       const fnLen      = bytes[i+26]|(bytes[i+27]<<8);
       const exLen      = bytes[i+28]|(bytes[i+29]<<8);
-      // 파일명 디코딩: UTF-8 우선, 실패 시 EUC-KR 폴백 (한국 SHP ZIP 호환)
       let fname;
       try {
         const fnBytes = bytes.slice(i+30, i+30+fnLen);
@@ -35,7 +57,23 @@ function listZipFiles(buffer) {
         try { fname = new TextDecoder('euc-kr').decode(bytes.slice(i+30, i+30+fnLen)); }
         catch(e2) { fname = String.fromCharCode(...bytes.slice(i+30, i+30+fnLen)); }
       }
-      const dataStart  = i+30+fnLen+exLen;
+      const dataStart = i+30+fnLen+exLen;
+
+      // Data Descriptor 방식(bit3=1 또는 compSize=0): Central Directory에서 보정
+      if ((flags & 0x08) || compSize === 0) {
+        const cd = cdMap[fname];
+        if (cd) { compSize = cd.compSize; uncompSize = cd.uncompSize; }
+        else {
+          // 다음 PK 시그니처까지 거리로 추정
+          let next = bytes.indexOf(0x50, dataStart);
+          while (next > 0 && next < bytes.length - 3) {
+            if (bytes[next+1]===0x4B && (bytes[next+2]===0x03||bytes[next+2]===0x01||bytes[next+2]===0x05)) break;
+            next = bytes.indexOf(0x50, next+1);
+          }
+          compSize = next > dataStart ? next - dataStart : 0;
+        }
+      }
+
       entries.push({ name:fname, compMethod, compSize, uncompSize, dataStart });
       i = dataStart + compSize;
     } else { i++; }
@@ -45,9 +83,20 @@ function listZipFiles(buffer) {
 
 // ── ZIP 항목 압축 해제 (Store/Deflate) ───────────────
 async function extractZipEntry(buffer, entry) {
-  const raw = new Uint8Array(buffer, entry.dataStart, entry.compSize);
+  // compSize가 0이면 (보정 실패 케이스) buffer 전체에서 다음 PK까지 추출
+  let compSize = entry.compSize;
+  if (compSize === 0) {
+    const bytes = new Uint8Array(buffer);
+    let next = entry.dataStart;
+    while (next < bytes.length - 3) {
+      if (bytes[next]===0x50&&bytes[next+1]===0x4B&&(bytes[next+2]===0x03||bytes[next+2]===0x01||bytes[next+2]===0x05||bytes[next+2]===0x07)) break;
+      next++;
+    }
+    compSize = next - entry.dataStart;
+  }
+  const raw = new Uint8Array(buffer, entry.dataStart, compSize);
   if (entry.compMethod === 0) {
-    const out = new Uint8Array(entry.compSize);
+    const out = new Uint8Array(compSize);
     out.set(raw); return out.buffer;
   }
   if (entry.compMethod === 8) {
