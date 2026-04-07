@@ -848,8 +848,8 @@ tbody.result-body td:last-child { border-right:none; }
         </div><!-- /style-panel-wrap -->
 
         <div class="table-wrap">
-          <table class="result" style="min-width:1100px">
-            <thead>
+          <table class="result" style="min-width:1100px" id="shpResultTable">
+            <thead id="shpResultThead">
               <tr class="th-main">
                 <th onclick="shpSort('pnu')" style="cursor:pointer;user-select:none">PNU <span id="shp-sort-pnu"></span></th>
                 <th>연번</th>
@@ -866,6 +866,68 @@ tbody.result-body td:last-child { border-right:none; }
             </thead>
             <tbody id="shpResultBody"></tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- ── 토지대장 연계 패널 ── -->
+      <div class="sec-card" style="padding:18px 20px;margin-top:12px">
+        <div class="sec-card-title">
+          <div class="dot"></div>
+          토지대장 연계 (선택)
+          <span style="font-size:11px;color:var(--ink3);font-weight:400;text-transform:none;letter-spacing:0;margin-left:6px">토지대장 엑셀을 업로드하면 PNU 기준으로 데이터를 병합합니다</span>
+        </div>
+
+        <!-- 업로드 영역 -->
+        <div id="ldLink-upload-area">
+          <div class="upload-box" id="ldLinkDropZone"
+            onclick="document.getElementById('ldLinkFile').click()"
+            ondragover="dragOver(event,'ldLinkDropZone')" ondragleave="dragLeave('ldLinkDropZone')"
+            ondrop="ldLinkDrop(event)">
+            <div class="upload-icon">📊</div>
+            <div class="upload-title">토지대장 엑셀 업로드</div>
+            <div class="upload-desc">.xlsx 파일을 올려주세요 · 드래그&드롭 가능</div>
+            <label class="upload-label">📎 파일 선택</label>
+          </div>
+          <input type="file" id="ldLinkFile" accept=".xlsx,.xls" style="display:none" onchange="ldLinkHandle(event)">
+        </div>
+
+        <!-- 컬럼 선택 UI (업로드 후 표시) -->
+        <div id="ldLink-col-area" style="display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div style="font-size:12px;font-weight:700;color:var(--ink2)" id="ldLink-file-info"></div>
+            <button onclick="ldLinkReset()" style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;color:var(--ink3)">✕ 파일 변경</button>
+          </div>
+
+          <!-- PNU 컬럼 지정 -->
+          <div style="background:var(--blue-light);border:1px solid #b8ccf0;border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px">
+            <span style="font-size:12px;font-weight:700;color:var(--blue)">🔑 PNU 컬럼 지정</span>
+            <select id="ldLink-pnu-col" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:'Noto Sans KR',sans-serif;outline:none;background:var(--white)">
+              <option value="">-- 선택 --</option>
+            </select>
+            <span style="font-size:11px;color:var(--blue)">토지대장에서 PNU(19자리)가 있는 컬럼을 선택하세요</span>
+          </div>
+
+          <!-- 가져올 컬럼 선택 -->
+          <div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:8px">가져올 항목 선택</div>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <!-- 헤더 -->
+            <div style="display:grid;grid-template-columns:32px 1fr 1fr 100px;gap:0;background:var(--ink);color:white;font-size:11px;font-weight:700;font-family:'DM Mono',monospace">
+              <div style="padding:7px 8px;text-align:center">✓</div>
+              <div style="padding:7px 10px">출력 항목명</div>
+              <div style="padding:7px 10px">토지대장 컬럼</div>
+              <div style="padding:7px 10px;text-align:center">미리보기</div>
+            </div>
+            <!-- 항목 행 -->
+            <div id="ldLink-col-rows"></div>
+          </div>
+
+          <div style="display:flex;gap:8px;margin-top:14px">
+            <button onclick="ldLinkApply()" class="btn-next" style="padding:10px 24px">✅ 결과에 반영</button>
+            <button onclick="ldLinkReset()" style="padding:10px 16px;border:1px solid var(--border);border-radius:8px;background:none;font-size:13px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;color:var(--ink2)">초기화</button>
+          </div>
+
+          <!-- 반영 결과 -->
+          <div id="ldLink-result" style="display:none;margin-top:10px"></div>
         </div>
       </div>
 
@@ -2003,6 +2065,27 @@ function shpSort(key) {
 }
 
 function renderShpResult() {
+  // 토지대장 연계 컬럼 헤더 동적 추가
+  const thead = document.getElementById('shpResultThead');
+  if (thead) {
+    const extraTh = ldLinkSelectedFields.map(f =>
+      `<th style="background:#1a3a6e;color:white;border-right:1px solid rgba(255,255,255,0.15)">${escHtml(f.label)}</th>`
+    ).join('');
+    thead.innerHTML = `<tr class="th-main">
+      <th onclick="shpSort('pnu')" style="cursor:pointer;user-select:none">PNU <span id="shp-sort-pnu"></span></th>
+      <th>연번</th>
+      <th onclick="shpSort('sido')" style="cursor:pointer;user-select:none">시도 <span id="shp-sort-sido"></span></th>
+      <th onclick="shpSort('sigungu')" style="cursor:pointer;user-select:none">시군구 <span id="shp-sort-sigungu"></span></th>
+      <th onclick="shpSort('emd')" style="cursor:pointer;user-select:none">읍면동 <span id="shp-sort-emd"></span></th>
+      <th onclick="shpSort('daejang')" style="cursor:pointer;user-select:none">대장구분 <span id="shp-sort-daejang"></span></th>
+      <th onclick="shpSort('jibun')" style="cursor:pointer;user-select:none">지번 <span id="shp-sort-jibun"></span></th>
+      <th onclick="shpSort('jimok')" style="cursor:pointer;user-select:none">지목 <span id="shp-sort-jimok"></span></th>
+      <th onclick="shpSort('jijuArea')" style="cursor:pointer;user-select:none">필지면적(㎡) <span id="shp-sort-jijuArea"></span></th>
+      <th onclick="shpSort('pyeonipArea')" style="cursor:pointer;user-select:none">편입면적(㎡) <span id="shp-sort-pyeonipArea"></span></th>
+      <th onclick="shpSort('gubun')" style="cursor:pointer;user-select:none">편입구분 <span id="shp-sort-gubun"></span></th>
+      ${extraTh}
+    </tr>`;
+  }
   const q  = (document.getElementById('shpSearch')?.value  || '').toLowerCase();
   const fg = (document.getElementById('shpFilterGubun')?.value || '');
 
@@ -2037,6 +2120,11 @@ function renderShpResult() {
     const gubunBadge = r.gubun === '완전편입'
       ? `<span class="status-badge s-완편">완전편입</span>`
       : `<span class="status-badge s-일편">부분편입</span>`;
+    const pnu = String(r.pnu || '').padStart(19,'0');
+    const extra = ldLinkExtra[pnu] || {};
+    const extraCells = ldLinkSelectedFields.map(f =>
+      `<td style="text-align:center;border-right:1px solid var(--border);border-bottom:1px solid var(--border2);padding:8px 10px;font-size:11px">${escHtml(extra[f.key] ?? '—')}</td>`
+    ).join('');
     return `<tr>
       <td class="td-mono" style="font-size:10px">${escHtml(r.pnu)}</td>
       <td class="td-mono">${i + 1}</td>
@@ -2049,25 +2137,238 @@ function renderShpResult() {
       <td class="td-mono td-right">${r.jijuArea.toLocaleString()}</td>
       <td class="td-mono td-right">${r.pyeonipArea.toLocaleString()}</td>
       <td>${gubunBadge}</td>
+      ${extraCells}
     </tr>`;
   }).join('');
 }
+
+// ─── 토지대장 연계 ────────────────────────────────────
+let ldLinkHeaders = [];   // 토지대장 헤더
+let ldLinkRows    = [];   // 토지대장 데이터 rows
+let ldLinkExtra   = {};   // PNU → 병합 데이터 맵
+
+// 기본 출력 항목 정의
+const LD_LINK_FIELDS = [
+  { key:'jimok',     label:'지목',       default:true  },
+  { key:'area',      label:'지적면적(㎡)', default:false },
+  { key:'price',     label:'공시지가(원/㎡)', default:true },
+  { key:'ownerType', label:'소유구분',    default:true  },
+  { key:'ownerName', label:'소유자성명', default:true  },
+  { key:'ownerAddr', label:'소유자주소', default:false },
+];
+
+function ldLinkDrop(e) {
+  e.preventDefault(); dragLeave('ldLinkDropZone');
+  const file = e.dataTransfer.files[0];
+  if (file) ldLinkProcess(file);
+}
+function ldLinkHandle(e) {
+  const file = e.target.files[0];
+  if (file) ldLinkProcess(file);
+  e.target.value = '';
+}
+
+function ldLinkProcess(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type:'binary' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+
+      // 헤더 행 탐지 (가장 많은 데이터가 있는 행)
+      let hIdx = 0, maxC = 0;
+      raw.slice(0, 5).forEach((r, i) => {
+        const cnt = r.filter(v => v !== '' && v !== null).length;
+        if (cnt > maxC) { maxC = cnt; hIdx = i; }
+      });
+
+      ldLinkHeaders = (raw[hIdx] || []).map((h, i) => h !== '' ? String(h) : `열${i+1}`);
+      ldLinkRows    = raw.slice(hIdx + 1).filter(r => r.some(v => v !== ''));
+
+      // 파일 정보 표시
+      document.getElementById('ldLink-file-info').textContent =
+        `📊 ${file.name} — ${ldLinkHeaders.length}개 컬럼 / ${ldLinkRows.length}행`;
+
+      // PNU 컬럼 셀렉트 채우기
+      const pnuSel = document.getElementById('ldLink-pnu-col');
+      pnuSel.innerHTML = '<option value="">-- 선택 --</option>' +
+        ldLinkHeaders.map((h, i) => `<option value="${i}">${h}</option>`).join('');
+
+      // PNU 컬럼 자동 감지
+      const pnuIdx = ldLinkHeaders.findIndex(h =>
+        /pnu|필지고유|고유번호|bpcd/i.test(h));
+      if (pnuIdx >= 0) pnuSel.value = pnuIdx;
+
+      // 컬럼 선택 행 렌더
+      ldLinkRenderColRows();
+
+      // UI 전환
+      document.getElementById('ldLink-upload-area').style.display = 'none';
+      document.getElementById('ldLink-col-area').style.display    = 'block';
+      document.getElementById('ldLink-result').style.display      = 'none';
+      showToast(`✅ 토지대장 ${ldLinkRows.length}행 로드 완료`);
+    } catch(err) {
+      showToast('❌ 파일 읽기 실패: ' + err.message);
+    }
+  };
+  reader.readAsBinaryString(file);
+}
+
+function ldLinkRenderColRows() {
+  const el = document.getElementById('ldLink-col-rows');
+  el.innerHTML = LD_LINK_FIELDS.map((f, fi) => {
+    const opts = ldLinkHeaders.map((h, i) =>
+      `<option value="${i}">${h}</option>`).join('');
+    // 자동 매핑
+    const autoIdx = ldLinkAutoMatch(f.key);
+    // 미리보기 샘플
+    const sample = autoIdx >= 0 && ldLinkRows[0]
+      ? String(ldLinkRows[0][autoIdx] || '').slice(0, 12) : '—';
+    return `
+    <div style="display:grid;grid-template-columns:32px 1fr 1fr 100px;gap:0;border-top:1px solid var(--border2);align-items:center"
+         id="ldlr-${f.key}">
+      <div style="padding:8px;text-align:center">
+        <input type="checkbox" id="ldlc-${f.key}" ${f.default ? 'checked' : ''}
+          onchange="ldLinkUpdateSample('${f.key}')">
+      </div>
+      <div style="padding:8px 10px;font-size:12px;font-weight:600;color:var(--ink2)">${f.label}</div>
+      <div style="padding:6px 8px">
+        <select id="ldls-${f.key}"
+          style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:'Noto Sans KR',sans-serif;outline:none"
+          onchange="ldLinkUpdateSample('${f.key}')">
+          <option value="">-- 선택 안함 --</option>
+          ${opts}
+        </select>
+      </div>
+      <div style="padding:8px 10px;font-size:11px;color:var(--ink3);font-family:'DM Mono',monospace;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+           id="ldlp-${f.key}">${sample}</div>
+    </div>`;
+  }).join('');
+
+  // 자동 매핑 선택값 세팅
+  LD_LINK_FIELDS.forEach(f => {
+    const idx = ldLinkAutoMatch(f.key);
+    const sel = document.getElementById('ldls-' + f.key);
+    if (sel && idx >= 0) sel.value = idx;
+  });
+}
+
+function ldLinkAutoMatch(key) {
+  const patterns = {
+    jimok:     /지목/,
+    area:      /면적|공부면적|지적면적/,
+    price:     /공시지가|개별공시지가/,
+    ownerType: /소유구분|소유형태|소유권/,
+    ownerName: /소유자.*성명|성명|소유자명/,
+    ownerAddr: /소유자.*주소|주소/,
+  };
+  const pat = patterns[key];
+  if (!pat) return -1;
+  return ldLinkHeaders.findIndex(h => pat.test(h));
+}
+
+function ldLinkUpdateSample(key) {
+  const sel = document.getElementById('ldls-' + key);
+  const prev = document.getElementById('ldlp-' + key);
+  if (!sel || !prev) return;
+  const idx = parseInt(sel.value);
+  if (isNaN(idx) || !ldLinkRows[0]) { prev.textContent = '—'; return; }
+  prev.textContent = String(ldLinkRows[0][idx] || '').slice(0, 12) || '—';
+}
+
+function ldLinkApply() {
+  const pnuColIdx = parseInt(document.getElementById('ldLink-pnu-col').value);
+  if (isNaN(pnuColIdx)) { showToast('⚠️ PNU 컬럼을 선택해주세요'); return; }
+
+  // 선택된 컬럼 맵
+  const selected = LD_LINK_FIELDS
+    .filter(f => document.getElementById('ldlc-' + f.key)?.checked)
+    .map(f => ({
+      key: f.key,
+      label: f.label,
+      colIdx: parseInt(document.getElementById('ldls-' + f.key)?.value ?? '-1'),
+    }))
+    .filter(f => f.colIdx >= 0);
+
+  if (selected.length === 0) { showToast('⚠️ 가져올 항목을 하나 이상 선택하세요'); return; }
+
+  // 토지대장 PNU 인덱스 생성
+  const ldMap = {};
+  ldLinkRows.forEach(r => {
+    const raw = String(r[pnuColIdx] || '').replace(/[^0-9]/g, '');
+    if (raw.length >= 15) ldMap[raw.slice(0, 19).padStart(19,'0')] = r;
+  });
+
+  // shpResultRows에 병합
+  let matched = 0, unmatched = 0;
+  ldLinkExtra = {};
+  shpResultRows.forEach(r => {
+    const pnu = String(r.pnu || '').padStart(19, '0');
+    const ld  = ldMap[pnu];
+    if (ld) {
+      ldLinkExtra[pnu] = {};
+      selected.forEach(f => {
+        ldLinkExtra[pnu][f.key] = ld[f.colIdx] !== undefined ? String(ld[f.colIdx]) : '';
+      });
+      matched++;
+    } else {
+      unmatched++;
+    }
+  });
+
+  // 결과 테이블 재렌더 (새 컬럼 포함)
+  ldLinkSelectedFields = selected;
+  renderShpResult();
+
+  // 결과 메시지
+  const resultEl = document.getElementById('ldLink-result');
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = `
+    <div class="alert alert-green">
+      <span class="alert-icon">✅</span>
+      <div>병합 완료 — 매칭 <strong>${matched}</strong>필지 / 미매칭 <strong>${unmatched}</strong>필지
+        <div style="font-size:11px;margin-top:3px;color:var(--ink3)">결과 테이블과 엑셀 다운로드에 반영됩니다.</div>
+      </div>
+    </div>`;
+  showToast(`✅ 토지대장 병합 완료 (${matched}필지 매칭)`);
+}
+
+function ldLinkReset() {
+  ldLinkHeaders = []; ldLinkRows = []; ldLinkExtra = {};
+  ldLinkSelectedFields = [];
+  document.getElementById('ldLink-upload-area').style.display = 'block';
+  document.getElementById('ldLink-col-area').style.display    = 'none';
+  document.getElementById('ldLink-result').style.display      = 'none';
+  document.getElementById('ldLinkFile').value = '';
+  renderShpResult();
+}
+
+let ldLinkSelectedFields = []; // 현재 반영 중인 필드 목록
 
 // ─── 엑셀 다운로드 ─────────────────────────────────────
 function exportShpExcel() {
   if (shpResultRows.length === 0) { showToast('⚠️ 데이터가 없습니다'); return; }
 
-  const header = ['pnu','연번','시도','시군구','읍면동','대장구분','지번','지목','필지면적(㎡)','편입면적(㎡)','편입구분'];
-  const data   = [header, ...shpResultRows.map((r, i) => [
-    r.pnu, i + 1, r.sido, r.sigungu, r.emd,
-    r.daejang, r.jibun, r.jimok,
-    r.jijuArea, r.pyeonipArea, r.gubun,
-  ])];
+  const extraHeaders = ldLinkSelectedFields.map(f => f.label);
+  const header = ['pnu','연번','시도','시군구','읍면동','대장구분','지번','지목','필지면적(㎡)','편입면적(㎡)','편입구분', ...extraHeaders];
+  const data   = [header, ...shpResultRows.map((r, i) => {
+    const pnu = String(r.pnu || '').padStart(19,'0');
+    const extra = ldLinkExtra[pnu] || {};
+    const extraVals = ldLinkSelectedFields.map(f => extra[f.key] ?? '');
+    return [
+      r.pnu, i + 1, r.sido, r.sigungu, r.emd,
+      r.daejang, r.jibun, r.jimok,
+      r.jijuArea, r.pyeonipArea, r.gubun,
+      ...extraVals,
+    ];
+  })];
 
   const ws = XLSX.utils.aoa_to_sheet(data);
-  ws['!cols'] = [22, 6, 12, 14, 14, 8, 12, 6, 14, 14, 10].map(w => ({ wch: w }));
+  const colWidths = [22, 6, 12, 14, 14, 8, 12, 6, 14, 14, 10,
+    ...ldLinkSelectedFields.map(() => 16)];
+  ws['!cols'] = colWidths.map(w => ({ wch: w }));
 
-  // 헤더 스타일 (굵게)
   const range = XLSX.utils.decode_range(ws['!ref']);
   for (let c = range.s.c; c <= range.e.c; c++) {
     const cell = ws[XLSX.utils.encode_cell({ r: 0, c })];
