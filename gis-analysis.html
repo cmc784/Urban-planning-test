@@ -363,15 +363,16 @@ canvas { border-radius:6px; max-width:100%; }
             </div>
           </div>
           <input type="file" id="topoFile" style="display:none" accept=".dxf,.geojson,.json,.shp,.zip" onchange="handleTopoFile(this)">
-          <label for="topoFile" style="display:block;cursor:pointer">
-            <div class="upload-box" id="topoDropZone"
-              ondragover="dragOver(event,'topoDropZone')" ondragleave="dragLeave('topoDropZone')" ondrop="dropFile(event,'topo')">
-              <div class="upload-icon" id="topoIcon">🗺️</div>
-              <div class="upload-title" id="topoTitle">수치지형도 업로드</div>
-              <div class="upload-desc" id="topoDesc">.dxf 또는 .geojson 파일<br>드래그&드롭 가능</div>
-              <span class="upload-label">📎 파일 선택</span>
-            </div>
-          </label>
+          <div class="upload-box" id="topoDropZone"
+            ondragover="dragOver(event,'topoDropZone')"
+            ondragleave="dragLeave('topoDropZone')"
+            ondrop="dropFile(event,'topo')"
+            onclick="document.getElementById('topoFile').click()">
+            <div class="upload-icon" id="topoIcon">🗺️</div>
+            <div class="upload-title" id="topoTitle">수치지형도 업로드</div>
+            <div class="upload-desc" id="topoDesc">.dxf 또는 .geojson 파일<br>드래그&드롭 가능</div>
+            <span class="upload-label">📎 파일 선택</span>
+          </div>
           <div id="topoFileTag" style="display:none"></div>
         </div>
 
@@ -387,15 +388,16 @@ canvas { border-radius:6px; max-width:100%; }
             </div>
           </div>
           <input type="file" id="zoneFile" style="display:none" accept=".dxf,.geojson,.json,.shp,.zip" onchange="handleZoneFile(this)">
-          <label for="zoneFile" style="display:block;cursor:pointer">
-            <div class="upload-box" id="zoneDropZone"
-              ondragover="dragOver(event,'zoneDropZone')" ondragleave="dragLeave('zoneDropZone')" ondrop="dropFile(event,'zone')">
-              <div class="upload-icon" id="zoneIcon">📐</div>
-              <div class="upload-title" id="zoneTitle">구역계 파일 업로드</div>
-              <div class="upload-desc" id="zoneDesc">.dxf 또는 .geojson 파일<br>드래그&드롭 가능</div>
-              <span class="upload-label">📎 파일 선택</span>
-            </div>
-          </label>
+          <div class="upload-box" id="zoneDropZone"
+            ondragover="dragOver(event,'zoneDropZone')"
+            ondragleave="dragLeave('zoneDropZone')"
+            ondrop="dropFile(event,'zone')"
+            onclick="document.getElementById('zoneFile').click()">
+            <div class="upload-icon" id="zoneIcon">📐</div>
+            <div class="upload-title" id="zoneTitle">구역계 파일 업로드</div>
+            <div class="upload-desc" id="zoneDesc">.dxf 또는 .geojson 파일<br>드래그&드롭 가능</div>
+            <span class="upload-label">📎 파일 선택</span>
+          </div>
           <div id="zoneFileTag" style="display:none"></div>
         </div>
 
@@ -821,10 +823,14 @@ function dragOver(e, id) { e.preventDefault(); e.stopPropagation(); document.get
 function dragLeave(id) { document.getElementById(id).classList.remove('drag-over'); }
 function dropFile(e, type) {
   e.preventDefault();
-  e.stopPropagation(); // label의 클릭 이벤트 방지
+  e.stopPropagation();
+  e.stopImmediatePropagation(); // onclick 이벤트까지 완전 차단
   dragLeave(type === 'topo' ? 'topoDropZone' : 'zoneDropZone');
   const file = e.dataTransfer.files[0];
   if (!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  const allowed = ['dxf','geojson','json','shp','zip'];
+  if (!allowed.includes(ext)) { showToast('⚠️ 지원 형식: DXF, GeoJSON, SHP, ZIP'); return; }
   if (type === 'topo') applyTopoFile(file);
   else applyZoneFile(file);
 }
