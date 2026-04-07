@@ -362,15 +362,16 @@ canvas { border-radius:6px; max-width:100%; }
               <span style="font-size:11px;color:var(--amber)">국토지리정보원 표준 수치지형도 권장</span>
             </div>
           </div>
-          <div class="upload-box" id="topoDropZone"
-            ondragover="dragOver(event,'topoDropZone')" ondragleave="dragLeave('topoDropZone')" ondrop="dropFile(event,'topo')"
-            onclick="document.getElementById('topoFile').click()">
-            <div class="upload-icon" id="topoIcon">🗺️</div>
-            <div class="upload-title" id="topoTitle">수치지형도 업로드</div>
-            <div class="upload-desc" id="topoDesc">.dxf 또는 .geojson 파일<br>드래그&드롭 가능</div>
-            <span class="upload-label">📎 파일 선택</span>
-            <input type="file" id="topoFile" style="display:none" accept=".dxf,.geojson,.json,.shp,.zip" onchange="handleTopoFile(this)" onclick="event.stopPropagation()">
-          </div>
+          <input type="file" id="topoFile" style="display:none" accept=".dxf,.geojson,.json,.shp,.zip" onchange="handleTopoFile(this)">
+          <label for="topoFile" style="display:block;cursor:pointer">
+            <div class="upload-box" id="topoDropZone"
+              ondragover="dragOver(event,'topoDropZone')" ondragleave="dragLeave('topoDropZone')" ondrop="dropFile(event,'topo')">
+              <div class="upload-icon" id="topoIcon">🗺️</div>
+              <div class="upload-title" id="topoTitle">수치지형도 업로드</div>
+              <div class="upload-desc" id="topoDesc">.dxf 또는 .geojson 파일<br>드래그&드롭 가능</div>
+              <span class="upload-label">📎 파일 선택</span>
+            </div>
+          </label>
           <div id="topoFileTag" style="display:none"></div>
         </div>
 
@@ -385,15 +386,16 @@ canvas { border-radius:6px; max-width:100%; }
               <span style="font-size:11px;color:var(--amber)">좌표계는 수치지형도와 동일해야 합니다</span>
             </div>
           </div>
-          <div class="upload-box" id="zoneDropZone"
-            ondragover="dragOver(event,'zoneDropZone')" ondragleave="dragLeave('zoneDropZone')" ondrop="dropFile(event,'zone')"
-            onclick="document.getElementById('zoneFile').click()">
-            <div class="upload-icon" id="zoneIcon">📐</div>
-            <div class="upload-title" id="zoneTitle">구역계 파일 업로드</div>
-            <div class="upload-desc" id="zoneDesc">.dxf 또는 .geojson 파일<br>드래그&드롭 가능</div>
-            <span class="upload-label">📎 파일 선택</span>
-            <input type="file" id="zoneFile" style="display:none" accept=".dxf,.geojson,.json,.shp,.zip" onchange="handleZoneFile(this)" onclick="event.stopPropagation()">
-          </div>
+          <input type="file" id="zoneFile" style="display:none" accept=".dxf,.geojson,.json,.shp,.zip" onchange="handleZoneFile(this)">
+          <label for="zoneFile" style="display:block;cursor:pointer">
+            <div class="upload-box" id="zoneDropZone"
+              ondragover="dragOver(event,'zoneDropZone')" ondragleave="dragLeave('zoneDropZone')" ondrop="dropFile(event,'zone')">
+              <div class="upload-icon" id="zoneIcon">📐</div>
+              <div class="upload-title" id="zoneTitle">구역계 파일 업로드</div>
+              <div class="upload-desc" id="zoneDesc">.dxf 또는 .geojson 파일<br>드래그&드롭 가능</div>
+              <span class="upload-label">📎 파일 선택</span>
+            </div>
+          </label>
           <div id="zoneFileTag" style="display:none"></div>
         </div>
 
@@ -584,15 +586,16 @@ canvas { border-radius:6px; max-width:100%; }
         <div class="sec-card-title"><div class="dot"></div>CAD / GIS 파일 업로드 — 좌표계 자동 감지</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
           <div>
-            <div class="upload-box" id="cadDropZone"
-              ondragover="dragOver(event,'cadDropZone')" ondragleave="dragLeave('cadDropZone')" ondrop="dropFileCad(event)"
-              onclick="document.getElementById('cadFile').click()">
-              <div class="upload-icon" id="cadIcon">📐</div>
-              <div class="upload-title" id="cadTitle">CAD / GIS 파일 업로드</div>
-              <div class="upload-desc" id="cadDesc">.dxf, .geojson, .json 파일<br>드래그&드롭 가능</div>
-              <span class="upload-label">📎 파일 선택</span>
-              <input type="file" id="cadFile" style="display:none" accept=".dxf,.geojson,.json" onchange="handleCadFile(this)" onclick="event.stopPropagation()">
-            </div>
+            <input type="file" id="cadFile" style="display:none" accept=".dxf,.geojson,.json" onchange="handleCadFile(this)">
+            <label for="cadFile" style="display:block;cursor:pointer">
+              <div class="upload-box" id="cadDropZone"
+                ondragover="dragOver(event,'cadDropZone')" ondragleave="dragLeave('cadDropZone')" ondrop="dropFileCad(event)">
+                <div class="upload-icon" id="cadIcon">📐</div>
+                <div class="upload-title" id="cadTitle">CAD / GIS 파일 업로드</div>
+                <div class="upload-desc" id="cadDesc">.dxf, .geojson, .json 파일<br>드래그&드롭 가능</div>
+                <span class="upload-label">📎 파일 선택</span>
+              </div>
+            </label>
           </div>
           <div id="detectResultBox" style="display:flex;flex-direction:column;justify-content:center;align-items:center;background:var(--bg);border-radius:10px;border:1px solid var(--border);padding:20px;min-height:140px">
             <div style="font-size:28px;margin-bottom:8px" id="detectIcon">🔍</div>
@@ -814,10 +817,11 @@ function switchSub(name) {
 }
 
 // ─── 드래그&드롭 ──────────────────────────────────────
-function dragOver(e, id) { e.preventDefault(); document.getElementById(id).classList.add('drag-over'); }
+function dragOver(e, id) { e.preventDefault(); e.stopPropagation(); document.getElementById(id).classList.add('drag-over'); }
 function dragLeave(id) { document.getElementById(id).classList.remove('drag-over'); }
 function dropFile(e, type) {
   e.preventDefault();
+  e.stopPropagation(); // label의 클릭 이벤트 방지
   dragLeave(type === 'topo' ? 'topoDropZone' : 'zoneDropZone');
   const file = e.dataTransfer.files[0];
   if (!file) return;
@@ -1303,6 +1307,7 @@ function toggleElevCustom(sel) {
 // ─── CAD 파일 드롭 ────────────────────────────────────
 function dropFileCad(e) {
   e.preventDefault();
+  e.stopPropagation();
   dragLeave('cadDropZone');
   const file = e.dataTransfer.files[0];
   if (file) applyCadFile(file);
