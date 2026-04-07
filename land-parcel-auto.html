@@ -1656,6 +1656,7 @@ async function processGuyeokShp(file) {
     const total = shpStep1Rows.length;
     shpResultRows = [];
     let cntBboxPass = 0, cntIntersectPass = 0, cntClipOk = 0, cntClipFail = 0, cntAreaZero = 0;
+    let cntGeomNull = 0, cntGeomEmpty = 0;
 
     for (let i = 0; i < total; i++) {
       if (i % 100 === 0) {
@@ -1666,16 +1667,15 @@ async function processGuyeokShp(file) {
 
       try {
         // geometry null 체크
-        if (!row.geometry) continue;
+        if (!row.geometry) { cntGeomNull++; continue; }
 
         let parcelJsts;
         try {
           parcelJsts = jstsReader.read(row.geometry);
-          // buffer(0)으로 위상 정규화 (자기교차 등 TopologyException 방지)
           parcelJsts = parcelJsts.buffer(0);
         } catch(e) { cntClipFail++; continue; }
 
-        if (!parcelJsts || parcelJsts.isEmpty()) continue;
+        if (!parcelJsts || parcelJsts.isEmpty()) { cntGeomEmpty++; continue; }
 
         // 1차 bbox 검사
         const parcelEnv = parcelJsts.getEnvelopeInternal();
@@ -1692,7 +1692,6 @@ async function processGuyeokShp(file) {
         try {
           intersectionJsts = parcelJsts.intersection(_guyeokJsts);
         } catch(e) {
-          // TopologyException 시 buffer(0) 재시도
           try {
             intersectionJsts = parcelJsts.buffer(0).intersection(_guyeokJsts.buffer(0));
           } catch(e2) { cntClipFail++; continue; }
@@ -1724,13 +1723,24 @@ async function processGuyeokShp(file) {
           pnu: row.pnu, sido: row.sido, sigungu: row.sigungu, emd: row.emd,
           daejang: row.daejang, jibun: row.jibun, jimok: row.jimok,
           jijuArea: row.jijuArea, pyeonipArea, gubun,
-          // 지도 표시용: 교차 결과 rings (EPSG:5174 좌표 그대로)
           rings: extractRings(intersectionGeo),
         });
       } catch(e) {
         cntClipFail++;
       }
     }
+
+    // 상세 결과 로그
+    log(`  📊 단계별 결과:`);
+    log(`  &nbsp;&nbsp;전체 필지: ${total}`);
+    log(`  &nbsp;&nbsp;geometry 없음: ${cntGeomNull}`);
+    log(`  &nbsp;&nbsp;geometry 빈값: ${cntGeomEmpty}`);
+    log(`  &nbsp;&nbsp;BBox 통과: ${cntBboxPass}`);
+    log(`  &nbsp;&nbsp;실제 교차: ${cntIntersectPass}`);
+    log(`  &nbsp;&nbsp;Clip 성공: ${cntClipOk}`);
+    log(`  &nbsp;&nbsp;Clip 실패: ${cntClipFail}`);
+    log(`  &nbsp;&nbsp;면적 0: ${cntAreaZero}`);
+    log(`  &nbsp;&nbsp;최종 산출: ${shpResultRows.length}필지`);
 
     // 결과 요약
     if (shpResultRows.length === 0) {
