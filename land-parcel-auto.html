@@ -646,7 +646,7 @@ tbody.result-body td:last-child { border-right:none; }
       </div>
     </div>
 
-    <!-- ── SHP STEP 1: 연속지적도 업로드 → 필지면적·행정구역·지번·지목 산출 ── -->
+    <!-- ── SHP STEP 1: 연속지적도 업로드 → 필지구적면적·행정구역·지번·지목 산출 ── -->
     <div class="step-panel active" id="shp-panel1">
       <div class="sec-card">
         <div class="sec-card-title"><div class="dot"></div>연속지적도 SHP 업로드</div>
@@ -758,7 +758,7 @@ tbody.result-body td:last-child { border-right:none; }
           <div class="stat-val"><span id="sr-count">0</span><span class="stat-unit">필지</span></div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">필지면적 합계</div>
+          <div class="stat-label">필지구적면적 합계</div>
           <div class="stat-val"><span id="sr-area">0</span><span class="stat-unit">㎡</span></div>
         </div>
         <div class="stat-card">
@@ -966,8 +966,9 @@ tbody.result-body td:last-child { border-right:none; }
                 <th onclick="shpSort('daejang')" style="cursor:pointer;user-select:none">대장구분 <span id="shp-sort-daejang"></span></th>
                 <th onclick="shpSort('jibun')" style="cursor:pointer;user-select:none">지번 <span id="shp-sort-jibun"></span></th>
                 <th onclick="shpSort('jimok')" style="cursor:pointer;user-select:none">지목 <span id="shp-sort-jimok"></span></th>
-                <th onclick="shpSort('jijuArea')" style="cursor:pointer;user-select:none">필지면적(㎡) <span id="shp-sort-jijuArea"></span></th>
-                <th onclick="shpSort('pyeonipArea')" style="cursor:pointer;user-select:none">편입면적(㎡) <span id="shp-sort-pyeonipArea"></span></th>
+                <th onclick="shpSort('jijuArea')" style="cursor:pointer;user-select:none">필지구적면적(㎡) <span id="shp-sort-jijuArea"></span></th>
+                <th onclick="shpSort('pyeonipArea')" style="cursor:pointer;user-select:none">편입구적면적(㎡) <span id="shp-sort-pyeonipArea"></span></th>
+                <th style="background:#1a3a6e;color:white;border-right:1px solid rgba(255,255,255,0.15)">편입면적 보정(㎡)</th>
                 <th onclick="shpSort('gubun')" style="cursor:pointer;user-select:none">편입구분 <span id="shp-sort-gubun"></span></th>
               </tr>
             </thead>
@@ -1169,7 +1170,7 @@ tbody.result-body td:last-child { border-right:none; }
         <div class="stat-val"><span id="r-count">0</span><span class="stat-unit">필지</span></div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">지적면적 합계</div>
+        <div class="stat-label">공부상면적 합계</div>
         <div class="stat-val"><span id="r-area">0</span><span class="stat-unit">㎡</span></div>
       </div>
       <div class="stat-card">
@@ -1501,7 +1502,7 @@ async function processJijukShp(file) {
     const converted = geojson;
     shpJijukGeo = converted;
     bar(50);
-    log('▸ STEP 2  PNU 기반 행정구역·지번·지목·필지면적 산출 중...');
+    log('▸ STEP 2  PNU 기반 행정구역·지번·지목·필지구적면적 산출 중...');
     shpStep1Rows = [];
     const total = converted.features.length;
 
@@ -1550,11 +1551,11 @@ async function processJijukShp(file) {
     }
 
     bar(100);
-    log(`  ✅ 완료: ${shpStep1Rows.length.toLocaleString()}필지 | 필지면적 합계 ${Math.round(shpStep1Rows.reduce((s,r)=>s+r.jijuArea,0)).toLocaleString()} ㎡`);
+    log(`  ✅ 완료: ${shpStep1Rows.length.toLocaleString()}필지 | 필지구적면적 합계 ${Math.round(shpStep1Rows.reduce((s,r)=>s+r.jijuArea,0)).toLocaleString()} ㎡`);
 
     // 미리보기 (5건)
     const preview = shpStep1Rows.slice(0, 5);
-    const th = `<tr><th>PNU</th><th>시도</th><th>시군구</th><th>읍면동</th><th>대장구분</th><th>지번</th><th>지목</th><th>필지면적(㎡)</th></tr>`;
+    const th = `<tr><th>PNU</th><th>시도</th><th>시군구</th><th>읍면동</th><th>대장구분</th><th>지번</th><th>지목</th><th>필지구적면적(㎡)</th></tr>`;
     const trs = preview.map(r =>
       `<tr>
         <td class="td-mono" style="font-size:10px">${r.pnu}</td>
@@ -1567,14 +1568,14 @@ async function processJijukShp(file) {
     document.getElementById('jijukPreviewTable').innerHTML = `<thead>${th}</thead><tbody>${trs}</tbody>`;
     document.getElementById('jijukSummary').innerHTML =
       `<strong>${shpStep1Rows.length.toLocaleString()}개 필지</strong> 산출 완료 &nbsp;|&nbsp;
-       필지면적 합계: <strong>${Math.round(shpStep1Rows.reduce((s,r)=>s+r.jijuArea,0)).toLocaleString()} ㎡</strong>
+       필지구적면적 합계: <strong>${Math.round(shpStep1Rows.reduce((s,r)=>s+r.jijuArea,0)).toLocaleString()} ㎡</strong>
        &nbsp;|&nbsp; <span style="color:var(--blue);font-size:11px">${_shpIsProjected ? '📐 평면 면적(Shoelace)' : '🌐 geodesic 면적'}</span>`;
     document.getElementById('jijukResult').style.display = 'block';
     document.getElementById('jijukDropZone').classList.add('done');
     document.getElementById('jijukIcon').textContent  = '✅';
     document.getElementById('jijukTitle').textContent = `${shpStep1Rows.length.toLocaleString()}필지 산출 완료`;
     document.getElementById('shpBtn1Next').disabled = false;
-    showToast(`✅ ${shpStep1Rows.length.toLocaleString()}필지 필지면적 산출 완료`);
+    showToast(`✅ ${shpStep1Rows.length.toLocaleString()}필지 필지구적면적 산출 완료`);
 
   } catch(err) {
     log(`❌ 오류: ${err.message}`);
@@ -2135,8 +2136,9 @@ function renderShpResult() {
       <th onclick="shpSort('daejang')" style="cursor:pointer;user-select:none">대장구분 <span id="shp-sort-daejang"></span></th>
       <th onclick="shpSort('jibun')" style="cursor:pointer;user-select:none">지번 <span id="shp-sort-jibun"></span></th>
       <th onclick="shpSort('jimok')" style="cursor:pointer;user-select:none">지목 <span id="shp-sort-jimok"></span></th>
-      <th onclick="shpSort('jijuArea')" style="cursor:pointer;user-select:none">필지면적(㎡) <span id="shp-sort-jijuArea"></span></th>
-      <th onclick="shpSort('pyeonipArea')" style="cursor:pointer;user-select:none">편입면적(㎡) <span id="shp-sort-pyeonipArea"></span></th>
+      <th onclick="shpSort('jijuArea')" style="cursor:pointer;user-select:none">필지구적면적(㎡) <span id="shp-sort-jijuArea"></span></th>
+      <th onclick="shpSort('pyeonipArea')" style="cursor:pointer;user-select:none">편입구적면적(㎡) <span id="shp-sort-pyeonipArea"></span></th>
+      <th style="background:#1a3a6e;color:white;border-right:1px solid rgba(255,255,255,0.15)">편입면적 보정(㎡)</th>
       <th onclick="shpSort('gubun')" style="cursor:pointer;user-select:none">편입구분 <span id="shp-sort-gubun"></span></th>
       ${extraTh}
     </tr>`;
@@ -2167,7 +2169,7 @@ function renderShpResult() {
 
   const tbody = document.getElementById('shpResultBody');
   if (list.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="11" style="padding:40px;text-align:center;color:var(--ink3)">결과 없음</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="12" style="padding:40px;text-align:center;color:var(--ink3)">결과 없음</td></tr>`;
     return;
   }
 
@@ -2177,9 +2179,21 @@ function renderShpResult() {
       : `<span class="status-badge s-일편">부분편입</span>`;
     const pnu = String(r.pnu || '').padStart(19,'0');
     const extra = ldLinkExtra[pnu] || {};
-    const extraCells = ldLinkSelectedFields.map(f =>
-      `<td style="text-align:center;border-right:1px solid var(--border);border-bottom:1px solid var(--border2);padding:8px 10px;font-size:11px">${escHtml(extra[f.key] ?? '—')}</td>`
-    ).join('');
+    // 편입면적 보정: 완전편입=공부상면적(토지대장 연계값 우선, 없으면 jijuArea), 부분편입=편입구적면적
+    const areaLinked = extra['area'] ? parseFloat(String(extra['area']).replace(/,/g,'')) : null;
+    const bojeong = r.gubun === '완전편입'
+      ? (areaLinked && !isNaN(areaLinked) ? areaLinked : r.jijuArea)
+      : r.pyeonipArea;
+    // 숫자형/면적형 컬럼은 오른쪽 정렬, 공시지가도 오른쪽 정렬
+    const NUM_KEYS = new Set(['area','price','pyeonip']);
+    const extraCells = ldLinkSelectedFields.map(f => {
+      const raw = extra[f.key] ?? '—';
+      const isNum = NUM_KEYS.has(f.key);
+      const display = isNum && raw !== '—'
+        ? Number(String(raw).replace(/,/g,'')).toLocaleString()
+        : escHtml(String(raw));
+      return `<td style="${isNum ? 'text-align:right' : 'text-align:center'};font-family:'DM Mono',monospace;border-right:1px solid var(--border);border-bottom:1px solid var(--border2);padding:8px 10px;font-size:11px">${display}</td>`;
+    }).join('');
     return `<tr>
       <td class="td-mono" style="font-size:10px">${escHtml(r.pnu)}</td>
       <td class="td-mono">${i + 1}</td>
@@ -2191,6 +2205,7 @@ function renderShpResult() {
       <td>${escHtml(r.jimok)}</td>
       <td class="td-mono td-right">${r.jijuArea.toLocaleString()}</td>
       <td class="td-mono td-right">${r.pyeonipArea.toLocaleString()}</td>
+      <td class="td-mono td-right">${bojeong.toLocaleString()}</td>
       <td>${gubunBadge}</td>
       ${extraCells}
     </tr>`;
@@ -2205,7 +2220,7 @@ let ldLinkExtra   = {};   // PNU → 병합 데이터 맵
 // 기본 출력 항목 정의
 const LD_LINK_FIELDS = [
   { key:'jimok',     label:'지목',       default:true  },
-  { key:'area',      label:'지적면적(㎡)', default:false },
+  { key:'area',      label:'공부상면적(㎡)', default:false },
   { key:'price',     label:'공시지가(원/㎡)', default:true },
   { key:'ownerType', label:'소유구분',    default:true  },
   { key:'ownerName', label:'소유자성명', default:true  },
@@ -2406,21 +2421,29 @@ function exportShpExcel() {
   if (shpResultRows.length === 0) { showToast('⚠️ 데이터가 없습니다'); return; }
 
   const extraHeaders = ldLinkSelectedFields.map(f => f.label);
-  const header = ['pnu','연번','시도','시군구','읍면동','대장구분','지번','지목','필지면적(㎡)','편입면적(㎡)','편입구분', ...extraHeaders];
+  const header = ['PNU','연번','시도','시군구','읍면동','대장구분','지번','지목','필지구적면적(㎡)','편입구적면적(㎡)','편입면적 보정(㎡)','편입구분', ...extraHeaders];
   const data   = [header, ...shpResultRows.map((r, i) => {
     const pnu = String(r.pnu || '').padStart(19,'0');
     const extra = ldLinkExtra[pnu] || {};
-    const extraVals = ldLinkSelectedFields.map(f => extra[f.key] ?? '');
+    const areaLinked = extra['area'] ? parseFloat(String(extra['area']).replace(/,/g,'')) : null;
+    const bojeong = r.gubun === '완전편입'
+      ? (areaLinked && !isNaN(areaLinked) ? areaLinked : r.jijuArea)
+      : r.pyeonipArea;
+    const extraVals = ldLinkSelectedFields.map(f => {
+      const v = extra[f.key] ?? '';
+      const NUM_KEYS = new Set(['area','price','pyeonip']);
+      return NUM_KEYS.has(f.key) && v !== '' ? Number(String(v).replace(/,/g,'')) : v;
+    });
     return [
       r.pnu, i + 1, r.sido, r.sigungu, r.emd,
       r.daejang, r.jibun, r.jimok,
-      r.jijuArea, r.pyeonipArea, r.gubun,
+      r.jijuArea, r.pyeonipArea, bojeong, r.gubun,
       ...extraVals,
     ];
   })];
 
   const ws = XLSX.utils.aoa_to_sheet(data);
-  const colWidths = [22, 6, 12, 14, 14, 8, 12, 6, 14, 14, 10,
+  const colWidths = [22, 6, 12, 14, 14, 8, 12, 6, 14, 14, 14, 10,
     ...ldLinkSelectedFields.map(() => 16)];
   ws['!cols'] = colWidths.map(w => ({ wch: w }));
 
@@ -2726,8 +2749,8 @@ const TARGET_FIELDS = [
   { key:'daejang',    label:'대장구분',        auto:'pnu', required:false, hints:['대장','구분','daejang'] },
   { key:'haengjeong', label:'행정구역',        auto:'pnu', required:false, hints:['행정','구역','주소','haeng'] },
   { key:'jimok',      label:'지목',            auto:false,  required:false, hints:['지목','jimok'] },
-  { key:'area',       label:'지적면적(㎡)',    auto:false,  required:false, hints:['면적','지적','실측','area'] },
-  { key:'pyeonip',    label:'편입면적(㎡)',    auto:false,  required:false, hints:['편입','pyeonip'] },
+  { key:'area',       label:'공부상면적(㎡)',    auto:false,  required:false, hints:['면적','지적','실측','area'] },
+  { key:'pyeonip',    label:'편입구적면적(㎡)',    auto:false,  required:false, hints:['편입','pyeonip'] },
   { key:'price',      label:'공시지가(원/㎡)', auto:false,  required:false, hints:['공시','지가','지산','감정','price'] },
   { key:'ownerName',  label:'소유자 성명',     auto:false,  required:false, hints:['소유자','성명','이름','명의','owner'] },
   { key:'ownerAddr',  label:'소유자 주소',     auto:false,  required:false, hints:['주소','거주','소재','addr'] },
@@ -3066,7 +3089,7 @@ function renderResult() {
 function exportExcel() {
   if (resultRows.length === 0) { showToast('⚠️ 데이터가 없습니다'); return; }
 
-  const header = ['연번','행정구역','대장구분','시도','시군구','읍면동','지번','지목','지적면적(㎡)','편입면적(㎡)','소유자별구분','소유자성명','소유자주소','공시지가(원/㎡)','편입여부','PNU','매핑여부'];
+  const header = ['연번','행정구역','대장구분','시도','시군구','읍면동','지번','지목','공부상면적(㎡)','편입구적면적(㎡)','소유자별구분','소유자성명','소유자주소','공시지가(원/㎡)','편입여부','PNU','매핑여부'];
   const data = [header];
 
   resultRows.forEach((r, i) => {
