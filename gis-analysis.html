@@ -362,12 +362,8 @@ canvas { border-radius:6px; max-width:100%; }
               <span style="font-size:11px;color:var(--amber)">국토지리정보원 표준 수치지형도 권장</span>
             </div>
           </div>
-          <input type="file" id="topoFile" style="display:none" accept=".dxf,.geojson,.json,.shp,.zip" onchange="handleTopoFile(this)">
-          <div class="upload-box" id="topoDropZone"
-            ondragover="dragOver(event,'topoDropZone')"
-            ondragleave="dragLeave('topoDropZone')"
-            ondrop="dropFile(event,'topo')"
-            onclick="document.getElementById('topoFile').click()">
+          <input type="file" id="topoFile" style="display:none" accept=".dxf,.geojson,.json,.shp,.zip">
+          <div class="upload-box" id="topoDropZone" style="cursor:pointer">
             <div class="upload-icon" id="topoIcon">🗺️</div>
             <div class="upload-title" id="topoTitle">수치지형도 업로드</div>
             <div class="upload-desc" id="topoDesc">.dxf 또는 .geojson 파일<br>드래그&드롭 가능</div>
@@ -387,12 +383,8 @@ canvas { border-radius:6px; max-width:100%; }
               <span style="font-size:11px;color:var(--amber)">좌표계는 수치지형도와 동일해야 합니다</span>
             </div>
           </div>
-          <input type="file" id="zoneFile" style="display:none" accept=".dxf,.geojson,.json,.shp,.zip" onchange="handleZoneFile(this)">
-          <div class="upload-box" id="zoneDropZone"
-            ondragover="dragOver(event,'zoneDropZone')"
-            ondragleave="dragLeave('zoneDropZone')"
-            ondrop="dropFile(event,'zone')"
-            onclick="document.getElementById('zoneFile').click()">
+          <input type="file" id="zoneFile" style="display:none" accept=".dxf,.geojson,.json,.shp,.zip">
+          <div class="upload-box" id="zoneDropZone" style="cursor:pointer">
             <div class="upload-icon" id="zoneIcon">📐</div>
             <div class="upload-title" id="zoneTitle">구역계 파일 업로드</div>
             <div class="upload-desc" id="zoneDesc">.dxf 또는 .geojson 파일<br>드래그&드롭 가능</div>
@@ -418,7 +410,7 @@ canvas { border-radius:6px; max-width:100%; }
           </div>
           <div>
             <label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:8px">표고 구간 기준</label>
-            <select id="elevStandard" onchange="toggleElevCustom(this)" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;font-family:'Noto Sans KR',sans-serif;outline:none;background:var(--white)">
+            <select id="elevStandard" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;font-family:'Noto Sans KR',sans-serif;outline:none;background:var(--white)">
               <option value="50">50m 간격 (일반 지형)</option>
               <option value="25">25m 간격 (완경사 지형)</option>
               <option value="100">100m 간격 (산악 지형)</option>
@@ -588,16 +580,13 @@ canvas { border-radius:6px; max-width:100%; }
         <div class="sec-card-title"><div class="dot"></div>CAD / GIS 파일 업로드 — 좌표계 자동 감지</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
           <div>
-            <input type="file" id="cadFile" style="display:none" accept=".dxf,.geojson,.json" onchange="handleCadFile(this)">
-            <label for="cadFile" style="display:block;cursor:pointer">
-              <div class="upload-box" id="cadDropZone"
-                ondragover="dragOver(event,'cadDropZone')" ondragleave="dragLeave('cadDropZone')" ondrop="dropFileCad(event)">
-                <div class="upload-icon" id="cadIcon">📐</div>
-                <div class="upload-title" id="cadTitle">CAD / GIS 파일 업로드</div>
-                <div class="upload-desc" id="cadDesc">.dxf, .geojson, .json 파일<br>드래그&드롭 가능</div>
-                <span class="upload-label">📎 파일 선택</span>
-              </div>
-            </label>
+            <input type="file" id="cadFile" style="display:none" accept=".dxf,.geojson,.json">
+            <div class="upload-box" id="cadDropZone" style="cursor:pointer">
+              <div class="upload-icon" id="cadIcon">📐</div>
+              <div class="upload-title" id="cadTitle">CAD / GIS 파일 업로드</div>
+              <div class="upload-desc" id="cadDesc">.dxf, .geojson, .json 파일<br>드래그&드롭 가능</div>
+              <span class="upload-label">📎 파일 선택</span>
+            </div>
           </div>
           <div id="detectResultBox" style="display:flex;flex-direction:column;justify-content:center;align-items:center;background:var(--bg);border-radius:10px;border:1px solid var(--border);padding:20px;min-height:140px">
             <div style="font-size:28px;margin-bottom:8px" id="detectIcon">🔍</div>
@@ -816,23 +805,6 @@ function switchSub(name) {
     if (panel) panel.style.display = s === name ? 'block' : 'none';
     if (btn) btn.classList.toggle('active', s === name);
   });
-}
-
-// ─── 드래그&드롭 ──────────────────────────────────────
-function dragOver(e, id) { e.preventDefault(); e.stopPropagation(); document.getElementById(id).classList.add('drag-over'); }
-function dragLeave(id) { document.getElementById(id).classList.remove('drag-over'); }
-function dropFile(e, type) {
-  e.preventDefault();
-  e.stopPropagation();
-  e.stopImmediatePropagation(); // onclick 이벤트까지 완전 차단
-  dragLeave(type === 'topo' ? 'topoDropZone' : 'zoneDropZone');
-  const file = e.dataTransfer.files[0];
-  if (!file) return;
-  const ext = file.name.split('.').pop().toLowerCase();
-  const allowed = ['dxf','geojson','json','shp','zip'];
-  if (!allowed.includes(ext)) { showToast('⚠️ 지원 형식: DXF, GeoJSON, SHP, ZIP'); return; }
-  if (type === 'topo') applyTopoFile(file);
-  else applyZoneFile(file);
 }
 
 // ─── 파일 처리 ────────────────────────────────────────
@@ -1789,6 +1761,68 @@ function showToast(msg) {
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2600);
 }
+
+// ─── DOM 준비 후 이벤트 바인딩 ────────────────────────
+document.addEventListener('DOMContentLoaded', function () {
+
+  // ── 수치지형도 드롭존 ──
+  const topoZone = document.getElementById('topoDropZone');
+  const topoInput = document.getElementById('topoFile');
+
+  topoZone.addEventListener('click', function () { topoInput.click(); });
+  topoInput.addEventListener('change', function () { handleTopoFile(this); });
+  topoZone.addEventListener('dragover',  function (e) { e.preventDefault(); e.stopPropagation(); topoZone.classList.add('drag-over'); });
+  topoZone.addEventListener('dragleave', function ()  { topoZone.classList.remove('drag-over'); });
+  topoZone.addEventListener('drop', function (e) {
+    e.preventDefault(); e.stopPropagation();
+    topoZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['dxf','geojson','json','shp','zip'].includes(ext)) { showToast('⚠️ 지원 형식: DXF, GeoJSON, SHP, ZIP'); return; }
+    applyTopoFile(file);
+  });
+
+  // ── 구역계 드롭존 ──
+  const zoneZone = document.getElementById('zoneDropZone');
+  const zoneInput = document.getElementById('zoneFile');
+
+  zoneZone.addEventListener('click', function () { zoneInput.click(); });
+  zoneInput.addEventListener('change', function () { handleZoneFile(this); });
+  zoneZone.addEventListener('dragover',  function (e) { e.preventDefault(); e.stopPropagation(); zoneZone.classList.add('drag-over'); });
+  zoneZone.addEventListener('dragleave', function ()  { zoneZone.classList.remove('drag-over'); });
+  zoneZone.addEventListener('drop', function (e) {
+    e.preventDefault(); e.stopPropagation();
+    zoneZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['dxf','geojson','json','shp','zip'].includes(ext)) { showToast('⚠️ 지원 형식: DXF, GeoJSON, SHP, ZIP'); return; }
+    applyZoneFile(file);
+  });
+
+  // ── CAD 드롭존 ──
+  const cadZone  = document.getElementById('cadDropZone');
+  const cadInput = document.getElementById('cadFile');
+
+  cadZone.addEventListener('click', function () { cadInput.click(); });
+  cadInput.addEventListener('change', function () { handleCadFile(this); });
+  cadZone.addEventListener('dragover',  function (e) { e.preventDefault(); e.stopPropagation(); cadZone.classList.add('drag-over'); });
+  cadZone.addEventListener('dragleave', function ()  { cadZone.classList.remove('drag-over'); });
+  cadZone.addEventListener('drop', function (e) {
+    e.preventDefault(); e.stopPropagation();
+    cadZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['dxf','geojson','json'].includes(ext)) { showToast('⚠️ 지원 형식: DXF, GeoJSON, JSON'); return; }
+    dropFileCad({ dataTransfer: { files: [file] }, preventDefault: ()=>{}, stopPropagation: ()=>{} });
+  });
+
+  // ── elevStandard 선택 이벤트 ──
+  document.getElementById('elevStandard').addEventListener('change', function () { toggleElevCustom(this); });
+
+});
 </script>
 </body>
 </html>
