@@ -280,8 +280,10 @@ body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--
 /* PREVIEW TABLE */
 .preview-wrap { overflow-x:auto; border-radius:8px; border:1px solid var(--border); margin-top:14px; max-height:220px; overflow-y:auto; }
 .preview-table { width:100%; border-collapse:collapse; font-size:11px; min-width:600px; }
-.preview-table th { background:var(--ink); color:white; padding:7px 10px; text-align:left; font-weight:600; font-family:'DM Mono',monospace; white-space:nowrap; position:sticky; top:0; }
-.preview-table td { padding:6px 10px; border-bottom:1px solid var(--border2); color:var(--ink2); white-space:nowrap; }
+.preview-table th { background:var(--ink); color:white; padding:7px 10px; text-align:center; font-weight:600; font-family:'DM Mono',monospace; white-space:nowrap; position:sticky; top:0; border-right:1px solid rgba(255,255,255,0.1); }
+.preview-table th:last-child { border-right:none; }
+.preview-table td { padding:6px 10px; border-bottom:1px solid var(--border2); border-right:1px solid var(--border2); color:var(--ink2); white-space:nowrap; text-align:center; vertical-align:middle; }
+.preview-table td:last-child { border-right:none; }
 .preview-table tr:hover td { background:#faf9f6; }
 .preview-table tr.match td { background:var(--green-light); }
 .preview-table tr.no-match td { background:var(--red-light); }
@@ -309,18 +311,23 @@ body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--
 .table-wrap { overflow-x:auto; border-radius:10px; box-shadow:var(--shadow-md); }
 table.result { width:100%; border-collapse:collapse; background:var(--white); font-size:11px; min-width:1100px; }
 .th-main { background:var(--ink); color:white; }
-.th-main th { padding:8px 10px; text-align:center; font-size:10px; font-weight:700; letter-spacing:0.3px; border-right:1px solid rgba(255,255,255,0.1); white-space:nowrap; font-family:'DM Mono',monospace; }
+.th-main th { padding:8px 10px; text-align:center; font-size:10px; font-weight:700; letter-spacing:0.3px; border-right:1px solid rgba(255,255,255,0.15); white-space:nowrap; font-family:'DM Mono',monospace; }
+.th-main th:last-child { border-right:none; }
 .th-main th[onclick]:hover { background:#2a2a2a; }
 .th-sub2 { background:#2a2a2a; color:rgba(255,255,255,0.75); }
-.th-sub2 th { padding:6px 10px; text-align:center; font-size:10px; font-weight:600; border-right:1px solid rgba(255,255,255,0.08); font-family:'DM Mono',monospace; }
+.th-sub2 th { padding:6px 10px; text-align:center; font-size:10px; font-weight:600; border-right:1px solid rgba(255,255,255,0.1); font-family:'DM Mono',monospace; }
+.th-sub2 th:last-child { border-right:none; }
 .tr-sum { background:#f0f7f3; }
-.tr-sum td { padding:7px 10px; font-size:11px; font-weight:700; color:var(--green); text-align:center; border-right:1px solid var(--border2); font-family:'DM Mono',monospace; }
-tbody.result-body tr { border-bottom:1px solid var(--border2); transition:background 0.1s; }
+.tr-sum td { padding:7px 10px; font-size:11px; font-weight:700; color:var(--green); text-align:center; border-right:1px solid var(--border); border-bottom:1px solid var(--border); font-family:'DM Mono',monospace; }
+tbody.result-body tr { border-bottom:1px solid var(--border); transition:background 0.1s; }
 tbody.result-body tr:hover { background:#faf9f6; }
-tbody.result-body td { padding:8px 10px; text-align:center; color:var(--ink2); border-right:1px solid var(--border2); vertical-align:middle; }
+tbody.result-body td { padding:8px 10px; text-align:center; color:var(--ink2); border-right:1px solid var(--border); border-bottom:1px solid var(--border2); vertical-align:middle; }
 tbody.result-body td:last-child { border-right:none; }
-#shpResultBody td { text-align:center; vertical-align:middle; }
+#shpResultBody tr { border-bottom:1px solid var(--border); }
+#shpResultBody td { text-align:center; vertical-align:middle; border-right:1px solid var(--border); border-bottom:1px solid var(--border2); padding:8px 10px; }
+#shpResultBody td:last-child { border-right:none; }
 .td-left { text-align:left !important; }
+.td-right { text-align:right !important; }
 .td-mono { font-family:'DM Mono',monospace; font-size:10px; }
 .status-badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:10px; font-weight:700; }
 .s-완편 { background:var(--green-light); color:var(--green-mid); }
@@ -1450,7 +1457,7 @@ async function processJijukShp(file) {
         <td>${escHtml(r.sido)}</td><td>${escHtml(r.sigungu)}</td><td>${escHtml(r.emd)}</td>
         <td>${escHtml(r.daejang)}</td><td class="td-mono">${escHtml(r.jibun)}</td>
         <td>${escHtml(r.jimok)}</td>
-        <td class="td-mono">${r.jijuArea.toLocaleString()}</td>
+        <td class="td-mono td-right">${r.jijuArea.toLocaleString()}</td>
       </tr>`
     ).join('');
     document.getElementById('jijukPreviewTable').innerHTML = `<thead>${th}</thead><tbody>${trs}</tbody>`;
@@ -2042,8 +2049,8 @@ function renderShpResult() {
       <td>${escHtml(r.daejang)}</td>
       <td class="td-mono">${escHtml(r.jibun)}</td>
       <td>${escHtml(r.jimok)}</td>
-      <td class="td-mono">${r.jijuArea.toLocaleString()}</td>
-      <td class="td-mono">${r.pyeonipArea.toLocaleString()}</td>
+      <td class="td-mono td-right">${r.jijuArea.toLocaleString()}</td>
+      <td class="td-mono td-right">${r.pyeonipArea.toLocaleString()}</td>
       <td>${gubunBadge}</td>
     </tr>`;
   }).join('');
@@ -2687,15 +2694,15 @@ function renderResult() {
       <td>${escHtml(r.emdName)}</td>
       <td class="td-mono">${escHtml(r.jibun)}</td>
       <td>${escHtml(r.jimok)}</td>
-      <td class="td-mono">${r.area?r.area.toLocaleString():'-'}</td>
-      <td class="td-mono">${r.pyeonip?r.pyeonip.toLocaleString():'-'}</td>
+      <td class="td-mono td-right">${r.area?r.area.toLocaleString():'-'}</td>
+      <td class="td-mono td-right">${r.pyeonip?r.pyeonip.toLocaleString():'-'}</td>
       <td>${escHtml(r.ownerType)}</td>
       <td class="td-left">
         <div style="font-weight:600;font-size:11px">${escHtml(ownerMain.name)}</div>
         ${extraOwners.map(o=>`<div style="font-size:10px;color:var(--ink3)">${escHtml(o.name)}</div>`).join('')}
       </td>
       <td class="td-left" style="font-size:10px;color:var(--ink3);max-width:150px">${escHtml(ownerMain.addr)}</td>
-      <td class="td-mono">${r.price?Number(r.price).toLocaleString():'-'}</td>
+      <td class="td-mono td-right">${r.price?Number(r.price).toLocaleString():'-'}</td>
       <td><span class="status-badge s-완편">완편</span></td>
       <td>${r.matched?'<span style="color:var(--green);font-weight:700;font-size:11px">✅ 매핑됨</span>':'<span style="color:var(--red);font-weight:700;font-size:11px">⚠️ 미매핑</span>'}</td>
     </tr>`;
