@@ -1714,7 +1714,7 @@ async function processGuyeokShp(file) {
           }
         }
 
-        if (pyeonipArea <= 0) { cntAreaZero++; continue; }
+        if (pyeonipArea < 0.5) { cntAreaZero++; continue; }
 
         // 완전/부분 편입 판정
         const diffRatio = Math.abs(row.jijuArea - pyeonipArea) / (row.jijuArea || 1);
@@ -1740,7 +1740,7 @@ async function processGuyeokShp(file) {
     log(`  &nbsp;&nbsp;실제 교차: ${cntIntersectPass}`);
     log(`  &nbsp;&nbsp;Clip 성공: ${cntClipOk}`);
     log(`  &nbsp;&nbsp;Clip 실패: ${cntClipFail}`);
-    log(`  &nbsp;&nbsp;면적 0: ${cntAreaZero}`);
+    log(`  &nbsp;&nbsp;0.5㎡ 미만 제외: ${cntAreaZero}`);
     log(`  &nbsp;&nbsp;최종 산출: ${shpResultRows.length}필지`);
 
     // 결과 요약
