@@ -1074,98 +1074,124 @@ async function parseDXFContours(file) {
   const TARGET = new Set(['F0017111','F0017114','CONTOUR','SPOTPOINT','등고선']);
   const text = await file.text();
   const lines = text.split(/\r?\n/).map(l => l.trim());
-  const contourPts = [];
+  const contourPts   = [];
   const contourLines = [];
 
-  // 전체 레이어 목록 수집 (디버깅)
+  // 전체 레이어 목록 (디버깅)
   const allLayers = new Set();
   for (let i = 0; i < lines.length - 1; i += 2) {
     if (parseInt(lines[i]) === 8) allLayers.add(lines[i+1]);
   }
-  console.log('[DXF] 전체 레이어 목록:', Array.from(allLayers).join(', '));
-  console.log('[DXF] TARGET 레이어 매칭:', Array.from(allLayers).filter(l => TARGET.has(l.trim())));
-
-  // F0017114 레이어의 첫 번째 엔티티 원문 덤프 (구조 파악용)
-  let dumpStarted = false, dumpCount = 0, dumpLines = [];
-  for (let i = 0; i < lines.length - 1; i += 2) {
-    const code = parseInt(lines[i]), val = lines[i+1];
-    if (code === 8 && (val === 'F0017114' || val === 'F0017111') && !dumpStarted) {
-      // 앞으로 30쌍 출력
-      dumpStarted = true;
-      for (let j = Math.max(0, i - 10); j < Math.min(lines.length - 1, i + 40); j += 2) {
-        dumpLines.push(`${lines[j]} | ${lines[j+1]}`);
-      }
-      console.log('[DXF] 첫 번째 등고선 엔티티 원문:\n' + dumpLines.join('\n'));
-      break;
-    }
-  }
+  console.log('[DXF] 전체 레이어:', Array.from(allLayers).join(', '));
+  console.log('[DXF] TARGET 매칭:', Array.from(allLayers).filter(l => TARGET.has(l.trim())));
 
   let i = 0, inEntities = false;
-  let currentLayer = '', currentType = '';
-  let ptBuf = [], zBuf = [], inPoly = false;
-  let lwElevation = 0;  // LWPOLYLINE의 code 38 (전체 고도)
+
+  // ── 현재 POLYLINE 상태 ──
+  let polyLayer  = '';     // 현재 POLYLINE 레이어
+  let polyPts    = [];     // 수집된 꼭짓점들
+  let inPolyline = false;  // POLYLINE 수집 중
+  let inVertex   = false;  // VERTEX 수집 중
+  let vx = 0, vy = 0, vz = 0; // 현재 VERTEX 좌표
+
+  // ── LWPOLYLINE 상태 ──
+  let lwLayer = '', lwPts = [], lwZBuf = [], lwElev = 0, inLW = false;
+
+  const savePolyline = () => {
+    if (TARGET.has(polyLayer.trim()) && polyPts.length >= 2) {
+      contourLines.push({ pts: polyPts, layer: polyLayer });
+      polyPts.forEach(p => contourPts.push(p));
+    }
+    polyPts = []; polyLayer = ''; inPolyline = false; inVertex = false;
+  };
+
+  const saveLW = () => {
+    if (TARGET.has(lwLayer.trim()) && lwPts.length >= 2) {
+      const pts = lwPts.map((p, idx) => ({
+        x: p.x, y: p.y,
+        z: lwZBuf[idx] !== undefined ? lwZBuf[idx] : lwElev
+      }));
+      if (pts.some(p => p.z !== 0)) {
+        contourLines.push({ pts, layer: lwLayer });
+        pts.forEach(p => contourPts.push(p));
+      }
+    }
+    lwPts = []; lwZBuf = []; lwElev = 0; lwLayer = ''; inLW = false;
+  };
 
   while (i < lines.length - 1) {
     const code = parseInt(lines[i]);
     const val  = lines[i + 1];
 
+    // ENTITIES 섹션 감지
     if (code === 2 && val === 'ENTITIES') { inEntities = true; i += 2; continue; }
-    if (code === 2 && val === 'ENDSEC' && inEntities) { inEntities = false; i += 2; continue; }
+    if (code === 2 && val === 'ENDSEC'   && inEntities) {
+      if (inPolyline) savePolyline();
+      if (inLW) saveLW();
+      inEntities = false; i += 2; continue;
+    }
     if (!inEntities) { i += 2; continue; }
 
-    // 새 엔티티 시작
+    // ── 새 엔티티 ──────────────────────────────────────
     if (code === 0) {
-      // 이전 엔티티 저장
-      if (inPoly && TARGET.has(currentLayer.trim()) && ptBuf.length >= 2) {
-        // LWPOLYLINE: z값이 없으면 code38(lwElevation) 사용
-        const pts = ptBuf.map((p, idx) => ({
-          x: p.x, y: p.y,
-          z: (zBuf[idx] !== undefined && !isNaN(zBuf[idx])) ? zBuf[idx] : lwElevation
-        }));
-        if (pts.some(p => p.z !== 0)) {
-          contourLines.push({ pts, layer: currentLayer });
-          pts.forEach(p => contourPts.push(p));
-        }
+      // VERTEX 종료 → 점 저장
+      if (inVertex) {
+        polyPts.push({ x: vx, y: vy, z: vz });
+        inVertex = false; vx = 0; vy = 0; vz = 0;
       }
-      inPoly = false; ptBuf = []; zBuf = []; currentLayer = ''; lwElevation = 0;
-      currentType = val;
-      if (['LWPOLYLINE','POLYLINE','3DPOLYLINE','SPLINE','LINE'].includes(val)) inPoly = true;
+      // SEQEND = POLYLINE 끝
+      if (val === 'SEQEND') {
+        savePolyline();
+        i += 2; continue;
+      }
+      // LWPOLYLINE 끝 (다음 엔티티 시작)
+      if (inLW && val !== 'LWPOLYLINE') {
+        saveLW();
+      }
+
+      if (val === 'POLYLINE' || val === '3DPOLYLINE') {
+        inPolyline = true; polyPts = []; polyLayer = '';
+      } else if (val === 'VERTEX') {
+        inVertex = true; vx = 0; vy = 0; vz = 0;
+      } else if (val === 'LWPOLYLINE') {
+        inLW = true; lwPts = []; lwZBuf = []; lwElev = 0; lwLayer = '';
+      } else {
+        inPolyline = false;
+      }
       i += 2; continue;
     }
 
-    // 레이어명 (항상 읽기)
-    if (code === 8) { currentLayer = val; i += 2; continue; }
+    // ── 레이어명 ───────────────────────────────────────
+    if (code === 8) {
+      if (inPolyline && !inVertex) polyLayer = val;
+      if (inVertex)  { /* VERTEX 레이어는 무시 (POLYLINE 레이어 사용) */ }
+      if (inLW)      lwLayer = val;
+      i += 2; continue;
+    }
 
-    if (!inPoly || !TARGET.has(currentLayer.trim())) { i += 2; continue; }
+    // ── VERTEX 좌표 ────────────────────────────────────
+    if (inVertex) {
+      if (code === 10) { vx = parseFloat(val); i += 2; continue; }
+      if (code === 20) { vy = parseFloat(val); i += 2; continue; }
+      if (code === 30) { vz = parseFloat(val); i += 2; continue; }
+    }
 
-    // LWPOLYLINE 전체 고도 (code 38)
-    if (code === 38) { lwElevation = parseFloat(val); i += 2; continue; }
-    // X 좌표 (code 10)
-    if (code === 10) { ptBuf.push({ x: parseFloat(val), y: 0 }); i += 2; continue; }
-    // Y 좌표 (code 20)
-    if (code === 20 && ptBuf.length > 0) { ptBuf[ptBuf.length - 1].y = parseFloat(val); i += 2; continue; }
-    // Z 좌표 (code 30) — 3D 폴리라인
-    if (code === 30) { zBuf.push(parseFloat(val)); i += 2; continue; }
+    // ── LWPOLYLINE 좌표 ────────────────────────────────
+    if (inLW) {
+      if (code === 38) { lwElev = parseFloat(val); i += 2; continue; }
+      if (code === 10) { lwPts.push({ x: parseFloat(val), y: 0 }); i += 2; continue; }
+      if (code === 20 && lwPts.length > 0) { lwPts[lwPts.length-1].y = parseFloat(val); i += 2; continue; }
+      if (code === 30) { lwZBuf.push(parseFloat(val)); i += 2; continue; }
+    }
 
     i += 2;
   }
 
-  // 마지막 엔티티
-  if (inPoly && TARGET.has(currentLayer.trim()) && ptBuf.length >= 2) {
-    const pts = ptBuf.map((p, idx) => ({
-      x: p.x, y: p.y,
-      z: (zBuf[idx] !== undefined && !isNaN(zBuf[idx])) ? zBuf[idx] : lwElevation
-    }));
-    if (pts.some(p => p.z !== 0)) {
-      contourLines.push({ pts, layer: currentLayer });
-      pts.forEach(p => contourPts.push(p));
-    }
-  }
-
-  console.log('[DXF] 추출된 등고선 선:', contourLines.length, '/ 점:', contourPts.length);
-  if (contourLines.length > 0) {
-    const zVals = contourPts.map(p => p.z).filter(z => z !== 0);
-    console.log('[DXF] Z값 범위:', Math.min(...zVals).toFixed(1), '~', Math.max(...zVals).toFixed(1), 'm');
+  console.log('[DXF] 등고선 선:', contourLines.length, '/ 점:', contourPts.length);
+  if (contourPts.length > 0) {
+    const zv = contourPts.map(p => p.z).filter(z => !isNaN(z) && z !== 0);
+    if (zv.length > 0)
+      console.log('[DXF] Z 범위:', Math.min(...zv).toFixed(1), '~', Math.max(...zv).toFixed(1), 'm');
   }
   return { contourPts, contourLines };
 }
