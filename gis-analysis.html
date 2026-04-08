@@ -1085,6 +1085,21 @@ async function parseDXFContours(file) {
   console.log('[DXF] 전체 레이어 목록:', Array.from(allLayers).join(', '));
   console.log('[DXF] TARGET 레이어 매칭:', Array.from(allLayers).filter(l => TARGET.has(l.trim())));
 
+  // F0017114 레이어의 첫 번째 엔티티 원문 덤프 (구조 파악용)
+  let dumpStarted = false, dumpCount = 0, dumpLines = [];
+  for (let i = 0; i < lines.length - 1; i += 2) {
+    const code = parseInt(lines[i]), val = lines[i+1];
+    if (code === 8 && (val === 'F0017114' || val === 'F0017111') && !dumpStarted) {
+      // 앞으로 30쌍 출력
+      dumpStarted = true;
+      for (let j = Math.max(0, i - 10); j < Math.min(lines.length - 1, i + 40); j += 2) {
+        dumpLines.push(`${lines[j]} | ${lines[j+1]}`);
+      }
+      console.log('[DXF] 첫 번째 등고선 엔티티 원문:\n' + dumpLines.join('\n'));
+      break;
+    }
+  }
+
   let i = 0, inEntities = false;
   let currentLayer = '', currentType = '';
   let ptBuf = [], zBuf = [], inPoly = false;
