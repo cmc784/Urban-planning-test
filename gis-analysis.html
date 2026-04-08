@@ -861,12 +861,16 @@ function getFileTypeLabel(ext) {
 
 // ─── 업로드 핸들러 (단순 직접 방식) ──────────────────────
 function _onChangeTopo(input) {
-  if (!input.files || !input.files.length) return;
+  console.log('[TOPO] onchange 호출, files:', input.files ? input.files.length : 'null');
+  if (!input.files || !input.files.length) { console.log('[TOPO] 파일 없음'); return; }
+  console.log('[TOPO] 파일명:', input.files[0].name);
   _processTopo(Array.from(input.files));
   input.value = '';
 }
 function _onChangeZone(input) {
-  if (!input.files || !input.files.length) return;
+  console.log('[ZONE] onchange 호출, files:', input.files ? input.files.length : 'null');
+  if (!input.files || !input.files.length) { console.log('[ZONE] 파일 없음'); return; }
+  console.log('[ZONE] 파일명:', input.files[0].name);
   _processZone(Array.from(input.files));
   input.value = '';
 }
@@ -880,39 +884,49 @@ function _onDropZone(e) {
 }
 
 async function _processTopo(files) {
+  console.log('[TOPO] _processTopo 시작, 파일수:', files.length);
   const exts = files.map(f => f.name.split('.').pop().toLowerCase());
   let file = files[0];
   const ext = exts[0];
+  console.log('[TOPO] 확장자:', ext);
   try {
     if (exts.includes('shp')) {
       const shpFile = files.find(f => f.name.toLowerCase().endsWith('.shp'));
       topoFileSet = files;
       await applyTopoFileShpSet(shpFile, files);
     } else if (['dxf','geojson','json','zip'].includes(ext)) {
+      console.log('[TOPO] applyTopoFile 호출');
       await applyTopoFile(file);
+      console.log('[TOPO] applyTopoFile 완료');
     } else {
       showToast('⚠️ 지원 형식: DXF, SHP, ZIP, GeoJSON');
     }
   } catch(e) {
+    console.error('[TOPO] 오류:', e);
     showToast('❌ 파일 오류: ' + e.message);
   }
 }
 
 async function _processZone(files) {
+  console.log('[ZONE] _processZone 시작, 파일수:', files.length);
   const exts = files.map(f => f.name.split('.').pop().toLowerCase());
   let file = files[0];
   const ext = exts[0];
+  console.log('[ZONE] 확장자:', ext);
   try {
     if (exts.includes('shp')) {
       const shpFile = files.find(f => f.name.toLowerCase().endsWith('.shp'));
       zoneFileSet = files;
       await applyZoneFileShpSet(shpFile, files);
     } else if (['dxf','geojson','json','zip'].includes(ext)) {
+      console.log('[ZONE] applyZoneFile 호출');
       await applyZoneFile(file);
+      console.log('[ZONE] applyZoneFile 완료');
     } else {
       showToast('⚠️ 지원 형식: DXF, SHP, ZIP, GeoJSON');
     }
   } catch(e) {
+    console.error('[ZONE] 오류:', e);
     showToast('❌ 파일 오류: ' + e.message);
   }
 }
