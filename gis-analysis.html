@@ -303,7 +303,7 @@ canvas { border-radius:6px; max-width:100%; }
       <div class="alert alert-blue" style="margin-bottom:16px">
         <span class="alert-icon">ℹ️</span>
         <div>
-          <strong>표고·경사 분석</strong> — 수치지형도 DXF와 구역계 파일을 업로드하면
+          <strong>표고·경사 분석</strong> — DEM(ASCII Grid) 또는 수치지형도 DXF를 업로드하면
           표고 분포, 경사도 분포 이미지와 면적 통계를 자동으로 생성합니다.
         </div>
       </div>
@@ -311,17 +311,28 @@ canvas { border-radius:6px; max-width:100%; }
       <!-- 파일 업로드 영역 -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
 
-        <!-- 수치지형도 -->
+        <!-- 수치지형도/DEM -->
         <div class="sec-card" style="margin-bottom:0">
-          <div class="sec-card-title"><div class="dot"></div>수치지형도 파일 (DXF)</div>
+          <div class="sec-card-title"><div class="dot"></div>표고 데이터 파일</div>
+          <!-- 모드 선택 -->
+          <div style="display:flex;gap:6px;margin-bottom:12px">
+            <button type="button" id="btnModeDEM" onclick="setTopoMode('dem')"
+              style="flex:1;padding:6px 8px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;background:var(--green);color:white;border:1.5px solid var(--green)">
+              📊 DEM (권장)
+            </button>
+            <button type="button" id="btnModeDXF" onclick="setTopoMode('dxf')"
+              style="flex:1;padding:6px 8px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;background:white;color:var(--ink3);border:1.5px solid var(--border)">
+              🗺️ DXF 등고선
+            </button>
+          </div>
           <div id="topoDropZone" style="border:2px dashed var(--border);border-radius:10px;padding:24px 16px;text-align:center;background:var(--bg);transition:all .2s"
             ondragover="event.preventDefault();this.style.borderColor='var(--green)';this.style.background='var(--green-light)'"
             ondragleave="this.style.borderColor='';this.style.background='var(--bg)'"
             ondrop="event.preventDefault();this.style.borderColor='';this.style.background='var(--bg)';_onDropTopo(event)">
-            <div style="font-size:28px;margin-bottom:8px" id="topoIcon">🗺️</div>
-            <div style="font-size:13px;font-weight:700;color:var(--ink2);margin-bottom:4px" id="topoTitle">수치지형도 업로드</div>
-            <div style="font-size:11px;color:var(--ink3);margin-bottom:12px" id="topoDesc">F0017111 · F0017114 레이어 포함 DXF</div>
-            <input type="file" id="_topoInput" accept=".dxf,.zip,.shp,.geojson,.json" multiple
+            <div style="font-size:28px;margin-bottom:8px" id="topoIcon">📊</div>
+            <div style="font-size:13px;font-weight:700;color:var(--ink2);margin-bottom:4px" id="topoTitle">DEM 파일 업로드</div>
+            <div style="font-size:11px;color:var(--ink3);margin-bottom:12px" id="topoDesc">QGIS로 만든 ASCII Grid (.tif/.asc)</div>
+            <input type="file" id="_topoInput" accept=".tif,.asc,.dxf,.zip,.shp,.geojson,.json" multiple
               style="position:fixed;top:-9999px;left:-9999px;opacity:0;width:0;height:0"
               onchange="_onChangeTopo(this)">
             <button type="button" onclick="document.getElementById('_topoInput').click()"
@@ -384,9 +395,10 @@ canvas { border-radius:6px; max-width:100%; }
           <div>
             <label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:8px">DEM 격자 해상도</label>
             <select id="demResolution" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;font-family:'Noto Sans KR',sans-serif;outline:none;background:var(--white)">
-              <option value="1">1m (정밀 · 느림)</option>
-              <option value="2" selected>2m (기본 권장)</option>
-              <option value="5">5m (빠름)</option>
+              <option value="5">5m (정밀 · 느림)</option>
+              <option value="10" selected>10m (기본 권장)</option>
+              <option value="20">20m (빠름)</option>
+              <option value="50">50m (매우 빠름)</option>
             </select>
           </div>
           <div>
@@ -1208,13 +1220,13 @@ function detectCRS(pts) {
   return 'EPSG:5174';
 }
 
-// ─── IDW 보간 ─────────────────────────────────────────
-function buildElevGrid(pts, cellSize) {
+// ─── IDW 보간 (청크 비동기 처리) ─────────────────────────
+async function buildElevGrid(pts, cellSize, progressCb) {
   let valid = pts.filter(p => p.z !== 0 && !isNaN(p.z));
   if (valid.length === 0) return null;
 
-  // 점이 너무 많으면 샘플링 (최대 50,000점)
-  const MAX_PTS = 50000;
+  // 최대 30,000점으로 샘플링
+  const MAX_PTS = 30000;
   if (valid.length > MAX_PTS) {
     const step = Math.ceil(valid.length / MAX_PTS);
     valid = valid.filter((_, i) => i % step === 0);
@@ -1226,21 +1238,58 @@ function buildElevGrid(pts, cellSize) {
     if(p.x < xmin) xmin=p.x; if(p.x > xmax) xmax=p.x;
     if(p.y < ymin) ymin=p.y; if(p.y > ymax) ymax=p.y;
   });
+
   const cols = Math.ceil((xmax - xmin) / cellSize) + 1;
   const rows = Math.ceil((ymax - ymin) / cellSize) + 1;
-  const data = new Float32Array(cols * rows).fill(NaN);
-  const K = 8, power = 2;
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const gx = xmin + c * cellSize, gy = ymin + r * cellSize;
-      const dists = valid.map((p, i) => ({ i, d: Math.hypot(p.x - gx, p.y - gy) }))
-        .sort((a, b) => a.d - b.d).slice(0, K);
-      if (dists[0].d < 0.001) { data[r * cols + c] = valid[dists[0].i].z; continue; }
-      let wSum = 0, zSum = 0;
-      dists.forEach(({ i, d }) => { const w = 1 / Math.pow(d, power); wSum += w; zSum += w * valid[i].z; });
-      data[r * cols + c] = zSum / wSum;
-    }
+  console.log('[GRID] 격자:', cols, 'x', rows, '=', cols*rows, '셀');
+
+  // 격자가 너무 크면 셀 크기 자동 조정
+  const MAX_CELLS = 200000;
+  if (cols * rows > MAX_CELLS) {
+    const factor = Math.ceil(Math.sqrt(cols * rows / MAX_CELLS));
+    const newCellSize = cellSize * factor;
+    console.log('[GRID] 격자 너무 큼 → 셀 크기 자동 조정:', cellSize, '→', newCellSize, 'm');
+    return buildElevGrid(pts, newCellSize, progressCb);
   }
+
+  const data = new Float32Array(cols * rows).fill(NaN);
+  const K = 4, power = 2;  // 탐색 점 수 줄임
+
+  // 청크 단위로 처리 (브라우저 블로킹 방지)
+  const CHUNK = 500;
+  const total = rows * cols;
+
+  for (let start = 0; start < total; start += CHUNK) {
+    const end = Math.min(start + CHUNK, total);
+    for (let idx = start; idx < end; idx++) {
+      const r = Math.floor(idx / cols);
+      const c = idx % cols;
+      const gx = xmin + c * cellSize;
+      const gy = ymin + r * cellSize;
+
+      // 가까운 K개 점 탐색
+      let best = [];
+      for (let j = 0; j < valid.length; j++) {
+        const d = Math.hypot(valid[j].x - gx, valid[j].y - gy);
+        if (best.length < K) {
+          best.push({ d, z: valid[j].z });
+          if (best.length === K) best.sort((a,b) => a.d - b.d);
+        } else if (d < best[K-1].d) {
+          best[K-1] = { d, z: valid[j].z };
+          best.sort((a,b) => a.d - b.d);
+        }
+      }
+      if (best.length === 0) continue;
+      if (best[0].d < 0.001) { data[idx] = best[0].z; continue; }
+      let wSum = 0, zSum = 0;
+      best.forEach(({ d, z }) => { const w = 1/Math.pow(d, power); wSum+=w; zSum+=w*z; });
+      data[idx] = zSum / wSum;
+    }
+    // 진행률 업데이트 + 브라우저에 제어권 반환
+    if (progressCb) progressCb(Math.round(end / total * 100));
+    await new Promise(r => setTimeout(r, 0));
+  }
+
   return { data, cols, rows, xmin, ymin, cellSize };
 }
 
@@ -1258,6 +1307,86 @@ function computeSlopeGrid(grid) {
   return slope;
 }
 
+// ─── 표고 데이터 모드 (DEM / DXF) ───────────────────────
+let _topoMode = 'dem'; // 'dem' | 'dxf'
+
+function setTopoMode(mode) {
+  _topoMode = mode;
+  const isDEM = mode === 'dem';
+  document.getElementById('btnModeDEM').style.background = isDEM ? 'var(--green)' : 'white';
+  document.getElementById('btnModeDEM').style.color      = isDEM ? 'white' : 'var(--ink3)';
+  document.getElementById('btnModeDEM').style.borderColor= isDEM ? 'var(--green)' : 'var(--border)';
+  document.getElementById('btnModeDXF').style.background = isDEM ? 'white' : 'var(--green)';
+  document.getElementById('btnModeDXF').style.color      = isDEM ? 'var(--ink3)' : 'white';
+  document.getElementById('btnModeDXF').style.borderColor= isDEM ? 'var(--border)' : 'var(--green)';
+  document.getElementById('topoIcon').textContent  = isDEM ? '📊' : '🗺️';
+  document.getElementById('topoTitle').textContent = isDEM ? 'DEM 파일 업로드' : '수치지형도 DXF 업로드';
+  document.getElementById('topoDesc').textContent  = isDEM
+    ? 'QGIS로 만든 ASCII Grid (.tif/.asc)'
+    : 'F0017111 · F0017114 레이어 포함 DXF';
+  document.getElementById('_topoInput').accept = isDEM
+    ? '.tif,.asc,.txt'
+    : '.dxf,.zip,.shp,.geojson,.json';
+  // 파일 초기화
+  topoFile = null;
+  setChip('chip-topo', false, '');
+  document.getElementById('topoDropZone').style.borderColor = '';
+  document.getElementById('topoDropZone').style.background  = 'var(--bg)';
+  checkRunReady();
+}
+
+// ─── ASCII Grid 파서 ──────────────────────────────────────
+async function parseASCIIGrid(file) {
+  const text = await file.text();
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l);
+
+  let ncols=0, nrows=0, xll=0, yll=0, dx=1, dy=1, nodata=-9999;
+  let dataStart = 0;
+
+  // 헤더 파싱
+  for (let i = 0; i < lines.length; i++) {
+    const parts = lines[i].split(/\s+/);
+    const key = parts[0].toUpperCase();
+    const val = parseFloat(parts[1]);
+    if      (key === 'NCOLS')        { ncols = parseInt(parts[1]); }
+    else if (key === 'NROWS')        { nrows = parseInt(parts[1]); }
+    else if (key === 'XLLCORNER' || key === 'XLLCENTER') { xll = val; }
+    else if (key === 'YLLCORNER' || key === 'YLLCENTER') { yll = val; }
+    else if (key === 'CELLSIZE')     { dx = val; dy = val; }
+    else if (key === 'DX')           { dx = val; }
+    else if (key === 'DY')           { dy = val; }
+    else if (key === 'NODATA_VALUE' || key === 'NODATA') { nodata = val; }
+    else { dataStart = i; break; }
+  }
+
+  // 데이터 파싱
+  const data = new Float32Array(ncols * nrows).fill(NaN);
+  let row = 0;
+  for (let i = dataStart; i < lines.length && row < nrows; i++) {
+    const vals = lines[i].split(/\s+/);
+    for (let col = 0; col < vals.length && col < ncols; col++) {
+      const v = parseFloat(vals[col]);
+      // ASCII Grid는 위에서 아래로 → 뒤집어서 저장 (아래→위)
+      const idx = (nrows - 1 - row) * ncols + col;
+      data[idx] = (v === nodata || isNaN(v)) ? NaN : v;
+    }
+    row++;
+  }
+
+  // 유효값 통계
+  let mn=Infinity, mx=-Infinity, cnt=0;
+  data.forEach(v => { if(!isNaN(v)) { if(v<mn)mn=v; if(v>mx)mx=v; cnt++; } });
+
+  console.log(`[DEM] ${ncols}×${nrows} 격자, 해상도 ${dx.toFixed(1)}×${dy.toFixed(1)}m`);
+  console.log(`[DEM] 표고 범위: ${mn.toFixed(1)}~${mx.toFixed(1)}m, 유효셀 ${cnt.toLocaleString()}개`);
+
+  return {
+    data, cols: ncols, rows: nrows,
+    xmin: xll, ymin: yll,
+    cellSize: dx, cellSizeY: dy
+  };
+}
+
 // ─── 분석 실행 ────────────────────────────────────────
 let _elevGrid = null, _slopeData = null, _analysisResult = null;
 
@@ -1270,46 +1399,60 @@ async function runAnalysis() {
 
   try {
     const ext = topoFile.name.split('.').pop().toLowerCase();
+    const isDEM = _topoMode === 'dem' || ext === 'tif' || ext === 'asc';
 
-    setProgress('등고선 파싱 중 (F0017111/F0017114)...', 10);
-    await tick();
+    if (isDEM) {
+      // ── DEM 모드: ASCII Grid 직접 파싱 ──
+      setProgress('DEM 파일 읽는 중...', 15);
+      await tick();
 
-    let contourPts = [], contourLines = [];
+      _elevGrid = await parseASCIIGrid(topoFile);
+      if (!_elevGrid) throw new Error('DEM 파싱 실패');
 
-    if (ext === 'dxf') {
-      const parsed = await parseDXFContours(topoFile);
-      contourPts   = parsed.contourPts;
-      contourLines = parsed.contourLines;
-    } else if (topoFile._parsedGeoJSON) {
-      // SHP/GeoJSON: z값 있는 좌표 추출
-      const geojson = topoFile._parsedGeoJSON;
-      geojson.features.forEach(f => {
-        const coords = f.geometry?.coordinates;
-        if (!coords) return;
-        const flat = f.geometry.type === 'MultiLineString'
-          ? coords.flat() : f.geometry.type === 'LineString' ? [coords] : [];
-        flat.forEach(ring => {
-          const pts = ring.map(c => ({ x: c[0], y: c[1], z: c[2] ?? 0 }));
-          pts.forEach(p => contourPts.push(p));
-          if (pts.length >= 2) contourLines.push({ pts, layer: 'GeoJSON' });
+      setProgress('경사도 계산 중...', 60);
+      await tick();
+      _slopeData = computeSlopeGrid(_elevGrid);
+
+    } else {
+      // ── DXF 모드: 등고선 파싱 + IDW 보간 ──
+      setProgress('등고선 파싱 중 (F0017111/F0017114)...', 10);
+      await tick();
+
+      let contourPts = [], contourLines = [];
+      if (ext === 'dxf') {
+        const parsed = await parseDXFContours(topoFile);
+        contourPts   = parsed.contourPts;
+        contourLines = parsed.contourLines;
+      } else if (topoFile._parsedGeoJSON) {
+        const geojson = topoFile._parsedGeoJSON;
+        geojson.features.forEach(f => {
+          const coords = f.geometry?.coordinates;
+          if (!coords) return;
+          const flat = f.geometry.type === 'MultiLineString'
+            ? coords.flat() : f.geometry.type === 'LineString' ? [coords] : [];
+          flat.forEach(ring => {
+            const pts = ring.map(c => ({ x: c[0], y: c[1], z: c[2] ?? 0 }));
+            pts.forEach(p => contourPts.push(p));
+            if (pts.length >= 2) contourLines.push({ pts, layer: 'GeoJSON' });
+          });
         });
+      }
+
+      if (contourPts.length === 0) throw new Error('등고선 데이터를 찾을 수 없습니다 (F0017111/F0017114)');
+
+      setProgress('IDW 보간 중... (시간이 걸릴 수 있습니다)', 30);
+      await tick();
+
+      const cellSize = parseInt(document.getElementById('demResolution').value);
+      _elevGrid = await buildElevGrid(contourPts, cellSize, pct => {
+        setProgress(`IDW 보간 중... ${pct}%`, 30 + Math.round(pct * 0.4));
       });
+      if (!_elevGrid) throw new Error('표고 격자 생성 실패 — Z값이 있는 점이 없습니다');
+
+      setProgress('경사도 계산 중...', 72);
+      await tick();
+      _slopeData = computeSlopeGrid(_elevGrid);
     }
-
-    if (contourPts.length === 0) throw new Error('등고선 데이터를 찾을 수 없습니다 (F0017111/F0017114)');
-
-    setProgress(`등고선 ${contourLines.length.toLocaleString()}선 추출 완료 → IDW 보간 중...`, 30);
-    await tick();
-
-    // 좌표계 감지 후 보간
-    const crs       = detectCRS(contourPts);
-    const cellSize  = parseInt(document.getElementById('demResolution').value);
-    _elevGrid       = buildElevGrid(contourPts, cellSize);
-    if (!_elevGrid) throw new Error('표고 격자 생성 실패');
-
-    setProgress('경사도 계산 중...', 60);
-    await tick();
-    _slopeData = computeSlopeGrid(_elevGrid);
 
     setProgress('면적 집계 및 결과 렌더링 중...', 85);
     await tick();
