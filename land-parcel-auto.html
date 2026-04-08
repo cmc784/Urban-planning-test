@@ -2179,11 +2179,8 @@ function renderShpResult() {
       : `<span class="status-badge s-일편">부분편입</span>`;
     const pnu = String(r.pnu || '').padStart(19,'0');
     const extra = ldLinkExtra[pnu] || {};
-    // 편입면적 보정: 완전편입=공부상면적(토지대장 연계값 우선, 없으면 jijuArea), 부분편입=편입구적면적
     const areaLinked = extra['area'] ? parseFloat(String(extra['area']).replace(/,/g,'')) : null;
-    const bojeong = r.gubun === '완전편입'
-      ? (areaLinked && !isNaN(areaLinked) ? areaLinked : r.jijuArea)
-      : r.pyeonipArea;
+    const bojeong = calcBojeong(r, areaLinked);
     // 숫자형/면적형 컬럼은 오른쪽 정렬, 공시지가도 오른쪽 정렬
     const NUM_KEYS = new Set(['area','price','pyeonip']);
     const extraCells = ldLinkSelectedFields.map(f => {
@@ -2194,6 +2191,7 @@ function renderShpResult() {
         : escHtml(String(raw));
       return `<td style="${isNum ? 'text-align:right' : 'text-align:center'};font-family:'DM Mono',monospace;border-right:1px solid var(--border);border-bottom:1px solid var(--border2);padding:8px 10px;font-size:11px">${display}</td>`;
     }).join('');
+    const isOverride = bojeongOverride[pnu] !== undefined;
     return `<tr>
       <td class="td-mono" style="font-size:10px">${escHtml(r.pnu)}</td>
       <td class="td-mono">${i + 1}</td>
@@ -2205,14 +2203,83 @@ function renderShpResult() {
       <td>${escHtml(r.jimok)}</td>
       <td class="td-mono td-right">${r.jijuArea.toLocaleString()}</td>
       <td class="td-mono td-right">${r.pyeonipArea.toLocaleString()}</td>
-      <td class="td-mono td-right">${bojeong.toLocaleString()}</td>
+      <td class="td-mono td-right" id="bj-${pnu}"
+          onclick="editBojeong('${pnu}', ${bojeong})"
+          title="클릭하여 수정"
+          style="cursor:pointer;${isOverride ? 'color:var(--teal);font-weight:700;' : ''}">
+        ${formatBojeong(bojeong)}${isOverride ? ' ✎' : ''}
+      </td>
       <td>${gubunBadge}</td>
       ${extraCells}
     </tr>`;
   }).join('');
 }
 
-// ─── 토지대장 연계 ────────────────────────────────────
+// ── 편입면적 보정 수동 편집값 저장 (PNU → 값) ──────────
+const bojeongOverride = {};
+
+// ── 편입면적 보정 계산 헬퍼 ─────────────────────────────
+function calcBojeong(r, areaLinked) {
+  // 수동 편집값 우선
+  const pnu = String(r.pnu || '').padStart(19,'0');
+  if (bojeongOverride[pnu] !== undefined) return bojeongOverride[pnu];
+
+  if (r.gubun === '완전편입') {
+    // 완전편입: 공부상면적(토지대장 연계값 우선, 없으면 필지구적면적)
+    return (areaLinked && !isNaN(areaLinked)) ? areaLinked : r.jijuArea;
+  } else {
+    // 부분편입: (편입구적면적 × 공부상면적) ÷ 필지구적면적
+    if (areaLinked && !isNaN(areaLinked) && r.jijuArea > 0) {
+      const raw = (r.pyeonipArea * areaLinked) / r.jijuArea;
+      // 공부상면적이 소수점이면 동일 자릿수, 아니면 반올림 정수
+      const decimalPlaces = String(areaLinked).includes('.')
+        ? String(areaLinked).split('.')[1].length
+        : 0;
+      return decimalPlaces > 0
+        ? Math.round(raw * Math.pow(10, decimalPlaces)) / Math.pow(10, decimalPlaces)
+        : Math.round(raw);
+    }
+    // 공부상면적 없으면 편입구적면적 그대로 (소수점 1자리)
+    return r.pyeonipArea;
+  }
+}
+
+// ── 편입면적 보정 표시 포맷 ──────────────────────────────
+function formatBojeong(val) {
+  if (typeof val !== 'number') return String(val);
+  // 소수점 있으면 그대로, 없으면 정수
+  return Number.isInteger(val) ? val.toLocaleString() : val.toLocaleString(undefined, { minimumFractionDigits: 1 });
+}
+
+// ── 편입면적 보정 셀 클릭 시 인라인 편집 ────────────────
+function editBojeong(pnu, currentVal) {
+  const cell = document.getElementById('bj-' + pnu);
+  if (!cell) return;
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.step = 'any';
+  input.value = currentVal;
+  input.style.cssText = 'width:90px;padding:2px 4px;font-family:"DM Mono",monospace;font-size:11px;text-align:right;border:1.5px solid var(--teal);border-radius:4px;outline:none;';
+  cell.innerHTML = '';
+  cell.appendChild(input);
+  input.focus();
+  input.select();
+
+  const commit = () => {
+    const v = parseFloat(input.value);
+    if (!isNaN(v)) {
+      bojeongOverride[pnu] = v;
+    } else {
+      delete bojeongOverride[pnu];
+    }
+    renderShpResult();
+  };
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { input.blur(); }
+    if (e.key === 'Escape') { cell.innerHTML = formatBojeong(currentVal); }
+  });
+}
 let ldLinkHeaders = [];   // 토지대장 헤더
 let ldLinkRows    = [];   // 토지대장 데이터 rows
 let ldLinkExtra   = {};   // PNU → 병합 데이터 맵
@@ -2407,6 +2474,7 @@ function ldLinkApply() {
 function ldLinkReset() {
   ldLinkHeaders = []; ldLinkRows = []; ldLinkExtra = {};
   ldLinkSelectedFields = [];
+  Object.keys(bojeongOverride).forEach(k => delete bojeongOverride[k]);
   document.getElementById('ldLink-upload-area').style.display = 'block';
   document.getElementById('ldLink-col-area').style.display    = 'none';
   document.getElementById('ldLink-result').style.display      = 'none';
@@ -2426,9 +2494,7 @@ function exportShpExcel() {
     const pnu = String(r.pnu || '').padStart(19,'0');
     const extra = ldLinkExtra[pnu] || {};
     const areaLinked = extra['area'] ? parseFloat(String(extra['area']).replace(/,/g,'')) : null;
-    const bojeong = r.gubun === '완전편입'
-      ? (areaLinked && !isNaN(areaLinked) ? areaLinked : r.jijuArea)
-      : r.pyeonipArea;
+    const bojeong = calcBojeong(r, areaLinked);
     const extraVals = ldLinkSelectedFields.map(f => {
       const v = extra[f.key] ?? '';
       const NUM_KEYS = new Set(['area','price','pyeonip']);
