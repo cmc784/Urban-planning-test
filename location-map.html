@@ -498,37 +498,6 @@ input[type="range"] {
     <!-- ── 편입 모드 패널 (pyeonip mode) ── -->
     <div id="pyeonip-sidebar" style="display:none">
 
-      <!-- 라벨 설정 패널 -->
-      <div class="panel">
-        <div class="panel-title">🏷️ 라벨 설정</div>
-
-        <!-- 표시 내용 -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-          <span style="font-size:11.5px;color:var(--ink2)">표시 내용</span>
-        </div>
-        <select id="lbl-content" onchange="applyLabelSettings()"
-          style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:11.5px;font-family:'Noto Sans KR',sans-serif;outline:none;margin-bottom:10px">
-          <option value="none">표시 안함</option>
-          <option value="jibun" selected>지번</option>
-          <option value="jimok">지목</option>
-          <option value="jibun_jimok">지번+지목</option>
-          <option value="pyeonip">편입면적</option>
-          <option value="pnu">PNU</option>
-        </select>
-
-        <!-- 글씨 크기 -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-          <span style="font-size:11.5px;color:var(--ink2)">글씨 크기</span>
-          <input type="number" id="lbl-sz-num" min="7" max="18" step="1" value="11"
-            style="width:54px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;font-size:11.5px;font-family:'DM Mono',monospace;text-align:center;outline:none"
-            oninput="syncLabelNumToRange()">
-        </div>
-        <div style="display:flex;align-items:center;gap:6px">
-          <input type="range" id="lbl-sz" min="7" max="18" step="1" value="11" style="flex:1"
-            oninput="syncLabelRangeToNum();applyLabelSettings()">
-        </div>
-      </div>
-
       <!-- GIS 스타일 레이어 패널 -->
       <div class="panel">
         <div class="panel-title">🗂️ 레이어</div>
@@ -667,6 +636,35 @@ input[type="range"] {
         <div style="display:flex;gap:8px">
           <button onclick="lepApply()" style="flex:1;padding:8px;background:var(--teal);color:white;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif">적용</button>
           <button onclick="closeLayerEdit()" style="padding:8px 12px;background:none;border:1px solid var(--border);border-radius:7px;font-size:12px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;color:var(--ink2)">닫기</button>
+        </div>
+      </div>
+
+      <!-- 라벨 설정 패널 -->
+      <div class="panel">
+        <div class="panel-title">🏷️ 라벨 설정</div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:11.5px;color:var(--ink2)">표시 내용</span>
+        </div>
+        <select id="lbl-content" onchange="applyLabelSettings()"
+          style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:11.5px;font-family:'Noto Sans KR',sans-serif;outline:none;margin-bottom:10px">
+          <option value="none">표시 안함</option>
+          <option value="jibun" selected>지번</option>
+          <option value="jimok">지목</option>
+          <option value="jibun_jimok">지번+지목</option>
+          <option value="pyeonip">편입면적</option>
+          <option value="pnu">PNU</option>
+        </select>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:11.5px;color:var(--ink2)">글씨 크기</span>
+          <input type="number" id="lbl-sz-num" min="7" max="18" step="1" value="11"
+            style="width:54px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;font-size:11.5px;font-family:'DM Mono',monospace;text-align:center;outline:none"
+            oninput="syncLabelNumToRange()">
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="range" id="lbl-sz" min="7" max="18" step="1" value="11" style="flex:1"
+            oninput="syncLabelRangeToNum();applyLabelSettings()">
         </div>
       </div>
 
