@@ -1642,16 +1642,8 @@ function detectCrsFromDXF(text, fname) {
   let detected = null, desc = '';
 
   // $EXTMIN / $EXTMAX 파싱
-  const extminMatch = text.match(/\$EXTMIN[\s\S]{0,60}?
-\s*10\s*
-\s*([\d\.\-]+)\s*
-\s*20\s*
-\s*([\d\.\-]+)/);
-  const extmaxMatch = text.match(/\$EXTMAX[\s\S]{0,60}?
-\s*10\s*
-\s*([\d\.\-]+)\s*
-\s*20\s*
-\s*([\d\.\-]+)/);
+  const extminMatch = text.match(/\$EXTMIN[\s\S]{0,60}?\s*10\s*\n\s*([\d.\-]+)\s*\n\s*20\s*\n\s*([\d.\-]+)/);
+  const extmaxMatch = text.match(/\$EXTMAX[\s\S]{0,60}?\s*10\s*\n\s*([\d.\-]+)\s*\n\s*20\s*\n\s*([\d.\-]+)/);
 
   if (extminMatch && extmaxMatch) {
     const x1 = parseFloat(extminMatch[1]), y1 = parseFloat(extminMatch[2]);
@@ -1671,9 +1663,7 @@ function detectCrsFromDXF(text, fname) {
   if (text.includes('Bessel') || text.includes('BESSEL') || text.includes('Korea 1985')) { evidence.push('📋 좌표계 문자열: Bessel 발견'); if (!detected) { detected = '베셀 중부원점 (EPSG:5186)'; desc = 'Bessel 1841 기반 중부원점'; } }
 
   // ACADVER로 제작 소프트웨어 추정
-  const acadMatch = text.match(/\$ACADVER[^$]+?
-\s*1\s*
-\s*(AC\d+)/);
+  const acadMatch = text.match(/\$ACADVER[^$]+?\s*1\s*\n\s*(AC\d+)/);
   if (acadMatch) evidence.push(`🛠️ AutoCAD 버전: ${acadMatch[1]}`);
 
   showDetectResult(detected, detected || '좌표계 불확실', desc, evidence, !detected);
