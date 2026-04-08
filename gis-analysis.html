@@ -323,7 +323,7 @@ canvas { border-radius:6px; max-width:100%; }
               <span style="font-size:11px;color:var(--amber)">국토지리정보원 표준 수치지형도 권장 · SHP는 ZIP으로 묶어 업로드</span>
             </div>
           </div>
-          <input type="file" id="topoFile" style="display:none" accept=".dxf,.geojson,.json,.shp,.zip" multiple
+          <input type="file" id="topoFile" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none" accept=".dxf,.geojson,.json,.shp,.zip" multiple
             onchange="handleTopoFile(this)">
           <label class="upload-box" id="topoDropZone" for="topoFile" style="cursor:pointer;display:block;text-align:center"
             ondragover="event.preventDefault();this.classList.add('drag-over')"
@@ -348,7 +348,7 @@ canvas { border-radius:6px; max-width:100%; }
               <span style="font-size:11px;color:var(--amber)">좌표계는 수치지형도와 동일 · SHP는 ZIP으로 묶어 업로드</span>
             </div>
           </div>
-          <input type="file" id="zoneFile" style="display:none" accept=".dxf,.geojson,.json,.shp,.zip" multiple
+          <input type="file" id="zoneFile" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none" accept=".dxf,.geojson,.json,.shp,.zip" multiple
             onchange="handleZoneFile(this)">
           <label class="upload-box" id="zoneDropZone" for="zoneFile" style="cursor:pointer;display:block;text-align:center"
             ondragover="event.preventDefault();this.classList.add('drag-over')"
@@ -550,7 +550,7 @@ canvas { border-radius:6px; max-width:100%; }
         <div class="sec-card-title"><div class="dot"></div>CAD / GIS 파일 업로드 — 좌표계 자동 감지</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
           <div>
-            <input type="file" id="cadFile" style="display:none" accept=".dxf,.geojson,.json"
+            <input type="file" id="cadFile" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none" accept=".dxf,.geojson,.json"
               onchange="handleCadFile(this)">
             <label class="upload-box" id="cadDropZone" for="cadFile" style="cursor:pointer;display:block;text-align:center"
               ondragover="event.preventDefault();this.classList.add('drag-over')"
