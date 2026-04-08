@@ -1077,7 +1077,7 @@ async function parseDXFContours(file) {
   const contourPts = [];
   const contourLines = [];
 
-  // ── 먼저 DXF 내 모든 레이어명 수집 (디버깅용) ──
+  // 전체 레이어 목록 수집 (디버깅)
   const allLayers = new Set();
   for (let i = 0; i < lines.length - 1; i += 2) {
     if (parseInt(lines[i]) === 8) allLayers.add(lines[i+1]);
@@ -1085,14 +1085,10 @@ async function parseDXFContours(file) {
   console.log('[DXF] 전체 레이어 목록:', Array.from(allLayers).join(', '));
   console.log('[DXF] TARGET 레이어 매칭:', Array.from(allLayers).filter(l => TARGET.has(l.trim())));
 
-  // TARGET에 실제 레이어명 추가 (trim 처리)
-  Array.from(allLayers).forEach(l => {
-    const t = l.trim();
-    if (TARGET.has(t)) TARGET.add(l); // 공백 포함 원본도 추가
-  });
-
   let i = 0, inEntities = false;
-  let currentLayer = '', currentType = '', ptBuf = [], zBuf = [], inPoly = false;
+  let currentLayer = '', currentType = '';
+  let ptBuf = [], zBuf = [], inPoly = false;
+  let lwElevation = 0;  // LWPOLYLINE의 code 38 (전체 고도)
 
   while (i < lines.length - 1) {
     const code = parseInt(lines[i]);
@@ -1102,36 +1098,60 @@ async function parseDXFContours(file) {
     if (code === 2 && val === 'ENDSEC' && inEntities) { inEntities = false; i += 2; continue; }
     if (!inEntities) { i += 2; continue; }
 
+    // 새 엔티티 시작
     if (code === 0) {
       // 이전 엔티티 저장
       if (inPoly && TARGET.has(currentLayer.trim()) && ptBuf.length >= 2) {
-        const pts = ptBuf.map((p, idx) => ({ x: p.x, y: p.y, z: zBuf[idx] ?? zBuf[0] ?? 0 }));
-        contourLines.push({ pts, layer: currentLayer });
-        pts.forEach(p => contourPts.push(p));
+        // LWPOLYLINE: z값이 없으면 code38(lwElevation) 사용
+        const pts = ptBuf.map((p, idx) => ({
+          x: p.x, y: p.y,
+          z: (zBuf[idx] !== undefined && !isNaN(zBuf[idx])) ? zBuf[idx] : lwElevation
+        }));
+        if (pts.some(p => p.z !== 0)) {
+          contourLines.push({ pts, layer: currentLayer });
+          pts.forEach(p => contourPts.push(p));
+        }
       }
-      inPoly = false; ptBuf = []; zBuf = []; currentLayer = '';
+      inPoly = false; ptBuf = []; zBuf = []; currentLayer = ''; lwElevation = 0;
       currentType = val;
-      if (val === 'LWPOLYLINE' || val === 'POLYLINE' || val === '3DPOLYLINE' || val === 'LINE' || val === 'POINT') inPoly = true;
+      if (['LWPOLYLINE','POLYLINE','3DPOLYLINE','SPLINE','LINE'].includes(val)) inPoly = true;
       i += 2; continue;
     }
-    // 레이어명 — inPoly 여부와 무관하게 항상 읽기
+
+    // 레이어명 (항상 읽기)
     if (code === 8) { currentLayer = val; i += 2; continue; }
 
-    if (inPoly && TARGET.has(currentLayer.trim())) {
-      if (code === 10) { ptBuf.push({ x: parseFloat(val), y: 0 }); i += 2; continue; }
-      if (code === 20 && ptBuf.length > 0) { ptBuf[ptBuf.length - 1].y = parseFloat(val); i += 2; continue; }
-      if (code === 30) { zBuf.push(parseFloat(val)); i += 2; continue; }
-    }
+    if (!inPoly || !TARGET.has(currentLayer.trim())) { i += 2; continue; }
+
+    // LWPOLYLINE 전체 고도 (code 38)
+    if (code === 38) { lwElevation = parseFloat(val); i += 2; continue; }
+    // X 좌표 (code 10)
+    if (code === 10) { ptBuf.push({ x: parseFloat(val), y: 0 }); i += 2; continue; }
+    // Y 좌표 (code 20)
+    if (code === 20 && ptBuf.length > 0) { ptBuf[ptBuf.length - 1].y = parseFloat(val); i += 2; continue; }
+    // Z 좌표 (code 30) — 3D 폴리라인
+    if (code === 30) { zBuf.push(parseFloat(val)); i += 2; continue; }
+
     i += 2;
   }
+
   // 마지막 엔티티
   if (inPoly && TARGET.has(currentLayer.trim()) && ptBuf.length >= 2) {
-    const pts = ptBuf.map((p, idx) => ({ x: p.x, y: p.y, z: zBuf[idx] ?? zBuf[0] ?? 0 }));
-    contourLines.push({ pts, layer: currentLayer });
-    pts.forEach(p => contourPts.push(p));
+    const pts = ptBuf.map((p, idx) => ({
+      x: p.x, y: p.y,
+      z: (zBuf[idx] !== undefined && !isNaN(zBuf[idx])) ? zBuf[idx] : lwElevation
+    }));
+    if (pts.some(p => p.z !== 0)) {
+      contourLines.push({ pts, layer: currentLayer });
+      pts.forEach(p => contourPts.push(p));
+    }
   }
 
   console.log('[DXF] 추출된 등고선 선:', contourLines.length, '/ 점:', contourPts.length);
+  if (contourLines.length > 0) {
+    const zVals = contourPts.map(p => p.z).filter(z => z !== 0);
+    console.log('[DXF] Z값 범위:', Math.min(...zVals).toFixed(1), '~', Math.max(...zVals).toFixed(1), 'm');
+  }
   return { contourPts, contourLines };
 }
 
