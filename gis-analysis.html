@@ -84,12 +84,6 @@ body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--
   font-family:'DM Mono',monospace;
 }
 .menu-tab.active .tab-badge { background:rgba(255,255,255,0.3); color:white; }
-.menu-tab .tab-soon {
-  font-size:9px; background:var(--border2); color:var(--ink3);
-  padding:1px 6px; border-radius:8px; font-weight:700;
-  font-family:'DM Mono',monospace;
-}
-
 /* 서브메뉴 */
 .submenu {
   display:flex; gap:4px; margin-bottom:20px; flex-wrap:wrap;
@@ -236,15 +230,6 @@ canvas { border-radius:6px; max-width:100%; }
 .btn-dl:hover { background:var(--green); color:white; border-color:var(--green); }
 .btn-dl.primary-dl { background:var(--green); color:white; border-color:var(--green); }
 
-/* COMING SOON 패널 */
-.coming-soon {
-  background:var(--white); border:1px solid var(--border); border-radius:12px;
-  padding:60px 40px; text-align:center; box-shadow:var(--shadow);
-}
-.coming-soon-icon { font-size:48px; margin-bottom:16px; opacity:0.5; }
-.coming-soon h3 { font-size:18px; font-weight:700; color:var(--ink2); margin-bottom:8px; }
-.coming-soon p { font-size:13px; color:var(--ink3); line-height:1.7; }
-
 /* TOAST */
 .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px); background:var(--ink); color:white; padding:10px 22px; border-radius:30px; font-size:13px; font-weight:500; z-index:999; transition:transform 0.3s ease; pointer-events:none; }
 .toast.show { transform:translateX(-50%) translateY(0); }
@@ -297,30 +282,6 @@ canvas { border-radius:6px; max-width:100%; }
         <div style="font-size:10px;font-weight:400;margin-top:1px">공간 데이터 처리</div>
       </div>
     </button>
-    <button class="menu-tab" onclick="switchTab('far')" id="tab-far">
-      <span class="tab-icon">🏢</span>
-      <div style="text-align:left">
-        <div>용적률 · 건폐율</div>
-        <div style="font-size:10px;font-weight:400;margin-top:1px">건축법 기준 검토</div>
-      </div>
-      <span class="tab-soon">준비중</span>
-    </button>
-    <button class="menu-tab" onclick="switchTab('road')" id="tab-road">
-      <span class="tab-icon">🛣️</span>
-      <div style="text-align:left">
-        <div>도로·접도 분석</div>
-        <div style="font-size:10px;font-weight:400;margin-top:1px">접도구역 검토</div>
-      </div>
-      <span class="tab-soon">준비중</span>
-    </button>
-    <button class="menu-tab" onclick="switchTab('area')" id="tab-area">
-      <span class="tab-icon">📏</span>
-      <div style="text-align:left">
-        <div>면적 · 토지 분석</div>
-        <div style="font-size:10px;font-weight:400;margin-top:1px">형상계수·분할</div>
-      </div>
-      <span class="tab-soon">준비중</span>
-    </button>
   </div>
 
   <!-- ── GIS 분석 탭 ── -->
@@ -362,12 +323,17 @@ canvas { border-radius:6px; max-width:100%; }
               <span style="font-size:11px;color:var(--amber)">국토지리정보원 표준 수치지형도 권장 · SHP는 ZIP으로 묶어 업로드</span>
             </div>
           </div>
-          <input type="file" id="topoFile" style="display:none" accept=".dxf,.geojson,.json,.shp,.zip" multiple>
-          <div class="upload-box" id="topoDropZone" style="cursor:pointer">
+          <input type="file" id="topoFile" style="display:none" accept=".dxf,.geojson,.json,.shp,.zip" multiple
+            onchange="handleTopoFile(this)">
+          <div class="upload-box" id="topoDropZone" style="cursor:pointer"
+            onclick="document.getElementById('topoFile').click()"
+            ondragover="event.preventDefault();this.classList.add('drag-over')"
+            ondragleave="this.classList.remove('drag-over')"
+            ondrop="event.preventDefault();this.classList.remove('drag-over');handleTopoFileDrop(event)">
             <div class="upload-icon" id="topoIcon">🗺️</div>
             <div class="upload-title" id="topoTitle">수치지형도 업로드</div>
             <div class="upload-desc" id="topoDesc">DXF · SHP · GeoJSON · ZIP<br>드래그&드롭 가능 (SHP는 ZIP 권장)</div>
-            <span class="upload-label">📎 파일 선택</span>
+            <label class="upload-label" for="topoFile" onclick="event.stopPropagation()">📎 파일 선택</label>
           </div>
           <div id="topoFileTag" style="display:none"></div>
         </div>
@@ -383,12 +349,17 @@ canvas { border-radius:6px; max-width:100%; }
               <span style="font-size:11px;color:var(--amber)">좌표계는 수치지형도와 동일 · SHP는 ZIP으로 묶어 업로드</span>
             </div>
           </div>
-          <input type="file" id="zoneFile" style="display:none" accept=".dxf,.geojson,.json,.shp,.zip" multiple>
-          <div class="upload-box" id="zoneDropZone" style="cursor:pointer">
+          <input type="file" id="zoneFile" style="display:none" accept=".dxf,.geojson,.json,.shp,.zip" multiple
+            onchange="handleZoneFile(this)">
+          <div class="upload-box" id="zoneDropZone" style="cursor:pointer"
+            onclick="document.getElementById('zoneFile').click()"
+            ondragover="event.preventDefault();this.classList.add('drag-over')"
+            ondragleave="this.classList.remove('drag-over')"
+            ondrop="event.preventDefault();this.classList.remove('drag-over');handleZoneFileDrop(event)">
             <div class="upload-icon" id="zoneIcon">📐</div>
             <div class="upload-title" id="zoneTitle">구역계 파일 업로드</div>
             <div class="upload-desc" id="zoneDesc">DXF · SHP · GeoJSON · ZIP<br>드래그&드롭 가능 (SHP는 ZIP 권장)</div>
-            <span class="upload-label">📎 파일 선택</span>
+            <label class="upload-label" for="zoneFile" onclick="event.stopPropagation()">📎 파일 선택</label>
           </div>
           <div id="zoneFileTag" style="display:none"></div>
         </div>
@@ -759,28 +730,7 @@ canvas { border-radius:6px; max-width:100%; }
   </div>
   <!-- /panel-gis -->
 
-  <!-- 준비중 탭들 -->
-  <div class="tab-panel" id="panel-far">
-    <div class="coming-soon">
-      <div class="coming-soon-icon">🏢</div>
-      <h3>용적률 · 건폐율 검토</h3>
-      <p>용도지역 기준에 따른 용적률·건폐율 한도를 검토하고<br>건축 가능 규모를 자동 산출합니다.</p>
-    </div>
-  </div>
-  <div class="tab-panel" id="panel-road">
-    <div class="coming-soon">
-      <div class="coming-soon-icon">🛣️</div>
-      <h3>도로·접도 분석</h3>
-      <p>접도 구역 기준에 따른 도로 폭·접도 길이 적합 여부를 검토합니다.</p>
-    </div>
-  </div>
-  <div class="tab-panel" id="panel-area">
-    <div class="coming-soon">
-      <div class="coming-soon-icon">📏</div>
-      <h3>면적·토지 분석</h3>
-      <p>형상계수, 필지 분할 시 면적 배분, 건폐 가능 면적 등을 산출합니다.</p>
-    </div>
-  </div>
+
 
 </div><!-- /main -->
 
@@ -916,6 +866,39 @@ async function parseSingleShp(shpFile) {
 function getFileTypeLabel(ext) {
   const map = { dxf: 'DXF (CAD)', shp: 'SHP (Shapefile)', zip: 'ZIP (SHP 묶음)', geojson: 'GeoJSON', json: 'GeoJSON' };
   return map[ext] || ext.toUpperCase();
+}
+
+// ─── 드롭 핸들러 (인라인 ondrop용) ───────────────────────
+function handleTopoFileDrop(e) {
+  const files = Array.from(e.dataTransfer.files);
+  if (!files.length) return;
+  const exts = files.map(f => f.name.split('.').pop().toLowerCase());
+  if (exts.includes('shp')) {
+    const shpFile = files.find(f => f.name.toLowerCase().endsWith('.shp'));
+    applyTopoFileShpSet(shpFile, files);
+    return;
+  }
+  const file = files[0];
+  if (!['dxf','geojson','json','shp','zip'].includes(exts[0])) {
+    showToast('⚠️ 지원 형식: DXF, SHP, ZIP, GeoJSON'); return;
+  }
+  applyTopoFile(file);
+}
+
+function handleZoneFileDrop(e) {
+  const files = Array.from(e.dataTransfer.files);
+  if (!files.length) return;
+  const exts = files.map(f => f.name.split('.').pop().toLowerCase());
+  if (exts.includes('shp')) {
+    const shpFile = files.find(f => f.name.toLowerCase().endsWith('.shp'));
+    applyZoneFileShpSet(shpFile, files);
+    return;
+  }
+  const file = files[0];
+  if (!['dxf','geojson','json','shp','zip'].includes(exts[0])) {
+    showToast('⚠️ 지원 형식: DXF, SHP, ZIP, GeoJSON'); return;
+  }
+  applyZoneFile(file);
 }
 
 // ─── 탭 전환 ──────────────────────────────────────────
@@ -2076,61 +2059,6 @@ function showToast(msg) {
 
 // ─── DOM 준비 후 이벤트 바인딩 ────────────────────────
 document.addEventListener('DOMContentLoaded', function () {
-
-  // ── 수치지형도 드롭존 ──
-  const topoZone = document.getElementById('topoDropZone');
-  const topoInput = document.getElementById('topoFile');
-
-  topoZone.addEventListener('click', function () { topoInput.click(); });
-  topoInput.addEventListener('change', function () { handleTopoFile(this); });
-  topoZone.addEventListener('dragover',  function (e) { e.preventDefault(); e.stopPropagation(); topoZone.classList.add('drag-over'); });
-  topoZone.addEventListener('dragleave', function ()  { topoZone.classList.remove('drag-over'); });
-  topoZone.addEventListener('drop', function (e) {
-    e.preventDefault(); e.stopPropagation();
-    topoZone.classList.remove('drag-over');
-    const files = Array.from(e.dataTransfer.files);
-    if (!files.length) return;
-
-    // SHP 다중 파일 드롭 (shp+dbf+prj 등 동시 드롭)
-    const exts = files.map(f => f.name.split('.').pop().toLowerCase());
-    if (exts.includes('shp')) {
-      const shpFile = files.find(f => f.name.toLowerCase().endsWith('.shp'));
-      applyTopoFileShpSet(shpFile, files);
-      return;
-    }
-
-    const file = files[0];
-    const ext = exts[0];
-    if (!['dxf','geojson','json','shp','zip'].includes(ext)) { showToast('⚠️ 지원 형식: DXF, SHP, ZIP, GeoJSON'); return; }
-    applyTopoFile(file);
-  });
-
-  // ── 구역계 드롭존 ──
-  const zoneZone = document.getElementById('zoneDropZone');
-  const zoneInput = document.getElementById('zoneFile');
-
-  zoneZone.addEventListener('click', function () { zoneInput.click(); });
-  zoneInput.addEventListener('change', function () { handleZoneFile(this); });
-  zoneZone.addEventListener('dragover',  function (e) { e.preventDefault(); e.stopPropagation(); zoneZone.classList.add('drag-over'); });
-  zoneZone.addEventListener('dragleave', function ()  { zoneZone.classList.remove('drag-over'); });
-  zoneZone.addEventListener('drop', function (e) {
-    e.preventDefault(); e.stopPropagation();
-    zoneZone.classList.remove('drag-over');
-    const files = Array.from(e.dataTransfer.files);
-    if (!files.length) return;
-
-    const exts = files.map(f => f.name.split('.').pop().toLowerCase());
-    if (exts.includes('shp')) {
-      const shpFile = files.find(f => f.name.toLowerCase().endsWith('.shp'));
-      applyZoneFileShpSet(shpFile, files);
-      return;
-    }
-
-    const file = files[0];
-    const ext = exts[0];
-    if (!['dxf','geojson','json','shp','zip'].includes(ext)) { showToast('⚠️ 지원 형식: DXF, SHP, ZIP, GeoJSON'); return; }
-    applyZoneFile(file);
-  });
 
   // ── CAD 드롭존 ──
   const cadZone  = document.getElementById('cadDropZone');
