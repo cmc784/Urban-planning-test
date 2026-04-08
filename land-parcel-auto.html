@@ -2286,12 +2286,17 @@ let ldLinkExtra   = {};   // PNU → 병합 데이터 맵
 
 // 기본 출력 항목 정의
 const LD_LINK_FIELDS = [
-  { key:'jimok',     label:'지목',       default:true  },
-  { key:'area',      label:'공부상면적(㎡)', default:false },
-  { key:'price',     label:'공시지가(원/㎡)', default:true },
-  { key:'ownerType', label:'소유구분',    default:true  },
-  { key:'ownerName', label:'소유자성명', default:true  },
-  { key:'ownerAddr', label:'소유자주소', default:false },
+  { key:'jimok',     label:'지목',           default:true  },
+  { key:'area',      label:'공부상면적(㎡)',   default:false },
+  { key:'price',     label:'공시지가(원/㎡)', default:true  },
+  { key:'ownerType', label:'소유구분',        default:true  },
+  { key:'ownerName', label:'소유자성명',      default:true  },
+  { key:'ownerAddr', label:'소유자주소',      default:false },
+  // 행정구역 — 개별 컬럼(A형) 또는 통합 컬럼(B형) 자동 감지
+  { key:'sido',      label:'시도',           default:false, adminType:'sido'    },
+  { key:'sigungu',   label:'시군구',          default:false, adminType:'sigungu' },
+  { key:'emd',       label:'읍면동',          default:false, adminType:'emd'     },
+  { key:'haengjeong',label:'행정구역(통합)',   default:false, adminType:'haengjeong' },
 ];
 
 function ldLinkDrop(e) {
@@ -2354,17 +2359,20 @@ function ldLinkProcess(file) {
 
 function ldLinkRenderColRows() {
   const el = document.getElementById('ldLink-col-rows');
-  el.innerHTML = LD_LINK_FIELDS.map((f, fi) => {
+  const ADMIN_KEYS = new Set(['sido','sigungu','emd','haengjeong']);
+
+  // 일반 항목과 행정구역 항목 분리
+  const normalFields = LD_LINK_FIELDS.filter(f => !ADMIN_KEYS.has(f.key));
+  const adminFields  = LD_LINK_FIELDS.filter(f => ADMIN_KEYS.has(f.key));
+
+  const renderField = (f) => {
     const opts = ldLinkHeaders.map((h, i) =>
       `<option value="${i}">${h}</option>`).join('');
-    // 자동 매핑
     const autoIdx = ldLinkAutoMatch(f.key);
-    // 미리보기 샘플
-    const sample = autoIdx >= 0 && ldLinkRows[0]
+    const sample  = autoIdx >= 0 && ldLinkRows[0]
       ? String(ldLinkRows[0][autoIdx] || '').slice(0, 12) : '—';
     return `
-    <div style="display:grid;grid-template-columns:32px 1fr 1fr 100px;gap:0;border-top:1px solid var(--border2);align-items:center"
-         id="ldlr-${f.key}">
+    <div style="display:grid;grid-template-columns:32px 1fr 1fr 100px;gap:0;border-top:1px solid var(--border2);align-items:center" id="ldlr-${f.key}">
       <div style="padding:8px;text-align:center">
         <input type="checkbox" id="ldlc-${f.key}" ${f.default ? 'checked' : ''}
           onchange="ldLinkUpdateSample('${f.key}')">
@@ -2381,7 +2389,14 @@ function ldLinkRenderColRows() {
       <div style="padding:8px 10px;font-size:11px;color:var(--ink3);font-family:'DM Mono',monospace;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
            id="ldlp-${f.key}">${sample}</div>
     </div>`;
-  }).join('');
+  };
+
+  el.innerHTML =
+    normalFields.map(renderField).join('') +
+    `<div style="padding:7px 10px;background:#f0f4f8;border-top:2px solid var(--border);font-size:11px;font-weight:700;color:var(--ink3);letter-spacing:.3px">
+      📍 행정구역 — A형(개별 컬럼) 또는 B형(통합 컬럼) 중 하나만 선택
+    </div>` +
+    adminFields.map(renderField).join('');
 
   // 자동 매핑 선택값 세팅
   LD_LINK_FIELDS.forEach(f => {
@@ -2393,16 +2408,22 @@ function ldLinkRenderColRows() {
 
 function ldLinkAutoMatch(key) {
   const patterns = {
-    jimok:     /지목/,
-    area:      /면적|공부면적|지적면적/,
-    price:     /공시지가|개별공시지가/,
-    ownerType: /소유구분|소유형태|소유권/,
-    ownerName: /소유자.*성명|성명|소유자명/,
-    ownerAddr: /소유자.*주소|주소/,
+    jimok:       /지목/,
+    area:        /면적|공부면적|지적면적/,
+    price:       /공시지가|개별공시지가/,
+    ownerType:   /소유구분|소유형태|소유권/,
+    ownerName:   /소유자.*성명|성명|소유자명/,
+    ownerAddr:   /소유자.*주소|주소/,
+    // A형 개별 컬럼
+    sido:        /^시도$|^광역시도$|^시\.?도$/,
+    sigungu:     /^시군구$|^시\.?군\.?구$/,
+    emd:         /^읍면동$|^읍\.?면\.?동$/,
+    // B형 통합 컬럼
+    haengjeong:  /행정구역|소재지|주소|지번주소/,
   };
   const pat = patterns[key];
   if (!pat) return -1;
-  return ldLinkHeaders.findIndex(h => pat.test(h));
+  return ldLinkHeaders.findIndex(h => pat.test(h.trim()));
 }
 
 function ldLinkUpdateSample(key) {
@@ -2418,15 +2439,21 @@ function ldLinkApply() {
   const pnuColIdx = parseInt(document.getElementById('ldLink-pnu-col').value);
   if (isNaN(pnuColIdx)) { showToast('⚠️ PNU 컬럼을 선택해주세요'); return; }
 
-  // 선택된 컬럼 맵
+  // 선택된 컬럼 맵 (행정구역 항목 분리)
+  const ADMIN_KEYS = new Set(['sido','sigungu','emd','haengjeong']);
   const selected = LD_LINK_FIELDS
     .filter(f => document.getElementById('ldlc-' + f.key)?.checked)
     .map(f => ({
-      key: f.key,
-      label: f.label,
-      colIdx: parseInt(document.getElementById('ldls-' + f.key)?.value ?? '-1'),
+      key:       f.key,
+      label:     f.label,
+      colIdx:    parseInt(document.getElementById('ldls-' + f.key)?.value ?? '-1'),
+      adminType: f.adminType || null,
     }))
     .filter(f => f.colIdx >= 0);
+
+  // 행정구역·일반 항목 분리
+  const adminSelected  = selected.filter(f => ADMIN_KEYS.has(f.key));
+  const normalSelected = selected.filter(f => !ADMIN_KEYS.has(f.key));
 
   if (selected.length === 0) { showToast('⚠️ 가져올 항목을 하나 이상 선택하세요'); return; }
 
@@ -2437,34 +2464,100 @@ function ldLinkApply() {
     if (raw.length >= 15) ldMap[raw.slice(0, 19).padStart(19,'0')] = r;
   });
 
+  // ── 행정구역 분리 헬퍼 (B형: 통합 컬럼 파싱) ──────────────────
+  function parseHaengjeong(val) {
+    // 예) "경기도 용인시 처인구 백암면" → {sido, sigungu, emd}
+    const parts = String(val || '').trim().split(/\s+/).filter(Boolean);
+    // 도/시/특별시/광역시 → sido
+    // 시/군/구 → sigungu
+    // 읍/면/동/리 → emd
+    const SIDO_PAT    = /도$|특별시$|광역시$|특별자치시$|특별자치도$/;
+    const SIGUNGU_PAT = /시$|군$|구$/;
+    const EMD_PAT     = /읍$|면$|동$|리$|가$/;
+
+    let sido = '', sigungu = '', emd = '';
+    const sidoParts    = parts.filter(p => SIDO_PAT.test(p));
+    const sigunguParts = parts.filter(p => SIGUNGU_PAT.test(p) && !SIDO_PAT.test(p));
+    const emdParts     = parts.filter(p => EMD_PAT.test(p));
+
+    if (sidoParts.length)    sido    = sidoParts.join(' ');
+    if (sigunguParts.length) sigungu = sigunguParts.join(' ');
+    if (emdParts.length)     emd     = emdParts[emdParts.length - 1]; // 마지막(가장 세분화된) 단위
+
+    return { sido, sigungu, emd };
+  }
+
   // shpResultRows에 병합
   let matched = 0, unmatched = 0;
   ldLinkExtra = {};
-  shpResultRows.forEach(r => {
+
+  // 전체 shpResultRows 기준으로 순회 (복수 구역계 대응)
+  const allRows = (typeof guyeokZones !== 'undefined' && guyeokZones.length > 0)
+    ? guyeokZones.flatMap(z => z.rows)
+    : shpResultRows;
+
+  allRows.forEach(r => {
     const pnu = String(r.pnu || '').padStart(19, '0');
     const ld  = ldMap[pnu];
-    if (ld) {
-      ldLinkExtra[pnu] = {};
-      selected.forEach(f => {
-        ldLinkExtra[pnu][f.key] = ld[f.colIdx] !== undefined ? String(ld[f.colIdx]) : '';
-      });
-      matched++;
-    } else {
-      unmatched++;
+    if (!ld) { unmatched++; return; }
+
+    // ── 일반 항목 병합 ──────────────────────────────
+    ldLinkExtra[pnu] = {};
+    normalSelected.forEach(f => {
+      ldLinkExtra[pnu][f.key] = ld[f.colIdx] !== undefined ? String(ld[f.colIdx]) : '';
+    });
+
+    // ── 행정구역 병합 ──────────────────────────────
+    if (adminSelected.length > 0) {
+      const haengjeongField = adminSelected.find(f => f.key === 'haengjeong');
+      const sidoField       = adminSelected.find(f => f.key === 'sido');
+      const sigunguField    = adminSelected.find(f => f.key === 'sigungu');
+      const emdField        = adminSelected.find(f => f.key === 'emd');
+
+      if (haengjeongField) {
+        // B형: 통합 컬럼 파싱
+        const raw = String(ld[haengjeongField.colIdx] || '');
+        const parsed = parseHaengjeong(raw);
+        if (parsed.sido    && !r.sido)    r.sido    = parsed.sido;
+        if (parsed.sigungu && !r.sigungu) r.sigungu = parsed.sigungu;
+        if (parsed.emd     && !r.emd)     r.emd     = parsed.emd;
+        // 비어있지 않으면 덮어쓰기
+        if (parsed.sido)    r.sido    = parsed.sido;
+        if (parsed.sigungu) r.sigungu = parsed.sigungu;
+        if (parsed.emd)     r.emd     = parsed.emd;
+      } else {
+        // A형: 개별 컬럼 직접 매핑
+        if (sidoField) {
+          const v = String(ld[sidoField.colIdx] || '').trim();
+          if (v) r.sido = v;
+        }
+        if (sigunguField) {
+          const v = String(ld[sigunguField.colIdx] || '').trim();
+          if (v) r.sigungu = v;
+        }
+        if (emdField) {
+          const v = String(ld[emdField.colIdx] || '').trim();
+          if (v) r.emd = v;
+        }
+      }
     }
+
+    matched++;
   });
 
-  // 결과 테이블 재렌더 (새 컬럼 포함)
-  ldLinkSelectedFields = selected;
+  // 결과 테이블 재렌더
+  ldLinkSelectedFields = normalSelected; // 테이블 추가 컬럼은 일반 항목만
   renderShpResult();
 
   // 결과 메시지
+  const adminApplied = adminSelected.length > 0;
   const resultEl = document.getElementById('ldLink-result');
   resultEl.style.display = 'block';
   resultEl.innerHTML = `
     <div class="alert alert-green">
       <span class="alert-icon">✅</span>
       <div>병합 완료 — 매칭 <strong>${matched}</strong>필지 / 미매칭 <strong>${unmatched}</strong>필지
+        ${adminApplied ? `<br><span style="font-size:11px;color:var(--teal)">✔ 시도·시군구·읍면동 반영됨</span>` : ''}
         <div style="font-size:11px;margin-top:3px;color:var(--ink3)">결과 테이블과 엑셀 다운로드에 반영됩니다.</div>
       </div>
     </div>`;
