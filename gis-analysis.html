@@ -344,7 +344,7 @@ canvas { border-radius:6px; max-width:100%; }
         <div>
           <strong>표고·경사 분석</strong> — 수치지형도(등고선/표고점)와 분석 구역계 파일을 업로드하면<br>
           구역 내 표고 분포, 경사도 분포 이미지와 면적 통계를 자동으로 생성합니다.<br>
-          <span style="font-size:11px;color:var(--blue)">지원 형식: DXF (수치지형도), GeoJSON, SHP (구역계)</span>
+          <span style="font-size:11px;color:var(--blue)">지원 형식: DXF · SHP(ZIP) · GeoJSON &nbsp;|&nbsp; SHP 단독 파일도 업로드 가능 (ZIP 권장)</span>
         </div>
       </div>
 
@@ -358,15 +358,15 @@ canvas { border-radius:6px; max-width:100%; }
             <span class="alert-icon">📌</span>
             <div>
               등고선 레이어(<code style="font-size:11px">CONTOUR</code>)와 표고점(<code style="font-size:11px">SPOTPOINT</code>)이<br>
-              포함된 DXF 또는 GeoJSON 파일을 업로드해주세요.<br>
-              <span style="font-size:11px;color:var(--amber)">국토지리정보원 표준 수치지형도 권장</span>
+              포함된 DXF, SHP 또는 GeoJSON 파일을 업로드해주세요.<br>
+              <span style="font-size:11px;color:var(--amber)">국토지리정보원 표준 수치지형도 권장 · SHP는 ZIP으로 묶어 업로드</span>
             </div>
           </div>
-          <input type="file" id="topoFile" style="display:none" accept=".dxf,.geojson,.json,.shp,.zip">
+          <input type="file" id="topoFile" style="display:none" accept=".dxf,.geojson,.json,.shp,.zip" multiple>
           <div class="upload-box" id="topoDropZone" style="cursor:pointer">
             <div class="upload-icon" id="topoIcon">🗺️</div>
             <div class="upload-title" id="topoTitle">수치지형도 업로드</div>
-            <div class="upload-desc" id="topoDesc">.dxf 또는 .geojson 파일<br>드래그&드롭 가능</div>
+            <div class="upload-desc" id="topoDesc">DXF · SHP · GeoJSON · ZIP<br>드래그&드롭 가능 (SHP는 ZIP 권장)</div>
             <span class="upload-label">📎 파일 선택</span>
           </div>
           <div id="topoFileTag" style="display:none"></div>
@@ -379,15 +379,15 @@ canvas { border-radius:6px; max-width:100%; }
             <span class="alert-icon">📌</span>
             <div>
               분석할 대상 구역의 경계 파일을 업로드해주세요.<br>
-              캐드 구역계(.dxf) 또는 GeoJSON 형식을 지원합니다.<br>
-              <span style="font-size:11px;color:var(--amber)">좌표계는 수치지형도와 동일해야 합니다</span>
+              DXF · SHP · GeoJSON 형식을 지원합니다.<br>
+              <span style="font-size:11px;color:var(--amber)">좌표계는 수치지형도와 동일 · SHP는 ZIP으로 묶어 업로드</span>
             </div>
           </div>
-          <input type="file" id="zoneFile" style="display:none" accept=".dxf,.geojson,.json,.shp,.zip">
+          <input type="file" id="zoneFile" style="display:none" accept=".dxf,.geojson,.json,.shp,.zip" multiple>
           <div class="upload-box" id="zoneDropZone" style="cursor:pointer">
             <div class="upload-icon" id="zoneIcon">📐</div>
             <div class="upload-title" id="zoneTitle">구역계 파일 업로드</div>
-            <div class="upload-desc" id="zoneDesc">.dxf 또는 .geojson 파일<br>드래그&드롭 가능</div>
+            <div class="upload-desc" id="zoneDesc">DXF · SHP · GeoJSON · ZIP<br>드래그&드롭 가능 (SHP는 ZIP 권장)</div>
             <span class="upload-label">📎 파일 선택</span>
           </div>
           <div id="zoneFileTag" style="display:none"></div>
@@ -468,7 +468,8 @@ canvas { border-radius:6px; max-width:100%; }
           ⛰️ 표고·경사 분석 시작
         </button>
         <div style="text-align:center;font-size:11px;color:var(--ink3);margin-top:8px">
-          수치지형도와 구역계 파일을 모두 업로드해야 분석이 가능합니다
+          수치지형도와 구역계 파일을 모두 업로드해야 분석이 가능합니다<br>
+          <span style="color:var(--blue);font-weight:600">💡 SHP 파일은 .shp + .dbf + .prj를 ZIP으로 묶거나 동시 선택하면 속성·좌표계도 인식됩니다</span>
         </div>
       </div>
 
@@ -785,10 +786,136 @@ canvas { border-radius:6px; max-width:100%; }
 
 <div class="toast" id="toast"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
 // ─── 상태 ─────────────────────────────────────────────
 let topoFile = null, zoneFile = null;
+let topoFileSet = null, zoneFileSet = null; // SHP 다중파일 세트
 let analysisResult = null;
+
+// ─── SHP 파일 파싱 유틸 ───────────────────────────────
+// shpjs를 CDN 없이 직접 구현 (순수 JS, .shp 바이너리 파싱)
+async function parseShpBuffer(shpBuf, dbfBuf) {
+  const view = new DataView(shpBuf);
+  const fileCode = view.getInt32(0, false); // big-endian
+  if (fileCode !== 9994) throw new Error('SHP 파일 형식 오류');
+
+  const features = [];
+  let offset = 100; // 헤더 100바이트 후 레코드 시작
+
+  while (offset < shpBuf.byteLength) {
+    // 레코드 헤더 (big-endian)
+    const recNum  = view.getInt32(offset, false);
+    const recLen  = view.getInt32(offset + 4, false) * 2; // 16비트 word 단위
+    offset += 8;
+
+    const shapeType = view.getInt32(offset, true);
+    offset += 4;
+
+    if (shapeType === 0) { // Null Shape
+      offset += recLen - 4;
+      continue;
+    }
+
+    // Point (1)
+    if (shapeType === 1) {
+      const x = view.getFloat64(offset, true);
+      const y = view.getFloat64(offset + 8, true);
+      offset += recLen - 4;
+      features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [x, y] }, properties: {} });
+      continue;
+    }
+
+    // PolyLine (3) / Polygon (5)
+    if (shapeType === 3 || shapeType === 5) {
+      offset += 32; // bounding box skip
+      const numParts = view.getInt32(offset, true);
+      const numPoints = view.getInt32(offset + 4, true);
+      offset += 8;
+
+      const parts = [];
+      for (let i = 0; i < numParts; i++) {
+        parts.push(view.getInt32(offset, true));
+        offset += 4;
+      }
+
+      const pts = [];
+      for (let i = 0; i < numPoints; i++) {
+        pts.push([view.getFloat64(offset, true), view.getFloat64(offset + 8, true)]);
+        offset += 16;
+      }
+
+      const rings = parts.map((start, i) => {
+        const end = i + 1 < parts.length ? parts[i + 1] : numPoints;
+        return pts.slice(start, end);
+      });
+
+      const geomType = shapeType === 5 ? 'Polygon' : 'MultiLineString';
+      features.push({
+        type: 'Feature',
+        geometry: { type: geomType, coordinates: shapeType === 5 ? rings : rings },
+        properties: {}
+      });
+      continue;
+    }
+
+    // MultiPoint (8)
+    if (shapeType === 8) {
+      offset += 32;
+      const numPoints = view.getInt32(offset, true);
+      offset += 4;
+      const pts = [];
+      for (let i = 0; i < numPoints; i++) {
+        pts.push([view.getFloat64(offset, true), view.getFloat64(offset + 8, true)]);
+        offset += 16;
+      }
+      features.push({ type: 'Feature', geometry: { type: 'MultiPoint', coordinates: pts }, properties: {} });
+      continue;
+    }
+
+    // 미지원 타입 — 스킵
+    offset += recLen - 4;
+  }
+
+  return { type: 'FeatureCollection', features };
+}
+
+// ZIP에서 SHP+DBF+PRJ 추출
+async function parseShpFromZip(zipFile) {
+  const JSZip = window.JSZip;
+  if (!JSZip) throw new Error('JSZip 라이브러리 로드 실패');
+  const zip = await JSZip.loadAsync(zipFile);
+  let shpEntry = null, dbfEntry = null, prjEntry = null;
+
+  zip.forEach((path, entry) => {
+    const ext = path.split('.').pop().toLowerCase();
+    if (ext === 'shp') shpEntry = entry;
+    if (ext === 'dbf') dbfEntry = entry;
+    if (ext === 'prj') prjEntry = entry;
+  });
+
+  if (!shpEntry) throw new Error('ZIP 안에 .shp 파일이 없습니다');
+
+  const shpBuf = await shpEntry.async('arraybuffer');
+  const dbfBuf = dbfEntry ? await dbfEntry.async('arraybuffer') : null;
+  const prjText = prjEntry ? await prjEntry.async('string') : null;
+
+  const geojson = await parseShpBuffer(shpBuf, dbfBuf);
+  return { geojson, prj: prjText };
+}
+
+// 단독 SHP 파일 파싱
+async function parseSingleShp(shpFile) {
+  const shpBuf = await shpFile.arrayBuffer();
+  const geojson = await parseShpBuffer(shpBuf, null);
+  return { geojson, prj: null };
+}
+
+// 파일 확장자 → 파일 타입 레이블
+function getFileTypeLabel(ext) {
+  const map = { dxf: 'DXF (CAD)', shp: 'SHP (Shapefile)', zip: 'ZIP (SHP 묶음)', geojson: 'GeoJSON', json: 'GeoJSON' };
+  return map[ext] || ext.toUpperCase();
+}
 
 // ─── 탭 전환 ──────────────────────────────────────────
 function switchTab(name) {
@@ -808,47 +935,144 @@ function switchSub(name) {
 }
 
 // ─── 파일 처리 ────────────────────────────────────────
-function handleTopoFile(input) {
+async function handleTopoFile(input) {
   var files = input.files;
   if (!files || files.length === 0) return;
-  var file = files[0];
-  var ext = file.name.split('.').pop().toLowerCase();
+
+  // SHP 다중 파일 세트 감지 (shp+dbf+prj 동시 선택)
+  const fileArr = Array.from(files);
+  const exts = fileArr.map(f => f.name.split('.').pop().toLowerCase());
+
+  if (exts.includes('shp')) {
+    topoFileSet = fileArr;
+    const shpFile = fileArr.find(f => f.name.endsWith('.shp'));
+    await applyTopoFileShpSet(shpFile, fileArr);
+    return;
+  }
+
+  var file = fileArr[0];
+  var ext = exts[0];
   var allowed = ['dxf','geojson','json','shp','zip'];
-  if (!allowed.includes(ext)) { showToast('⚠️ 지원 형식: DXF, GeoJSON, SHP, ZIP'); return; }
-  applyTopoFile(file);
-}
-function handleZoneFile(input) {
-  var files = input.files;
-  if (!files || files.length === 0) return;
-  var file = files[0];
-  var ext = file.name.split('.').pop().toLowerCase();
-  var allowed = ['dxf','geojson','json','shp','zip'];
-  if (!allowed.includes(ext)) { showToast('⚠️ 지원 형식: DXF, GeoJSON, SHP, ZIP'); return; }
-  applyZoneFile(file);
+  if (!allowed.includes(ext)) { showToast('⚠️ 지원 형식: DXF, SHP, ZIP, GeoJSON'); return; }
+  await applyTopoFile(file);
 }
 
-function applyTopoFile(file) {
+async function handleZoneFile(input) {
+  var files = input.files;
+  if (!files || files.length === 0) return;
+
+  const fileArr = Array.from(files);
+  const exts = fileArr.map(f => f.name.split('.').pop().toLowerCase());
+
+  if (exts.includes('shp')) {
+    zoneFileSet = fileArr;
+    const shpFile = fileArr.find(f => f.name.endsWith('.shp'));
+    await applyZoneFileShpSet(shpFile, fileArr);
+    return;
+  }
+
+  var file = fileArr[0];
+  var ext = exts[0];
+  var allowed = ['dxf','geojson','json','shp','zip'];
+  if (!allowed.includes(ext)) { showToast('⚠️ 지원 형식: DXF, SHP, ZIP, GeoJSON'); return; }
+  await applyZoneFile(file);
+}
+
+// SHP 세트 적용 (다중 파일 선택)
+async function applyTopoFileShpSet(shpFile, fileArr) {
+  try {
+    const dbfFile = fileArr.find(f => f.name.toLowerCase().endsWith('.dbf'));
+    const shpBuf = await shpFile.arrayBuffer();
+    const dbfBuf = dbfFile ? await dbfFile.arrayBuffer() : null;
+    const geojson = await parseShpBuffer(shpBuf, dbfBuf);
+    topoFile = shpFile;
+    topoFile._parsedGeoJSON = geojson;
+    _applyTopoUI(shpFile, 'SHP 세트 (' + fileArr.length + '개 파일)');
+    showToast('✅ 수치지형도 SHP 파일 로드 완료 (' + geojson.features.length + '개 피처)');
+  } catch(e) {
+    showToast('⚠️ SHP 파싱 오류: ' + e.message);
+  }
+}
+
+async function applyZoneFileShpSet(shpFile, fileArr) {
+  try {
+    const dbfFile = fileArr.find(f => f.name.toLowerCase().endsWith('.dbf'));
+    const shpBuf = await shpFile.arrayBuffer();
+    const dbfBuf = dbfFile ? await dbfFile.arrayBuffer() : null;
+    const geojson = await parseShpBuffer(shpBuf, dbfBuf);
+    zoneFile = shpFile;
+    zoneFile._parsedGeoJSON = geojson;
+    _applyZoneUI(shpFile, 'SHP 세트 (' + fileArr.length + '개 파일)');
+    showToast('✅ 구역계 SHP 파일 로드 완료 (' + geojson.features.length + '개 피처)');
+  } catch(e) {
+    showToast('⚠️ SHP 파싱 오류: ' + e.message);
+  }
+}
+
+async function applyTopoFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  try {
+    if (ext === 'zip') {
+      const result = await parseShpFromZip(file);
+      file._parsedGeoJSON = result.geojson;
+      file._prj = result.prj;
+      showToast('✅ ZIP/SHP 로드 완료 (' + result.geojson.features.length + '개 피처)');
+    } else if (ext === 'shp') {
+      const result = await parseSingleShp(file);
+      file._parsedGeoJSON = result.geojson;
+      showToast('✅ SHP 로드 완료 (' + result.geojson.features.length + '개 피처) — DBF 없이 속성 미포함');
+    } else {
+      showToast('📂 수치지형도 파일이 로드되었습니다');
+    }
+  } catch(e) {
+    showToast('⚠️ 파일 파싱 오류: ' + e.message);
+    return;
+  }
   topoFile = file;
+  _applyTopoUI(file, getFileTypeLabel(ext));
+}
+
+async function applyZoneFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  try {
+    if (ext === 'zip') {
+      const result = await parseShpFromZip(file);
+      file._parsedGeoJSON = result.geojson;
+      file._prj = result.prj;
+      showToast('✅ ZIP/SHP 로드 완료 (' + result.geojson.features.length + '개 피처)');
+    } else if (ext === 'shp') {
+      const result = await parseSingleShp(file);
+      file._parsedGeoJSON = result.geojson;
+      showToast('✅ SHP 로드 완료 (' + result.geojson.features.length + '개 피처) — DBF 없이 속성 미포함');
+    } else {
+      showToast('📂 구역계 파일이 로드되었습니다');
+    }
+  } catch(e) {
+    showToast('⚠️ 파일 파싱 오류: ' + e.message);
+    return;
+  }
+  zoneFile = file;
+  _applyZoneUI(file, getFileTypeLabel(ext));
+}
+
+function _applyTopoUI(file, typeLabel) {
   const box = document.getElementById('topoDropZone');
   box.classList.add('done');
   document.getElementById('topoIcon').textContent = '✅';
   document.getElementById('topoTitle').textContent = file.name;
-  document.getElementById('topoDesc').textContent = formatFileSize(file.size) + ' · ' + file.name.split('.').pop().toUpperCase();
+  document.getElementById('topoDesc').textContent = formatFileSize(file.size) + ' · ' + typeLabel;
   setChip('chip-topo', true, file.name);
   checkRunReady();
-  showToast('📂 수치지형도 파일이 로드되었습니다');
 }
 
-function applyZoneFile(file) {
-  zoneFile = file;
+function _applyZoneUI(file, typeLabel) {
   const box = document.getElementById('zoneDropZone');
   box.classList.add('done');
   document.getElementById('zoneIcon').textContent = '✅';
   document.getElementById('zoneTitle').textContent = file.name;
-  document.getElementById('zoneDesc').textContent = formatFileSize(file.size) + ' · ' + file.name.split('.').pop().toUpperCase();
+  document.getElementById('zoneDesc').textContent = formatFileSize(file.size) + ' · ' + typeLabel;
   setChip('chip-zone', true, file.name);
   checkRunReady();
-  showToast('📂 구역계 파일이 로드되었습니다');
 }
 
 function setChip(id, loaded, name) {
@@ -880,8 +1104,11 @@ function runAnalysis() {
   const progressArea = document.getElementById('progressArea');
   progressArea.style.display = 'block';
 
+  const ext = topoFile.name.split('.').pop().toLowerCase();
+  const parseLabel = (ext === 'shp' || ext === 'zip') ? '파일 파싱 중 (SHP/ZIP → 벡터)' : '파일 파싱 중 (DXF → 벡터)';
+
   const steps = [
-    { msg: '파일 파싱 중 (DXF → 벡터)', pct: 15 },
+    { msg: parseLabel, pct: 15 },
     { msg: '구역계 기준 클리핑', pct: 30 },
     { msg: 'TIN 보간 → DEM 래스터 생성', pct: 50 },
     { msg: 'GDAL DEM 경사도 계산', pct: 70 },
@@ -1776,10 +2003,20 @@ document.addEventListener('DOMContentLoaded', function () {
   topoZone.addEventListener('drop', function (e) {
     e.preventDefault(); e.stopPropagation();
     topoZone.classList.remove('drag-over');
-    const file = e.dataTransfer.files[0];
-    if (!file) return;
-    const ext = file.name.split('.').pop().toLowerCase();
-    if (!['dxf','geojson','json','shp','zip'].includes(ext)) { showToast('⚠️ 지원 형식: DXF, GeoJSON, SHP, ZIP'); return; }
+    const files = Array.from(e.dataTransfer.files);
+    if (!files.length) return;
+
+    // SHP 다중 파일 드롭 (shp+dbf+prj 등 동시 드롭)
+    const exts = files.map(f => f.name.split('.').pop().toLowerCase());
+    if (exts.includes('shp')) {
+      const shpFile = files.find(f => f.name.toLowerCase().endsWith('.shp'));
+      applyTopoFileShpSet(shpFile, files);
+      return;
+    }
+
+    const file = files[0];
+    const ext = exts[0];
+    if (!['dxf','geojson','json','shp','zip'].includes(ext)) { showToast('⚠️ 지원 형식: DXF, SHP, ZIP, GeoJSON'); return; }
     applyTopoFile(file);
   });
 
@@ -1794,10 +2031,19 @@ document.addEventListener('DOMContentLoaded', function () {
   zoneZone.addEventListener('drop', function (e) {
     e.preventDefault(); e.stopPropagation();
     zoneZone.classList.remove('drag-over');
-    const file = e.dataTransfer.files[0];
-    if (!file) return;
-    const ext = file.name.split('.').pop().toLowerCase();
-    if (!['dxf','geojson','json','shp','zip'].includes(ext)) { showToast('⚠️ 지원 형식: DXF, GeoJSON, SHP, ZIP'); return; }
+    const files = Array.from(e.dataTransfer.files);
+    if (!files.length) return;
+
+    const exts = files.map(f => f.name.split('.').pop().toLowerCase());
+    if (exts.includes('shp')) {
+      const shpFile = files.find(f => f.name.toLowerCase().endsWith('.shp'));
+      applyZoneFileShpSet(shpFile, files);
+      return;
+    }
+
+    const file = files[0];
+    const ext = exts[0];
+    if (!['dxf','geojson','json','shp','zip'].includes(ext)) { showToast('⚠️ 지원 형식: DXF, SHP, ZIP, GeoJSON'); return; }
     applyZoneFile(file);
   });
 
