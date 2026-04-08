@@ -418,30 +418,8 @@ tbody.result-body td:last-child { border-right:none; }
 .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px); background:var(--ink); color:white; padding:10px 22px; border-radius:30px; font-size:13px; font-weight:500; z-index:999; transition:transform 0.3s ease; pointer-events:none; }
 .toast.show { transform:translateX(-50%) translateY(0); }
 
-/* MODE TABS */
-.mode-tabs {
-  display:flex; gap:0; background:var(--white);
-  border:1px solid var(--border); border-radius:12px;
-  padding:6px; margin-bottom:20px; box-shadow:var(--shadow);
-}
-.mode-tab {
-  flex:1; padding:12px 16px; border:none; border-radius:8px;
-  background:none; cursor:pointer; font-family:'Noto Sans KR',sans-serif;
-  font-size:13px; font-weight:600; color:var(--ink3);
-  display:flex; flex-direction:column; align-items:center; gap:4px;
-  transition:all 0.2s;
-}
-.mode-tab:hover { background:var(--gray); color:var(--ink2); }
-.mode-tab.active { background:var(--green); color:white; }
-.mode-tab .tab-icon { font-size:20px; }
-.mode-tab .tab-label { font-size:12px; }
-.mode-tab .tab-desc { font-size:10px; opacity:0.75; }
-
 /* SHP MODE */
-.shp-mode { display:none; }
-.shp-mode.active { display:block; }
-.xlsx-mode { display:block; }
-.xlsx-mode.hidden { display:none; }
+#shpMode { display:block; }
 
 /* SHP UPLOAD GRID */
 .shp-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-bottom:16px; }
@@ -603,30 +581,13 @@ tbody.result-body td:last-child { border-right:none; }
   </div>
   <div class="topbar-right">
     <button class="btn-top btn-outline" id="btnReset" onclick="resetAll()">🔄 처음부터</button>
-    <button class="btn-top btn-white" id="btnExport" onclick="exportExcel()" disabled>📥 엑셀 다운로드</button>
   </div>
 </div>
 
 <div class="main">
 
-  <!-- MODE TABS -->
-  <div class="mode-tabs">
-    <button class="mode-tab active" id="tabXlsx" onclick="switchMode('xlsx')">
-      <span class="tab-icon">📊</span>
-      <span class="tab-label">엑셀 업로드 방식</span>
-      <span class="tab-desc">PNU + 토지대장 .xlsx</span>
-    </button>
-    <button class="mode-tab" id="tabShp" onclick="switchMode('shp')">
-      <span class="tab-icon">🗺️</span>
-      <span class="tab-label">SHP 자동 산출 방식</span>
-      <span class="tab-desc">연속지적도 + 구역계 .zip(SHP)</span>
-    </button>
-  </div>
-
-  <!-- ═══════════════════════════════════════════════ -->
-  <!-- SHP 모드                                        -->
-  <!-- ═══════════════════════════════════════════════ -->
-  <div class="shp-mode" id="shpMode">
+  <!-- SHP 자동 산출 방식 -->
+  <div id="shpMode">
 
     <!-- SHP 스텝 프로그레스 -->
     <div class="step-progress">
@@ -985,266 +946,6 @@ tbody.result-body td:last-child { border-right:none; }
 
   </div><!-- /shpMode -->
 
-  <!-- XLSX 모드 wrapper -->
-  <div class="xlsx-mode" id="xlsxMode">
-
-  <!-- STEP PROGRESS -->
-  <div class="step-progress">
-    <div class="sp-item active" id="sp1">
-      <div class="sp-circle">1</div>
-      <div class="sp-label">파일 업로드</div>
-    </div>
-    <div class="sp-line" id="spl1"></div>
-    <div class="sp-item" id="sp2">
-      <div class="sp-circle">2</div>
-      <div class="sp-label">컬럼 매핑</div>
-    </div>
-    <div class="sp-line" id="spl2"></div>
-    <div class="sp-item" id="sp3">
-      <div class="sp-circle">3</div>
-      <div class="sp-label">조서 확인 및 출력</div>
-    </div>
-  </div>
-
-  <!-- ── STEP 1: PNU + 토지대장 업로드 ── -->
-  <div class="step-panel active" id="panel1">
-
-    <!-- 법정동 코드 상태 -->
-    <div class="alert alert-blue" style="margin-bottom:16px">
-      <span class="alert-icon">🗺️</span>
-      <div>
-        <strong>법정동 코드 DB</strong> &nbsp;
-        <span id="bjdStatus" style="font-size:12px">로딩 중...</span>
-        <div style="font-size:11px;color:var(--ink3);margin-top:3px">
-          행정구역 코드가 변경된 경우: Claude에게 최신 CSV를 업로드하면 즉시 업데이트해드립니다.
-        </div>
-      </div>
-    </div>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
-
-      <!-- PNU 업로드 -->
-      <div class="sec-card" style="margin-bottom:0">
-        <div class="sec-card-title"><div class="dot"></div>PNU 파일 업로드</div>
-        <div class="alert alert-blue" style="margin-bottom:14px">
-          <span class="alert-icon">ℹ️</span>
-          <div>
-            <strong>PNU(필지고유번호)</strong>는 19자리 숫자입니다.<br>
-            PNU 값이 담긴 엑셀 파일을 업로드해주세요.<br>
-            <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--blue)">예: 2817010300101980002</span>
-          </div>
-        </div>
-        <div class="upload-box" id="pnuDropZone"
-          onclick="document.getElementById('pnuFile').click()"
-          ondragover="dragOver(event,'pnuDropZone')" ondragleave="dragLeave('pnuDropZone')" ondrop="dropFile(event,'pnu')">
-          <div class="upload-icon" id="pnuIcon">📋</div>
-          <div class="upload-title" id="pnuTitle">PNU 엑셀 파일 업로드</div>
-          <div class="upload-desc" id="pnuDesc">PNU 값이 포함된 .xlsx 파일을 올려주세요<br>드래그&드롭도 가능합니다</div>
-          <label class="upload-label">📎 파일 선택</label>
-          <input type="file" id="pnuFile" accept=".xlsx,.xls" onchange="handlePNU(event)" style="display:none">
-        </div>
-        <div id="pnuPreview" style="display:none">
-          <div class="alert alert-green" style="margin-top:14px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
-            <div style="display:flex;gap:10px;flex:1">
-              <span class="alert-icon">✅</span>
-              <div id="pnuSummary"></div>
-            </div>
-            <button onclick="clearPNU()" title="파일 삭제" style="flex-shrink:0;background:#fee2e2;border:1px solid #fca5a5;color:#b91c1c;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;white-space:nowrap;">🗑️ 삭제</button>
-          </div>
-          <div style="margin-top:10px;font-size:12px;font-weight:700;color:var(--ink3);margin-bottom:6px">PNU 파싱 결과 미리보기 (상위 5건)</div>
-          <div class="preview-wrap"><table class="preview-table" id="pnuTable"></table></div>
-        </div>
-      </div>
-
-      <!-- 토지대장 업로드 -->
-      <div class="sec-card" style="margin-bottom:0">
-        <div class="sec-card-title"><div class="dot"></div>토지대장 파일 업로드</div>
-        <div class="alert alert-blue" style="margin-bottom:14px">
-          <span class="alert-icon">ℹ️</span>
-          <div>
-            토지대장 엑셀 파일을 업로드해주세요.<br>
-            <strong>지번, 실면적, 공시지가, 소유자 성명/주소</strong> 등이 포함된 파일입니다.<br>
-            컬럼명이 달라도 다음 단계에서 매핑할 수 있습니다.
-          </div>
-        </div>
-        <div class="upload-box" id="ldDropZone"
-          onclick="document.getElementById('ldFile').click()"
-          ondragover="dragOver(event,'ldDropZone')" ondragleave="dragLeave('ldDropZone')" ondrop="dropFile(event,'ld')">
-          <div class="upload-icon" id="ldIcon">📊</div>
-          <div class="upload-title" id="ldTitle">토지대장 엑셀 파일 업로드</div>
-          <div class="upload-desc" id="ldDesc">토지대장 .xlsx 파일을 올려주세요<br>드래그&드롭도 가능합니다</div>
-          <label class="upload-label">📎 파일 선택</label>
-          <input type="file" id="ldFile" accept=".xlsx,.xls" onchange="handleLD(event)" style="display:none">
-        </div>
-        <div id="ldPreview" style="display:none">
-          <div class="alert alert-green" style="margin-top:14px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
-            <div style="display:flex;gap:10px;flex:1">
-              <span class="alert-icon">✅</span>
-              <div id="ldSummary"></div>
-            </div>
-            <button onclick="clearLD()" title="파일 삭제" style="flex-shrink:0;background:#fee2e2;border:1px solid #fca5a5;color:#b91c1c;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;white-space:nowrap;">🗑️ 삭제</button>
-          </div>
-          <div style="margin-top:10px;font-size:12px;font-weight:700;color:var(--ink3);margin-bottom:6px">토지대장 미리보기 (상위 5건)</div>
-          <div class="preview-wrap"><table class="preview-table" id="ldTable"></table></div>
-        </div>
-      </div>
-
-    </div>
-
-    <div class="nav-btns">
-      <div></div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
-        <button class="btn-next" id="btn1next" onclick="goStep(2)" disabled>다음: 컬럼 매핑 →</button>
-        <span style="font-size:11px;color:var(--ink3)">PNU와 토지대장 파일을 모두 업로드해야 다음 단계로 이동할 수 있습니다.</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── STEP 2: 컬럼 매핑 ── -->
-  <div class="step-panel" id="panel2">
-
-    <!-- PNU 키 컬럼 지정 (최상단 강조) -->
-    <div class="sec-card" style="border:2px solid var(--green);margin-bottom:16px">
-      <div class="sec-card-title"><div class="dot"></div>STEP 2-① — 토지대장의 PNU 컬럼 지정 (기준 키)</div>
-      <div class="alert alert-green" style="margin-bottom:14px">
-        <span class="alert-icon">🔑</span>
-        <div>
-          <strong>PNU(필지고유번호) 컬럼을 먼저 선택해주세요.</strong><br>
-          PNU 파일과 토지대장을 이 컬럼 기준으로 VLOOKUP 방식으로 연결합니다.<br>
-          <span style="font-size:11px;color:var(--ink3)">자동으로 감지했으니 확인 후 다르면 수정해주세요.</span>
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:16px;background:var(--bg);border-radius:10px;padding:16px 20px">
-        <div style="text-align:center">
-          <div style="font-size:11px;font-weight:700;color:var(--ink3);margin-bottom:6px;font-family:'DM Mono',monospace">PNU 파일</div>
-          <div style="background:var(--green);color:white;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:800;font-family:'DM Mono',monospace">PNU 컬럼</div>
-          <div style="font-size:10px;color:var(--ink3);margin-top:4px" id="pnuKeyCount">— 개 필지</div>
-        </div>
-        <div style="text-align:center">
-          <div style="font-size:20px;color:var(--green);font-weight:900">⟷</div>
-          <div style="font-size:11px;color:var(--green);font-weight:700;margin-top:2px">PNU 기준 매칭</div>
-        </div>
-        <div style="text-align:center;min-width:200px">
-          <div style="font-size:11px;font-weight:700;color:var(--ink3);margin-bottom:6px;font-family:'DM Mono',monospace">토지대장</div>
-          <select class="map-select" id="ldPnuCol" onchange="onLdPnuColChange()" style="font-size:13px;padding:8px 12px;font-weight:700;border:2px solid var(--green)">
-            <option value="-1">— PNU 컬럼 선택 —</option>
-          </select>
-          <div style="font-size:10px;color:var(--ink3);margin-top:4px" id="ldPnuMatchStatus"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 나머지 컬럼 매핑 -->
-    <div class="sec-card">
-      <div class="sec-card-title"><div class="dot"></div>STEP 2-② — 토지대장 나머지 컬럼 매핑</div>
-      <div class="alert alert-amber" style="margin-bottom:14px">
-        <span class="alert-icon">⚠️</span>
-        <div>토지대장의 각 컬럼이 조서의 어떤 항목인지 확인해주세요. 자동으로 추측했으니 다르면 수정해주세요.</div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
-        <!-- 매핑 선택 -->
-        <div>
-          <div style="font-size:11px;font-weight:700;color:var(--ink3);margin-bottom:12px;text-transform:uppercase;letter-spacing:0.8px;font-family:'DM Mono',monospace">조서 항목 → 토지대장 컬럼</div>
-          <div id="mappingRows"></div>
-        </div>
-        <!-- 미리보기 -->
-        <div>
-          <div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:12px;text-transform:uppercase;letter-spacing:0.8px;font-family:'DM Mono',monospace">PNU 매칭 결과 미리보기 (3건)</div>
-          <div id="mappingPreview"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="nav-btns">
-      <button class="btn-prev" onclick="goStep(1)">← 이전</button>
-      <button class="btn-next" id="btn2generate" onclick="buildResult()" disabled>조서 생성하기 →</button>
-    </div>
-  </div>
-
-  <!-- ── STEP 3: 결과 ── -->
-  <div class="step-panel" id="panel3">
-
-    <div class="stats-row">
-      <div class="stat-card">
-        <div class="stat-label">총 필지수</div>
-        <div class="stat-val"><span id="r-count">0</span><span class="stat-unit">필지</span></div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">공부상면적 합계</div>
-        <div class="stat-val"><span id="r-area">0</span><span class="stat-unit">㎡</span></div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">매핑 성공</div>
-        <div class="stat-val" style="color:var(--green)"><span id="r-matched">0</span><span class="stat-unit">건</span></div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">매핑 실패</div>
-        <div class="stat-val" style="color:var(--red)"><span id="r-unmatched">0</span><span class="stat-unit">건</span></div>
-      </div>
-    </div>
-
-    <div id="unmatchedAlert" style="display:none" class="alert alert-amber">
-      <span class="alert-icon">⚠️</span>
-      <div id="unmatchedMsg"></div>
-    </div>
-
-    <div class="sec-card" style="padding:16px 20px">
-      <div class="toolbar">
-        <div class="search-wrap">
-          <span class="search-icon">🔍</span>
-          <input type="text" id="resultSearch" placeholder="지번, 소유자 검색..." oninput="renderResult()">
-        </div>
-        <select class="filter-sel" id="resultFilterJimok" onchange="renderResult()">
-          <option value="">지목 전체</option>
-          <option>전</option><option>답</option><option>대</option>
-          <option>임</option><option>도</option><option>잡</option>
-          <option>주</option><option>창</option><option>천</option>
-        </select>
-        <select class="filter-sel" id="resultFilterMatch" onchange="renderResult()">
-          <option value="">전체</option>
-          <option value="matched">✅ 매핑됨</option>
-          <option value="unmatched">⚠️ 미매핑</option>
-        </select>
-      </div>
-
-      <div class="table-wrap">
-        <table class="result">
-          <thead>
-            <tr class="th-main">
-              <th rowspan="2" style="width:36px">#</th>
-              <th rowspan="2">행정구역</th>
-              <th rowspan="2">대장<br>구분</th>
-              <th colspan="4">소 재 지</th>
-              <th rowspan="2">지목</th>
-              <th colspan="2">면 적 (㎡)</th>
-              <th rowspan="2">소유자별<br>구분</th>
-              <th rowspan="2">소유자</th>
-              <th rowspan="2" style="min-width:140px">주소</th>
-              <th rowspan="2">공시지가<br>(원/㎡)</th>
-              <th rowspan="2">편입<br>여부</th>
-              <th rowspan="2">매핑</th>
-            </tr>
-            <tr class="th-sub2">
-              <th>시도</th><th>시군구</th><th>읍면동</th><th>지번</th>
-              <th>지적</th><th>편입</th>
-            </tr>
-          </thead>
-          <tbody class="result-body" id="resultBody">
-            <tr><td colspan="16" style="padding:40px;text-align:center;color:var(--ink3)">데이터를 불러오는 중...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="nav-btns">
-      <button class="btn-prev" onclick="goStep(2)">← 매핑 수정</button>
-      <button class="btn-next" onclick="exportExcel()">📥 엑셀 저장</button>
-    </div>
-  </div>
-
-</div><!-- /xlsxMode -->
-
-</div>
 
 <div class="toast" id="toast"></div>
 
@@ -1404,12 +1105,7 @@ let _shpIsProjected = false; // 연속지적도 업로드 시 설정됨
 const JIMOK_CHARS = '전답대도임잡구목묘철사창종천학유장과주차수체공양원염광제하용';
 
 // ─── 모드 전환 ─────────────────────────────────────────
-function switchMode(mode) {
-  document.getElementById('tabXlsx').classList.toggle('active', mode === 'xlsx');
-  document.getElementById('tabShp').classList.toggle('active',  mode === 'shp');
-  document.getElementById('shpMode').classList.toggle('active', mode === 'shp');
-  document.getElementById('xlsxMode').classList.toggle('hidden', mode === 'shp');
-}
+function switchMode(mode) {} // xlsx 모드 제거됨
 
 // ─── SHP 스텝 이동 ─────────────────────────────────────
 function shpGoStep(n) {
@@ -2624,8 +2320,6 @@ function sendShpToJoseo() {
   document.getElementById('r-area').textContent      = resultRows.reduce((s,r)=>s+(r.area||0),0).toLocaleString();
   document.getElementById('r-matched').textContent   = resultRows.length;
   document.getElementById('r-unmatched').textContent = 0;
-  document.getElementById('btnExport').disabled = false;
-  switchMode('xlsx');
   goStep(3);
   renderResult();
   showToast(`✅ ${resultRows.length}필지를 조서로 전송했습니다`);
@@ -3168,7 +2862,6 @@ function buildResult() {
     document.getElementById('unmatchedAlert').style.display = 'none';
   }
 
-  document.getElementById('btnExport').disabled = false;
   goStep(3);
   renderResult();
   showToast(`✅ 조서 생성 완료! (매칭 성공 ${matched}건, 실패 ${unmatched}건)`);
@@ -3302,19 +2995,22 @@ function goStep(n) {
 
 function resetAll() {
   if (!confirm('처음부터 다시 시작할까요?')) return;
-  pnuRows=[]; ldHeaders=[]; ldRows=[]; colMapping={}; resultRows=[]; ldPnuColIdx=-1;
-  document.getElementById('pnuPreview').style.display='none';
-  document.getElementById('ldPreview').style.display='none';
-  document.getElementById('pnuDropZone').classList.remove('done');
-  document.getElementById('ldDropZone').classList.remove('done');
-  document.getElementById('pnuIcon').textContent='📋';
-  document.getElementById('ldIcon').textContent='📊';
-  document.getElementById('pnuTitle').textContent='PNU 엑셀 파일 업로드';
-  document.getElementById('ldTitle').textContent='토지대장 엑셀 파일 업로드';
-  document.getElementById('btn1next').disabled=true;
-  document.getElementById('btnExport').disabled=true;
-  document.getElementById('unmatchedAlert').style.display='none';
-  goStep(1);
+  // SHP 모드 초기화
+  shpStep1Rows = []; shpResultRows = [];
+  if (typeof guyeokZones !== 'undefined') guyeokZones = [];
+  _shpIsProjected = false;
+  ldLinkHeaders = []; ldLinkRows = []; ldLinkExtra = {};
+  ldLinkSelectedFields = [];
+  Object.keys(bojeongOverride).forEach(k => delete bojeongOverride[k]);
+  document.getElementById('jijukDropZone').classList.remove('done');
+  document.getElementById('jijukIcon').textContent = '🗺️';
+  document.getElementById('jijukTitle').textContent = '연속지적도 ZIP 업로드';
+  document.getElementById('jijukResult').style.display = 'none';
+  document.getElementById('shp1LogArea').innerHTML = '';
+  document.getElementById('shp1Bar').style.width = '0%';
+  document.getElementById('shp1Progress').style.display = 'none';
+  document.getElementById('shpBtn1Next').disabled = true;
+  shpGoStep(1);
   showToast('🔄 초기화되었습니다');
 }
 
