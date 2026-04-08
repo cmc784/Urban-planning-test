@@ -325,16 +325,15 @@ canvas { border-radius:6px; max-width:100%; }
           </div>
           <input type="file" id="topoFile" style="display:none" accept=".dxf,.geojson,.json,.shp,.zip" multiple
             onchange="handleTopoFile(this)">
-          <div class="upload-box" id="topoDropZone" style="cursor:pointer"
-            onclick="document.getElementById('topoFile').click()"
+          <label class="upload-box" id="topoDropZone" for="topoFile" style="cursor:pointer;display:block;text-align:center"
             ondragover="event.preventDefault();this.classList.add('drag-over')"
             ondragleave="this.classList.remove('drag-over')"
             ondrop="event.preventDefault();this.classList.remove('drag-over');handleTopoFileDrop(event)">
             <div class="upload-icon" id="topoIcon">🗺️</div>
             <div class="upload-title" id="topoTitle">수치지형도 업로드</div>
             <div class="upload-desc" id="topoDesc">DXF · SHP · GeoJSON · ZIP<br>드래그&드롭 가능 (SHP는 ZIP 권장)</div>
-            <label class="upload-label" for="topoFile" onclick="event.stopPropagation()">📎 파일 선택</label>
-          </div>
+            <span class="upload-label">📎 파일 선택</span>
+          </label>
           <div id="topoFileTag" style="display:none"></div>
         </div>
 
@@ -351,16 +350,15 @@ canvas { border-radius:6px; max-width:100%; }
           </div>
           <input type="file" id="zoneFile" style="display:none" accept=".dxf,.geojson,.json,.shp,.zip" multiple
             onchange="handleZoneFile(this)">
-          <div class="upload-box" id="zoneDropZone" style="cursor:pointer"
-            onclick="document.getElementById('zoneFile').click()"
+          <label class="upload-box" id="zoneDropZone" for="zoneFile" style="cursor:pointer;display:block;text-align:center"
             ondragover="event.preventDefault();this.classList.add('drag-over')"
             ondragleave="this.classList.remove('drag-over')"
             ondrop="event.preventDefault();this.classList.remove('drag-over');handleZoneFileDrop(event)">
             <div class="upload-icon" id="zoneIcon">📐</div>
             <div class="upload-title" id="zoneTitle">구역계 파일 업로드</div>
             <div class="upload-desc" id="zoneDesc">DXF · SHP · GeoJSON · ZIP<br>드래그&드롭 가능 (SHP는 ZIP 권장)</div>
-            <label class="upload-label" for="zoneFile" onclick="event.stopPropagation()">📎 파일 선택</label>
-          </div>
+            <span class="upload-label">📎 파일 선택</span>
+          </label>
           <div id="zoneFileTag" style="display:none"></div>
         </div>
 
@@ -552,13 +550,17 @@ canvas { border-radius:6px; max-width:100%; }
         <div class="sec-card-title"><div class="dot"></div>CAD / GIS 파일 업로드 — 좌표계 자동 감지</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
           <div>
-            <input type="file" id="cadFile" style="display:none" accept=".dxf,.geojson,.json">
-            <div class="upload-box" id="cadDropZone" style="cursor:pointer">
+            <input type="file" id="cadFile" style="display:none" accept=".dxf,.geojson,.json"
+              onchange="handleCadFile(this)">
+            <label class="upload-box" id="cadDropZone" for="cadFile" style="cursor:pointer;display:block;text-align:center"
+              ondragover="event.preventDefault();this.classList.add('drag-over')"
+              ondragleave="this.classList.remove('drag-over')"
+              ondrop="event.preventDefault();this.classList.remove('drag-over');dropFileCad(event)">
               <div class="upload-icon" id="cadIcon">📐</div>
               <div class="upload-title" id="cadTitle">CAD / GIS 파일 업로드</div>
               <div class="upload-desc" id="cadDesc">.dxf, .geojson, .json 파일<br>드래그&드롭 가능</div>
               <span class="upload-label">📎 파일 선택</span>
-            </div>
+            </label>
           </div>
           <div id="detectResultBox" style="display:flex;flex-direction:column;justify-content:center;align-items:center;background:var(--bg);border-radius:10px;border:1px solid var(--border);padding:20px;min-height:140px">
             <div style="font-size:28px;margin-bottom:8px" id="detectIcon">🔍</div>
@@ -2059,28 +2061,8 @@ function showToast(msg) {
 
 // ─── DOM 준비 후 이벤트 바인딩 ────────────────────────
 document.addEventListener('DOMContentLoaded', function () {
-
-  // ── CAD 드롭존 ──
-  const cadZone  = document.getElementById('cadDropZone');
-  const cadInput = document.getElementById('cadFile');
-
-  cadZone.addEventListener('click', function () { cadInput.click(); });
-  cadInput.addEventListener('change', function () { handleCadFile(this); });
-  cadZone.addEventListener('dragover',  function (e) { e.preventDefault(); e.stopPropagation(); cadZone.classList.add('drag-over'); });
-  cadZone.addEventListener('dragleave', function ()  { cadZone.classList.remove('drag-over'); });
-  cadZone.addEventListener('drop', function (e) {
-    e.preventDefault(); e.stopPropagation();
-    cadZone.classList.remove('drag-over');
-    const file = e.dataTransfer.files[0];
-    if (!file) return;
-    const ext = file.name.split('.').pop().toLowerCase();
-    if (!['dxf','geojson','json'].includes(ext)) { showToast('⚠️ 지원 형식: DXF, GeoJSON, JSON'); return; }
-    dropFileCad({ dataTransfer: { files: [file] }, preventDefault: ()=>{}, stopPropagation: ()=>{} });
-  });
-
   // ── elevStandard 선택 이벤트 ──
   document.getElementById('elevStandard').addEventListener('change', function () { toggleElevCustom(this); });
-
 });
 </script>
 </body>
