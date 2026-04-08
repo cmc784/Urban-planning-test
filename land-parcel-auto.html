@@ -2412,14 +2412,14 @@ function ldLinkAutoMatch(key) {
     area:        /면적|공부면적|지적면적/,
     price:       /공시지가|개별공시지가/,
     ownerType:   /소유구분|소유형태|소유권/,
-    ownerName:   /소유자.*성명|성명|소유자명/,
-    ownerAddr:   /소유자.*주소|주소/,
-    // A형 개별 컬럼
-    sido:        /^시도$|^광역시도$|^시\.?도$/,
-    sigungu:     /^시군구$|^시\.?군\.?구$/,
-    emd:         /^읍면동$|^읍\.?면\.?동$/,
-    // B형 통합 컬럼
-    haengjeong:  /행정구역|소재지|주소|지번주소/,
+    ownerName:   /소유자.{0,4}성명|^성명$|소유자명/,
+    ownerAddr:   /소유자.{0,4}주소|소유자.{0,4}소재/,
+    // A형 개별 컬럼 — 실제 토지대장에서 자주 쓰이는 헤더명 포함
+    sido:        /^시\s*도$|^광역시도|^시도명|^시\.?도$/,
+    sigungu:     /^시\s*군\s*구$|^시군구명|^시\.?군\.?구$/,
+    emd:         /^읍\s*면\s*동$|^읍면동명|^행정동|^법정동|^읍\.?면\.?동$/,
+    // B형 통합 컬럼 — 소유자주소와 혼동되지 않도록 소유자 제외
+    haengjeong:  /^행정구역$|^소재지$|^지번주소$|^주소$|^토지소재/,
   };
   const pat = patterns[key];
   if (!pat) return -1;
@@ -2439,7 +2439,6 @@ function ldLinkApply() {
   const pnuColIdx = parseInt(document.getElementById('ldLink-pnu-col').value);
   if (isNaN(pnuColIdx)) { showToast('⚠️ PNU 컬럼을 선택해주세요'); return; }
 
-  // 선택된 컬럼 맵 (행정구역 항목 분리)
   const ADMIN_KEYS = new Set(['sido','sigungu','emd','haengjeong']);
   const selected = LD_LINK_FIELDS
     .filter(f => document.getElementById('ldlc-' + f.key)?.checked)
@@ -2451,7 +2450,6 @@ function ldLinkApply() {
     }))
     .filter(f => f.colIdx >= 0);
 
-  // 행정구역·일반 항목 분리
   const adminSelected  = selected.filter(f => ADMIN_KEYS.has(f.key));
   const normalSelected = selected.filter(f => !ADMIN_KEYS.has(f.key));
 
@@ -2488,7 +2486,7 @@ function ldLinkApply() {
   }
 
   // shpResultRows에 병합
-  let matched = 0, unmatched = 0;
+  let matched = 0, unmatched = 0, adminUpdated = 0;
   ldLinkExtra = {};
 
   // 전체 shpResultRows 기준으로 순회 (복수 구역계 대응)
@@ -2507,57 +2505,47 @@ function ldLinkApply() {
       ldLinkExtra[pnu][f.key] = ld[f.colIdx] !== undefined ? String(ld[f.colIdx]) : '';
     });
 
-    // ── 행정구역 병합 ──────────────────────────────
-    if (adminSelected.length > 0) {
+    // ── 행정구역: 토지대장 PNU로 직접 파싱 (가장 정확) ──
+    const ldPnu  = String(ld[pnuColIdx] || '').replace(/[^0-9]/g, '').padStart(19,'0');
+    const parsed = parsePNUInfo(ldPnu);
+    let adminAppliedRow = false;
+
+    if (parsed.sido || parsed.sigungu || parsed.emd) {
+      // PNU 파싱 성공 → 직접 반영
+      if (parsed.sido)    { r.sido    = parsed.sido;    adminAppliedRow = true; }
+      if (parsed.sigungu) { r.sigungu = parsed.sigungu; adminAppliedRow = true; }
+      if (parsed.emd)     { r.emd     = parsed.emd;     adminAppliedRow = true; }
+    } else if (adminSelected.length > 0) {
+      // PNU 파싱 실패 시 사용자가 선택한 컬럼으로 fallback
       const haengjeongField = adminSelected.find(f => f.key === 'haengjeong');
       const sidoField       = adminSelected.find(f => f.key === 'sido');
       const sigunguField    = adminSelected.find(f => f.key === 'sigungu');
       const emdField        = adminSelected.find(f => f.key === 'emd');
-
       if (haengjeongField) {
-        // B형: 통합 컬럼 파싱
-        const raw = String(ld[haengjeongField.colIdx] || '');
-        const parsed = parseHaengjeong(raw);
-        if (parsed.sido    && !r.sido)    r.sido    = parsed.sido;
-        if (parsed.sigungu && !r.sigungu) r.sigungu = parsed.sigungu;
-        if (parsed.emd     && !r.emd)     r.emd     = parsed.emd;
-        // 비어있지 않으면 덮어쓰기
-        if (parsed.sido)    r.sido    = parsed.sido;
-        if (parsed.sigungu) r.sigungu = parsed.sigungu;
-        if (parsed.emd)     r.emd     = parsed.emd;
+        const fb = parseHaengjeong(String(ld[haengjeongField.colIdx] || ''));
+        if (fb.sido)    { r.sido    = fb.sido;    adminAppliedRow = true; }
+        if (fb.sigungu) { r.sigungu = fb.sigungu; adminAppliedRow = true; }
+        if (fb.emd)     { r.emd     = fb.emd;     adminAppliedRow = true; }
       } else {
-        // A형: 개별 컬럼 직접 매핑
-        if (sidoField) {
-          const v = String(ld[sidoField.colIdx] || '').trim();
-          if (v) r.sido = v;
-        }
-        if (sigunguField) {
-          const v = String(ld[sigunguField.colIdx] || '').trim();
-          if (v) r.sigungu = v;
-        }
-        if (emdField) {
-          const v = String(ld[emdField.colIdx] || '').trim();
-          if (v) r.emd = v;
-        }
+        if (sidoField)    { const v = String(ld[sidoField.colIdx]    || '').trim(); if (v) { r.sido    = v; adminAppliedRow = true; } }
+        if (sigunguField) { const v = String(ld[sigunguField.colIdx] || '').trim(); if (v) { r.sigungu = v; adminAppliedRow = true; } }
+        if (emdField)     { const v = String(ld[emdField.colIdx]     || '').trim(); if (v) { r.emd     = v; adminAppliedRow = true; } }
       }
     }
-
+    if (adminAppliedRow) adminUpdated++;
     matched++;
   });
 
-  // 결과 테이블 재렌더
-  ldLinkSelectedFields = normalSelected; // 테이블 추가 컬럼은 일반 항목만
+  ldLinkSelectedFields = normalSelected;
   renderShpResult();
 
-  // 결과 메시지
-  const adminApplied = adminSelected.length > 0;
   const resultEl = document.getElementById('ldLink-result');
   resultEl.style.display = 'block';
   resultEl.innerHTML = `
     <div class="alert alert-green">
       <span class="alert-icon">✅</span>
       <div>병합 완료 — 매칭 <strong>${matched}</strong>필지 / 미매칭 <strong>${unmatched}</strong>필지
-        ${adminApplied ? `<br><span style="font-size:11px;color:var(--teal)">✔ 시도·시군구·읍면동 반영됨</span>` : ''}
+        ${adminUpdated > 0 ? `<br><span style="font-size:11px;color:var(--teal)">✔ 시도·시군구·읍면동 ${adminUpdated}필지 반영 (PNU 기반 파싱)</span>` : ''}
         <div style="font-size:11px;margin-top:3px;color:var(--ink3)">결과 테이블과 엑셀 다운로드에 반영됩니다.</div>
       </div>
     </div>`;

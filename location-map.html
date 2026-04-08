@@ -639,6 +639,44 @@ input[type="range"] {
         </div>
       </div>
 
+      <!-- 라벨 설정 패널 -->
+      <div class="panel">
+        <div class="panel-title">🏷️ 라벨 설정</div>
+
+        <!-- 편입유형 탭 -->
+        <div style="display:flex;gap:4px;margin-bottom:12px">
+          <button id="lbl-tab-full" class="btn btn-main" style="flex:1;font-size:11.5px;padding:6px" onclick="switchLabelTab('full')">완전편입</button>
+          <button id="lbl-tab-part" class="btn btn-outline" style="flex:1;font-size:11.5px;padding:6px" onclick="switchLabelTab('part')">부분편입</button>
+          <button id="lbl-tab-zone" class="btn btn-outline" style="flex:1;font-size:11.5px;padding:6px" onclick="switchLabelTab('zone')">구역계</button>
+        </div>
+
+        <!-- 표시 내용 -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:11.5px;color:var(--ink2)">표시 내용</span>
+        </div>
+        <select id="lbl-content" onchange="applyLabelSettings()"
+          style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:11.5px;font-family:'Noto Sans KR',sans-serif;outline:none;margin-bottom:10px">
+          <option value="none">표시 안함</option>
+          <option value="jibun" selected>지번</option>
+          <option value="jimok">지목</option>
+          <option value="jibun_jimok">지번+지목</option>
+          <option value="pyeonip">편입면적</option>
+          <option value="pnu">PNU</option>
+        </select>
+
+        <!-- 글씨 크기 -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:11.5px;color:var(--ink2)">글씨 크기</span>
+          <input type="number" id="lbl-sz-num" min="7" max="18" step="1" value="11"
+            style="width:54px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;font-size:11.5px;font-family:'DM Mono',monospace;text-align:center;outline:none"
+            oninput="syncLabelNumToRange()">
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="range" id="lbl-sz" min="7" max="18" step="1" value="11" style="flex:1"
+            oninput="syncLabelRangeToNum();applyLabelSettings()">
+        </div>
+      </div>
+
       <!-- 통계 요약 -->
       <div class="panel">
         <div class="panel-title">📊 편입 현황</div>
@@ -1433,6 +1471,9 @@ function initPyeonipMode() {
   document.getElementById('lyr-gubun-group').style.display = 'block';
   document.getElementById('lyr-jimok-group').style.display = 'none';
 
+  // 라벨 패널 초기화 (완전편입 탭 기본)
+  switchLabelTab('full');
+
   // 통계 렌더
   renderPyeonipStats();
   // 지목 레이어 행 생성 (지목별 모드 전환 시 바로 보이도록)
@@ -1496,6 +1537,45 @@ function psSelectHatch() {} // 제거됨
 function psUpdatePreview() {} // 제거됨
 
 // 색상 모드 전환
+// ── 독립 라벨 패널 ──────────────────────────────────────
+let lblCurrentTab = 'full';
+
+function switchLabelTab(tab) {
+  lblCurrentTab = tab;
+  // 버튼 활성화
+  ['full','part','zone'].forEach(t => {
+    const btn = document.getElementById('lbl-tab-' + t);
+    if (!btn) return;
+    btn.className = 'btn ' + (t === tab ? 'btn-main' : 'btn-outline');
+    btn.style.cssText = 'flex:1;font-size:11.5px;padding:6px';
+  });
+  // 현재 탭의 스타일 값 로드
+  const s = psStyles[tab];
+  const contentSel = document.getElementById('lbl-content');
+  contentSel.value = s.labelContent || 'jibun';
+  document.getElementById('lbl-sz').value     = s.labelSize || 11;
+  document.getElementById('lbl-sz-num').value = s.labelSize || 11;
+}
+
+function applyLabelSettings() {
+  const s = psStyles[lblCurrentTab];
+  s.labelContent = document.getElementById('lbl-content').value;
+  s.labelSize    = parseInt(document.getElementById('lbl-sz').value) || 11;
+  renderPyeonipLayers();
+}
+
+function syncLabelNumToRange() {
+  const num = parseInt(document.getElementById('lbl-sz-num').value);
+  if (!isNaN(num)) {
+    document.getElementById('lbl-sz').value = Math.min(Math.max(num, 7), 18);
+    applyLabelSettings();
+  }
+}
+
+function syncLabelRangeToNum() {
+  document.getElementById('lbl-sz-num').value = document.getElementById('lbl-sz').value;
+}
+
 function setColorMode(mode) {
   colorMode = mode;
   document.getElementById('btn-mode-gubun').className =
@@ -1688,9 +1768,9 @@ function lepApply() {
     const s = psStyles[lepCurrentKey];
     if (/^#[0-9a-fA-F]{6}$/.test(fhex)) s.fillColor   = fhex;
     if (/^#[0-9a-fA-F]{6}$/.test(shex)) s.strokeColor = shex;
-    s.fillOpacity = fillOpa;
-    s.strokeWidth = strokeW;
-    s.strokeDash  = strokeD;
+    s.fillOpacity  = fillOpa;
+    s.strokeWidth  = strokeW;
+    s.strokeDash   = strokeD;
     updateLayerSwatch(lepCurrentKey);
   } else if (lepCurrentJimok) {
     // 지목별 편집
