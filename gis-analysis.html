@@ -1190,8 +1190,11 @@ async function parseDXFContours(file) {
   console.log('[DXF] 등고선 선:', contourLines.length, '/ 점:', contourPts.length);
   if (contourPts.length > 0) {
     const zv = contourPts.map(p => p.z).filter(z => !isNaN(z) && z !== 0);
-    if (zv.length > 0)
-      console.log('[DXF] Z 범위:', Math.min(...zv).toFixed(1), '~', Math.max(...zv).toFixed(1), 'm');
+    if (zv.length > 0) {
+      let zMin=Infinity, zMax=-Infinity;
+      zv.forEach(z=>{ if(z<zMin) zMin=z; if(z>zMax) zMax=z; });
+      console.log('[DXF] Z 범위:', zMin.toFixed(1), '~', zMax.toFixed(1), 'm');
+    }
   }
   return { contourPts, contourLines };
 }
@@ -1207,11 +1210,22 @@ function detectCRS(pts) {
 
 // ─── IDW 보간 ─────────────────────────────────────────
 function buildElevGrid(pts, cellSize) {
-  const valid = pts.filter(p => p.z !== 0 && !isNaN(p.z));
+  let valid = pts.filter(p => p.z !== 0 && !isNaN(p.z));
   if (valid.length === 0) return null;
-  const xs = valid.map(p => p.x), ys = valid.map(p => p.y);
-  const xmin = Math.min(...xs), xmax = Math.max(...xs);
-  const ymin = Math.min(...ys), ymax = Math.max(...ys);
+
+  // 점이 너무 많으면 샘플링 (최대 50,000점)
+  const MAX_PTS = 50000;
+  if (valid.length > MAX_PTS) {
+    const step = Math.ceil(valid.length / MAX_PTS);
+    valid = valid.filter((_, i) => i % step === 0);
+    console.log('[GRID] 샘플링:', valid.length, '점 사용');
+  }
+
+  let xmin=Infinity, xmax=-Infinity, ymin=Infinity, ymax=-Infinity;
+  valid.forEach(p => {
+    if(p.x < xmin) xmin=p.x; if(p.x > xmax) xmax=p.x;
+    if(p.y < ymin) ymin=p.y; if(p.y > ymax) ymax=p.y;
+  });
   const cols = Math.ceil((xmax - xmin) / cellSize) + 1;
   const rows = Math.ceil((ymax - ymin) / cellSize) + 1;
   const data = new Float32Array(cols * rows).fill(NaN);
@@ -1334,8 +1348,8 @@ function showResults() {
 
   // 표고 통계
   const elevValid = Array.from(elevData).filter(v => !isNaN(v));
-  const minElev   = Math.min(...elevValid);
-  const maxElev   = Math.max(...elevValid);
+  let minElev=Infinity, maxElev=-Infinity;
+  elevValid.forEach(v=>{ if(v<minElev) minElev=v; if(v>maxElev) maxElev=v; });
   const avgElev   = elevValid.reduce((s, v) => s + v, 0) / elevValid.length;
 
   // 경사 통계 + 등급별 면적
