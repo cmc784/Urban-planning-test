@@ -344,15 +344,15 @@ canvas { border-radius:6px; max-width:100%; }
 
         <!-- 구역계 -->
         <div class="sec-card" style="margin-bottom:0">
-          <div class="sec-card-title"><div class="dot"></div>구역계 파일 (DXF · SHP · GeoJSON)</div>
+          <div class="sec-card-title"><div class="dot"></div>구역계 파일 (SHP)</div>
           <div id="zoneDropZone" style="border:2px dashed var(--border);border-radius:10px;padding:24px 16px;text-align:center;background:var(--bg);transition:all .2s"
             ondragover="event.preventDefault();this.style.borderColor='var(--green)';this.style.background='var(--green-light)'"
             ondragleave="this.style.borderColor='';this.style.background='var(--bg)'"
             ondrop="event.preventDefault();this.style.borderColor='';this.style.background='var(--bg)';_onDropZone(event)">
             <div style="font-size:28px;margin-bottom:8px" id="zoneIcon">📐</div>
             <div style="font-size:13px;font-weight:700;color:var(--ink2);margin-bottom:4px" id="zoneTitle">구역계 업로드</div>
-            <div style="font-size:11px;color:var(--ink3);margin-bottom:12px" id="zoneDesc">분석 대상 구역 경계 파일</div>
-            <input type="file" id="_zoneInput" accept=".dxf,.zip,.shp,.geojson,.json" multiple
+            <div style="font-size:11px;color:var(--ink3);margin-bottom:12px" id="zoneDesc">SHP 파일 (ZIP으로 묶거나 .shp+.dbf+.prj 동시 선택)</div>
+            <input type="file" id="_zoneInput" accept=".zip,.shp,.dbf,.prj,.shx" multiple
               style="position:fixed;top:-9999px;left:-9999px;opacity:0;width:0;height:0"
               onchange="_onChangeZone(this)">
             <button type="button" onclick="document.getElementById('_zoneInput').click()"
@@ -940,15 +940,14 @@ async function _processZone(files) {
   console.log('[ZONE] 확장자:', ext);
   try {
     if (exts.includes('shp')) {
+      // SHP + DBF + PRJ 동시 선택
       const shpFile = files.find(f => f.name.toLowerCase().endsWith('.shp'));
       zoneFileSet = files;
       await applyZoneFileShpSet(shpFile, files);
-    } else if (['dxf','geojson','json','zip'].includes(ext)) {
-      console.log('[ZONE] applyZoneFile 호출');
+    } else if (ext === 'zip') {
       await applyZoneFile(file);
-      console.log('[ZONE] applyZoneFile 완료');
     } else {
-      showToast('⚠️ 지원 형식: DXF, SHP, ZIP, GeoJSON');
+      showToast('⚠️ 구역계는 SHP 또는 ZIP 파일만 지원합니다');
     }
   } catch(e) {
     console.error('[ZONE] 오류:', e);
@@ -1030,25 +1029,40 @@ async function applyTopoFile(file) {
 
 async function applyZoneFile(file) {
   const ext = file.name.split('.').pop().toLowerCase();
+  if (!['shp','zip'].includes(ext)) {
+    showToast('⚠️ 구역계는 SHP 또는 ZIP 파일만 지원합니다');
+    return;
+  }
   try {
     if (ext === 'zip') {
       const result = await parseShpFromZip(file);
       file._parsedGeoJSON = result.geojson;
       file._prj = result.prj;
-      showToast('✅ ZIP/SHP 로드 완료 (' + result.geojson.features.length + '개 피처)');
+      _checkZoneCRS(result.prj);
+      showToast('✅ 구역계 ZIP/SHP 로드 완료 (' + result.geojson.features.length + '개 피처)');
     } else if (ext === 'shp') {
       const result = await parseSingleShp(file);
       file._parsedGeoJSON = result.geojson;
-      showToast('✅ SHP 로드 완료 (' + result.geojson.features.length + '개 피처) — DBF 없이 속성 미포함');
-    } else {
-      showToast('📂 구역계 파일이 로드되었습니다');
+      showToast('✅ 구역계 SHP 로드 완료 — PRJ 파일도 함께 선택하면 좌표계 확인 가능');
     }
   } catch(e) {
-    showToast('⚠️ 파일 파싱 오류: ' + e.message);
+    showToast('⚠️ 구역계 파일 파싱 오류: ' + e.message);
     return;
   }
   zoneFile = file;
   _applyZoneUI(file, getFileTypeLabel(ext));
+}
+
+function _checkZoneCRS(prj) {
+  if (!prj) return;
+  const prjUpper = prj.toUpperCase();
+  // 5174: Bessel, 5186: GRS80/KGD2002
+  const is5174 = prjUpper.includes('BESSEL') || prjUpper.includes('5174');
+  const is5186 = prjUpper.includes('KGD2002') || prjUpper.includes('5186') || prjUpper.includes('GRS80');
+  console.log('[CRS] 구역계 PRJ:', is5174 ? 'EPSG:5174' : is5186 ? 'EPSG:5186' : '알 수 없음');
+  if (!is5174 && !is5186) {
+    showToast('⚠️ 구역계 좌표계를 확인해주세요 — DEM과 동일한 좌표계(5174/5186)여야 합니다');
+  }
 }
 
 function _applyTopoUI(file, typeLabel) {
@@ -1442,6 +1456,71 @@ async function parseASCIIGrid(file) {
   };
 }
 
+// ─── 구역계 클리핑 ───────────────────────────────────────
+
+// Ray casting Point-in-Polygon
+function pointInPolygon(px, py, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], yi = ring[i][1];
+    const xj = ring[j][0], yj = ring[j][1];
+    if (((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi)) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+// GeoJSON feature에서 링 배열 추출
+function extractRings(feature) {
+  const geom = feature.geometry;
+  if (!geom) return [];
+  if (geom.type === 'Polygon') return geom.coordinates;
+  if (geom.type === 'MultiPolygon') return geom.coordinates.flat(1);
+  return [];
+}
+
+// DEM 격자에 구역계 마스크 적용
+function applyZoneMask(grid, zoneGeoJSON) {
+  if (!zoneGeoJSON || !zoneGeoJSON.features || zoneGeoJSON.features.length === 0) return grid;
+
+  const { data, cols, rows, xmin, ymin, cellSize } = grid;
+  const masked = new Float32Array(data); // 복사본
+
+  // 구역계 좌표계가 DEM과 동일하다고 가정 (모두 5174 or 5186)
+  // 모든 feature의 외부 링 수집
+  const rings = zoneGeoJSON.features.flatMap(f => extractRings(f));
+  if (rings.length === 0) return grid;
+
+  // 구역계 bbox 계산 (빠른 사전 필터용)
+  let bxmin=Infinity, bxmax=-Infinity, bymin=Infinity, bymax=-Infinity;
+  rings.forEach(ring => ring.forEach(([x, y]) => {
+    if(x<bxmin)bxmin=x; if(x>bxmax)bxmax=x;
+    if(y<bymin)bymin=y; if(y>bymax)bymax=y;
+  }));
+
+  let clipped = 0;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const idx = r * cols + c;
+      if (isNaN(masked[idx])) continue;
+      // 셀 중심 좌표
+      const cx = xmin + (c + 0.5) * cellSize;
+      const cy = ymin + (r + 0.5) * cellSize;
+      // bbox 사전 필터
+      if (cx < bxmin || cx > bxmax || cy < bymin || cy > bymax) {
+        masked[idx] = NaN; clipped++; continue;
+      }
+      // 폴리곤 내부 판별 (외부 링 기준)
+      const inside = rings.some(ring => pointInPolygon(cx, cy, ring));
+      if (!inside) { masked[idx] = NaN; clipped++; }
+    }
+  }
+
+  console.log(`[CLIP] 클리핑 완료: ${clipped.toLocaleString()}셀 제거, 유효 ${(rows*cols-clipped).toLocaleString()}셀 남음`);
+  return { ...grid, data: masked };
+}
+
 // ─── 분석 실행 ────────────────────────────────────────
 let _elevGrid = null, _slopeData = null, _analysisResult = null;
 
@@ -1478,7 +1557,17 @@ async function runAnalysis() {
       }
       if (!_elevGrid) throw new Error('DEM 파싱 실패');
 
-      setProgress('경사도 계산 중...', 60);
+      // 구역계 클리핑 적용
+      setProgress('구역계 클리핑 중...', 70);
+      await tick();
+      const zoneGeoJSON = zoneFile?._parsedGeoJSON;
+      if (zoneGeoJSON) {
+        _elevGrid = applyZoneMask(_elevGrid, zoneGeoJSON);
+      } else {
+        console.warn('[CLIP] 구역계 GeoJSON 없음 — 클리핑 생략');
+      }
+
+      setProgress('경사도 계산 중...', 80);
       await tick();
       _slopeData = computeSlopeGrid(_elevGrid);
 
@@ -1518,7 +1607,15 @@ async function runAnalysis() {
       });
       if (!_elevGrid) throw new Error('표고 격자 생성 실패 — Z값이 있는 점이 없습니다');
 
-      setProgress('경사도 계산 중...', 72);
+      // 구역계 클리핑 적용
+      setProgress('구역계 클리핑 중...', 75);
+      await tick();
+      const zoneGeoJSONdxf = zoneFile?._parsedGeoJSON;
+      if (zoneGeoJSONdxf) {
+        _elevGrid = applyZoneMask(_elevGrid, zoneGeoJSONdxf);
+      }
+
+      setProgress('경사도 계산 중...', 85);
       await tick();
       _slopeData = computeSlopeGrid(_elevGrid);
     }
