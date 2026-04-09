@@ -910,7 +910,7 @@ async function _processTopo(files) {
     } else if (['tif','tiff','asc'].includes(ext)) {
       // DEM 파일 — 직접 topoFile에 저장 (파싱은 runAnalysis에서)
       topoFile = file;
-      setTopoMode('dem');
+      setTopoMode('dem', false); // UI만 DEM 모드로, 파일 초기화 안 함
       document.getElementById('topoIcon').textContent  = '✅';
       document.getElementById('topoTitle').textContent = file.name;
       document.getElementById('topoDesc').textContent  = (file.size/1024/1024).toFixed(1) + 'MB · DEM 파일';
@@ -1323,7 +1323,7 @@ function computeSlopeGrid(grid) {
 // ─── 표고 데이터 모드 (DEM / DXF) ───────────────────────
 let _topoMode = 'dem'; // 'dem' | 'dxf'
 
-function setTopoMode(mode) {
+function setTopoMode(mode, resetFile = true) {
   _topoMode = mode;
   const isDEM = mode === 'dem';
   document.getElementById('btnModeDEM').style.background = isDEM ? 'var(--green)' : 'white';
@@ -1332,20 +1332,22 @@ function setTopoMode(mode) {
   document.getElementById('btnModeDXF').style.background = isDEM ? 'white' : 'var(--green)';
   document.getElementById('btnModeDXF').style.color      = isDEM ? 'var(--ink3)' : 'white';
   document.getElementById('btnModeDXF').style.borderColor= isDEM ? 'var(--border)' : 'var(--green)';
-  document.getElementById('topoIcon').textContent  = isDEM ? '📊' : '🗺️';
-  document.getElementById('topoTitle').textContent = isDEM ? 'DEM 파일 업로드' : '수치지형도 DXF 업로드';
-  document.getElementById('topoDesc').textContent  = isDEM
-    ? 'QGIS로 만든 ASCII Grid (.tif/.asc)'
-    : 'F0017111 · F0017114 레이어 포함 DXF';
   document.getElementById('_topoInput').accept = isDEM
-    ? '.tif,.asc,.txt'
+    ? '.tif,.tiff,.asc,.txt'
     : '.dxf,.zip,.shp,.geojson,.json';
-  // 파일 초기화
-  topoFile = null;
-  setChip('chip-topo', false, '');
-  document.getElementById('topoDropZone').style.borderColor = '';
-  document.getElementById('topoDropZone').style.background  = 'var(--bg)';
-  checkRunReady();
+  // 버튼 클릭 시에만 파일·UI 초기화
+  if (resetFile) {
+    topoFile = null;
+    document.getElementById('topoIcon').textContent  = isDEM ? '📊' : '🗺️';
+    document.getElementById('topoTitle').textContent = isDEM ? 'DEM 파일 업로드' : '수치지형도 DXF 업로드';
+    document.getElementById('topoDesc').textContent  = isDEM
+      ? 'QGIS로 만든 GeoTIFF 또는 ASCII Grid (.tif/.asc)'
+      : 'F0017111 · F0017114 레이어 포함 DXF';
+    setChip('chip-topo', false, '');
+    document.getElementById('topoDropZone').style.borderColor = '';
+    document.getElementById('topoDropZone').style.background  = 'var(--bg)';
+    checkRunReady();
+  }
 }
 
 // ─── GeoTIFF 파서 ────────────────────────────────────────
