@@ -508,6 +508,17 @@ canvas { border-radius:6px; max-width:100%; }
                 oninput="syncLineWidthRange();redrawCanvases()">
               <span style="font-size:11px;color:var(--ink3)">px</span>
             </div>
+            <!-- 색상 조절 -->
+            <span style="font-size:12px;font-weight:700;color:var(--ink2);white-space:nowrap">🎨 선 색상</span>
+            <div style="display:flex;align-items:center;gap:6px">
+              <input type="color" id="zoneLineColor" value="#ffffff"
+                style="width:36px;height:28px;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:2px"
+                oninput="syncLineColorHex();redrawCanvases()">
+              <input type="text" id="zoneLineColorHex" value="#ffffff" maxlength="7"
+                placeholder="#rrggbb"
+                style="width:76px;padding:4px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:'DM Mono',monospace;outline:none"
+                oninput="syncLineColorPicker();redrawCanvases()">
+            </div>
           </div>
         </div>
 
@@ -1893,6 +1904,18 @@ function syncLineWidthRange() {
 function getZoneLineWidth() {
   return parseFloat(document.getElementById('zoneLineWidth')?.value ?? 2);
 }
+function syncLineColorHex() {
+  document.getElementById('zoneLineColorHex').value =
+    document.getElementById('zoneLineColor').value;
+}
+function syncLineColorPicker() {
+  const hex = document.getElementById('zoneLineColorHex').value;
+  if (/^#[0-9a-fA-F]{6}$/.test(hex))
+    document.getElementById('zoneLineColor').value = hex;
+}
+function getZoneLineColor() {
+  return document.getElementById('zoneLineColor')?.value ?? '#ffffff';
+}
 
 // ── 캔버스 재렌더 (설정 변경 시 호출) ───────────────────
 function redrawCanvases() {
@@ -1912,7 +1935,7 @@ function drawZoneBoundary(ctx, toCanvasX, toCanvasY) {
   if (!zoneGeoJSON || !zoneGeoJSON.features) return;
 
   ctx.save();
-  ctx.strokeStyle = '#ffffff';
+  ctx.strokeStyle = getZoneLineColor();
   ctx.lineWidth   = getZoneLineWidth();
   // 이점쇄선: 선-공백-점-공백-점-공백
   ctx.setLineDash([12, 4, 2, 4, 2, 4]);
