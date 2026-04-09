@@ -1771,29 +1771,50 @@ function renderDEMCanvas(theme, elevData, cols, rows, minElev, maxElev) {
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
   ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = '#1a1a2e';
+  ctx.fillStyle = '#2a2a3e';
   ctx.fillRect(0, 0, W, H);
 
+  // ── 격자 범위 (전체 DEM bbox) ──
+  const grid = _elevGrid;
+  const gxmin = grid.xmin, gymin = grid.ymin;
+  const gxmax = gxmin + cols * grid.cellSize;
+  const gymax = gymin + rows * grid.cellSize;
+
+  // ── 픽셀↔격자 변환 헬퍼 ──
+  const toCanvasX = x => (x - gxmin) / (gxmax - gxmin) * W;
+  const toCanvasY = y => (1 - (y - gymin) / (gymax - gymin)) * H;
+
+  // ── DEM 전체 영역 (구역계 밖) 회색으로 먼저 그리기 ──
   const imgData = ctx.createImageData(W, H);
   for (let py = 0; py < H; py++) {
     for (let px = 0; px < W; px++) {
-      const gc = Math.floor(px / W * cols);
-      const gr = Math.floor((1 - py / H) * rows);
+      const gc = Math.min(Math.floor(px / W * cols), cols - 1);
+      const gr = Math.min(Math.floor((1 - py / H) * rows), rows - 1);
       const idx4 = (py * W + px) * 4;
-      const v = elevData[Math.min(gr, rows-1) * cols + Math.min(gc, cols-1)];
-      if (isNaN(v)) { imgData.data[idx4+3]=0; continue; }
-      const t = (v - minElev) / (maxElev - minElev || 1);
-      const [r, g, b] = elevColor(t, theme);
-      imgData.data[idx4]=r; imgData.data[idx4+1]=g; imgData.data[idx4+2]=b; imgData.data[idx4+3]=255;
+      const v = elevData[gr * cols + gc];
+      if (isNaN(v)) {
+        // 구역계 밖 — 회색 반투명 배경
+        imgData.data[idx4]=60; imgData.data[idx4+1]=60; imgData.data[idx4+2]=70; imgData.data[idx4+3]=180;
+      } else {
+        // 구역계 안 — 표고 색상
+        const t = (v - minElev) / (maxElev - minElev || 1);
+        const [r, g, b] = elevColor(t, theme);
+        imgData.data[idx4]=r; imgData.data[idx4+1]=g; imgData.data[idx4+2]=b; imgData.data[idx4+3]=255;
+      }
     }
   }
   ctx.putImageData(imgData, 0, 0);
+
+  // ── 구역계 경계선 오버레이 ──
+  drawZoneBoundary(ctx, toCanvasX, toCanvasY);
+
+  // ── 컬러바 + 타이틀 ──
   drawColorbar(ctx, W, H, theme, 'elevation');
-  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
   ctx.font = 'bold 12px "DM Mono", monospace';
   ctx.fillText('DEM — 표고분포도', 12, 20);
   ctx.font = '10px "DM Mono", monospace';
-  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
   ctx.fillText(`min: ${minElev.toFixed(1)}m   max: ${maxElev.toFixed(1)}m`, 12, 36);
 }
 
@@ -1802,31 +1823,76 @@ function renderSlopeCanvas(grades, total, slopeData, cols, rows, thresholds) {
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
   ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = '#1a1a2e';
+  ctx.fillStyle = '#2a2a3e';
   ctx.fillRect(0, 0, W, H);
+
+  const grid = _elevGrid;
+  const gxmin = grid.xmin, gymin = grid.ymin;
+  const gxmax = gxmin + cols * grid.cellSize;
+  const gymax = gymin + rows * grid.cellSize;
+  const toCanvasX = x => (x - gxmin) / (gxmax - gxmin) * W;
+  const toCanvasY = y => (1 - (y - gymin) / (gymax - gymin)) * H;
 
   const slopeColors = grades.map(g => hexToRgb(g.color));
   const imgData = ctx.createImageData(W, H);
   for (let py = 0; py < H; py++) {
     for (let px = 0; px < W; px++) {
-      const gc = Math.floor(px / W * cols);
-      const gr = Math.floor((1 - py / H) * rows);
+      const gc = Math.min(Math.floor(px / W * cols), cols - 1);
+      const gr = Math.min(Math.floor((1 - py / H) * rows), rows - 1);
       const idx4 = (py * W + px) * 4;
-      const sv = slopeData[Math.min(gr, rows-1) * cols + Math.min(gc, cols-1)];
-      if (isNaN(sv) || sv < 0) { imgData.data[idx4+3]=0; continue; }
-      let gi = thresholds.length - 1;
-      for (let k = 0; k < thresholds.length; k++) {
-        if (sv < (thresholds[k+1] ?? 999)) { gi = k; break; }
+      const sv = slopeData[gr * cols + gc];
+      if (isNaN(sv) || sv < 0) {
+        // 구역계 밖 — 회색 반투명
+        imgData.data[idx4]=60; imgData.data[idx4+1]=60; imgData.data[idx4+2]=70; imgData.data[idx4+3]=180;
+      } else {
+        let gi = thresholds.length - 1;
+        for (let k = 0; k < thresholds.length; k++) {
+          if (sv < (thresholds[k+1] ?? 999)) { gi = k; break; }
+        }
+        const [r, g, b] = slopeColors[Math.min(gi, slopeColors.length-1)];
+        imgData.data[idx4]=r; imgData.data[idx4+1]=g; imgData.data[idx4+2]=b; imgData.data[idx4+3]=255;
       }
-      const [r, g, b] = slopeColors[Math.min(gi, slopeColors.length-1)];
-      imgData.data[idx4]=r; imgData.data[idx4+1]=g; imgData.data[idx4+2]=b; imgData.data[idx4+3]=255;
     }
   }
   ctx.putImageData(imgData, 0, 0);
+
+  // ── 구역계 경계선 오버레이 ──
+  drawZoneBoundary(ctx, toCanvasX, toCanvasY);
+
   drawSlopeLegend(ctx, W, H, grades, total);
-  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
   ctx.font = 'bold 12px "DM Mono", monospace';
   ctx.fillText('경사도 분포도', 12, 20);
+}
+
+// ── 구역계 경계선 캔버스에 그리기 ──────────────────────
+function drawZoneBoundary(ctx, toCanvasX, toCanvasY) {
+  const zoneGeoJSON = zoneFile?._parsedGeoJSON;
+  if (!zoneGeoJSON || !zoneGeoJSON.features) return;
+
+  ctx.save();
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth   = 2;
+  // 이점쇄선: 선-공백-점-공백-점-공백
+  ctx.setLineDash([12, 4, 2, 4, 2, 4]);
+  ctx.lineDashOffset = 0;
+  ctx.shadowColor = 'rgba(0,0,0,0.8)';
+  ctx.shadowBlur  = 3;
+
+  zoneGeoJSON.features.forEach(f => {
+    const rings = extractRings(f);
+    rings.forEach(ring => {
+      if (ring.length < 2) return;
+      ctx.beginPath();
+      ring.forEach(([x, y], idx) => {
+        const cx = toCanvasX(x), cy = toCanvasY(y);
+        idx === 0 ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
+      });
+      ctx.closePath();
+      ctx.stroke();
+    });
+  });
+  ctx.restore();
 }
 
 function elevColor(t, theme) {
