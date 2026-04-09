@@ -1575,6 +1575,8 @@ function applyZoneMask(grid, zoneGeoJSON) {
 
 // ─── 분석 실행 ────────────────────────────────────────
 let _elevGrid = null, _slopeData = null, _analysisResult = null;
+let _rawElevData = null;  // 클리핑 전 원본 표고 데이터
+let _rawSlopeData = null; // 원본 경사 데이터 (전체 DEM 기준)
 
 async function runAnalysis() {
   if (!topoFile || !zoneFile) return;
@@ -1609,7 +1611,11 @@ async function runAnalysis() {
       }
       if (!_elevGrid) throw new Error('DEM 파싱 실패');
 
-      // 구역계 클리핑 적용
+      // ── 원본 데이터 보존 (렌더링에서 DEM 전체 표현용) ──
+      _rawElevData  = new Float32Array(_elevGrid.data); // 클리핑 전 원본
+      _rawSlopeData = computeSlopeGrid(_elevGrid);      // 전체 기준 경사
+
+      // 구역계 클리핑 적용 (통계 계산용)
       setProgress('구역계 클리핑 중...', 70);
       await tick();
       const zoneGeoJSON = zoneFile?._parsedGeoJSON;
@@ -1621,7 +1627,7 @@ async function runAnalysis() {
 
       setProgress('경사도 계산 중...', 80);
       await tick();
-      _slopeData = computeSlopeGrid(_elevGrid);
+      _slopeData = computeSlopeGrid(_elevGrid); // 구역계 기준 (통계용)
 
     } else {
       // ── DXF 모드: 등고선 파싱 + IDW 보간 ──
@@ -1817,7 +1823,8 @@ function renderSlopeTable(grades, total) {
   `;
 }
 
-// ── 구역계 내부 bbox 계산 ────────────────────────────────
+// ─── 캔버스 렌더링 (실제 데이터 기반) ──────────────────
+// ── 구역계 내부 bbox 계산 ──────────────────────────────
 function getZoneBbox() {
   const zoneGeoJSON = zoneFile?._parsedGeoJSON;
   if (!zoneGeoJSON || !zoneGeoJSON.features) return null;
@@ -1828,12 +1835,10 @@ function getZoneBbox() {
     if(x<xmin)xmin=x; if(x>xmax)xmax=x;
     if(y<ymin)ymin=y; if(y>ymax)ymax=y;
   }));
-  // 여백 10% 추가
   const padX = (xmax-xmin)*0.1, padY = (ymax-ymin)*0.1;
   return { xmin:xmin-padX, xmax:xmax+padX, ymin:ymin-padY, ymax:ymax+padY };
 }
 
-// ─── 캔버스 렌더링 (실제 데이터 기반) ──────────────────
 function renderDEMCanvas(theme, elevData, cols, rows, minElev, maxElev) {
   const canvas = document.getElementById('canvasDEM');
   const ctx = canvas.getContext('2d');
