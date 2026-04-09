@@ -1400,27 +1400,33 @@ async function parseGeoTIFF(file) {
   const width  = image.getWidth();
   const height = image.getHeight();
   const bbox   = image.getBoundingBox(); // [xmin, ymin, xmax, ymax]
-  const rasters = await image.readRasters({ interleave: true });
 
-  // 32bit float 표고값 읽기
-  const nodata = image.getGDALNoData() ?? -9999;
+  // 단일 밴드로 읽기 (interleave 없이)
+  const rasters = await image.readRasters();
+  const band = rasters[0]; // 첫 번째 밴드
+
+  const nodataRaw = image.getGDALNoData();
+  const nodata    = nodataRaw !== null && nodataRaw !== undefined ? Number(nodataRaw) : null;
   const cellSizeX = (bbox[2] - bbox[0]) / width;
   const cellSizeY = (bbox[3] - bbox[1]) / height;
+
+  console.log(`[GeoTIFF] ${width}×${height}, nodata=${nodata}, bands=${rasters.length}`);
 
   const data = new Float32Array(width * height);
   for (let row = 0; row < height; row++) {
     for (let col = 0; col < width; col++) {
-      const v = rasters[row * width + col];
-      // GeoTIFF는 위→아래 순서, 내부는 아래→위로 저장
+      const v   = band[row * width + col];
+      // GeoTIFF는 위→아래, 내부는 아래→위로 저장
       const idx = (height - 1 - row) * width + col;
-      data[idx] = (v === nodata || isNaN(v)) ? NaN : v;
+      // nodata 판별 (float32 오차 허용)
+      const isNodata = nodata !== null && Math.abs(v - nodata) < 0.001;
+      data[idx] = (isNodata || !isFinite(v)) ? NaN : v;
     }
   }
 
   let mn=Infinity, mx=-Infinity, cnt=0;
   data.forEach(v => { if(!isNaN(v)){ if(v<mn)mn=v; if(v>mx)mx=v; cnt++; }});
 
-  console.log(`[GeoTIFF] ${width}×${height} 격자, 해상도 ${cellSizeX.toFixed(1)}×${cellSizeY.toFixed(1)}m`);
   console.log(`[GeoTIFF] bbox: ${bbox.map(v=>v.toFixed(1)).join(', ')}`);
   console.log(`[GeoTIFF] 표고 범위: ${mn.toFixed(1)}~${mx.toFixed(1)}m, 유효셀 ${cnt.toLocaleString()}개`);
 
