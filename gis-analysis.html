@@ -1461,8 +1461,8 @@ async function runAnalysis() {
       setProgress('DEM 파일 읽는 중...', 15);
       await tick();
 
-      // 파일 앞 4바이트로 TIFF 여부 판별 (II = little-endian, MM = big-endian)
-      const header = await file.slice(0, 4).arrayBuffer();
+      // 파일 앞 4바이트로 TIFF 여부 판별
+      const header = await topoFile.slice(0, 4).arrayBuffer();
       const bytes  = new Uint8Array(header);
       const isTIFF = (bytes[0] === 0x49 && bytes[1] === 0x49) ||  // II (little-endian)
                      (bytes[0] === 0x4D && bytes[1] === 0x4D);     // MM (big-endian)
