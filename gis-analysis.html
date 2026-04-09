@@ -1512,39 +1512,58 @@ function applyZoneMask(grid, zoneGeoJSON) {
   if (!zoneGeoJSON || !zoneGeoJSON.features || zoneGeoJSON.features.length === 0) return grid;
 
   const { data, cols, rows, xmin, ymin, cellSize } = grid;
-  const masked = new Float32Array(data); // 복사본
+  const masked = new Float32Array(data);
 
-  // 구역계 좌표계가 DEM과 동일하다고 가정 (모두 5174 or 5186)
-  // 모든 feature의 외부 링 수집
   const rings = zoneGeoJSON.features.flatMap(f => extractRings(f));
   if (rings.length === 0) return grid;
 
-  // 구역계 bbox 계산 (빠른 사전 필터용)
+  // 구역계 bbox
   let bxmin=Infinity, bxmax=-Infinity, bymin=Infinity, bymax=-Infinity;
   rings.forEach(ring => ring.forEach(([x, y]) => {
     if(x<bxmin)bxmin=x; if(x>bxmax)bxmax=x;
     if(y<bymin)bymin=y; if(y>bymax)bymax=y;
   }));
 
-  let clipped = 0;
+  // DEM bbox
+  const dxmin = xmin, dxmax = xmin + cols * cellSize;
+  const dymin = ymin, dymax = ymin + rows * cellSize;
+
+  console.log(`[CLIP] DEM bbox: ${dxmin.toFixed(0)},${dymin.toFixed(0)} ~ ${dxmax.toFixed(0)},${dymax.toFixed(0)}`);
+  console.log(`[CLIP] 구역계 bbox: ${bxmin.toFixed(0)},${bymin.toFixed(0)} ~ ${bxmax.toFixed(0)},${bymax.toFixed(0)}`);
+
+  // 좌표계 불일치 감지 — bbox가 겹치지 않으면 클리핑 생략
+  const noOverlap = bxmax < dxmin || bxmin > dxmax || bymax < dymin || bymin > dymax;
+  if (noOverlap) {
+    console.warn('[CLIP] ⚠️ DEM과 구역계 bbox가 겹치지 않습니다 — 좌표계를 확인해주세요. 클리핑 생략.');
+    showToast('⚠️ DEM과 구역계 좌표계가 다릅니다 — 클리핑 생략');
+    return grid;
+  }
+
+  let clipped = 0, inside = 0;
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const idx = r * cols + c;
       if (isNaN(masked[idx])) continue;
-      // 셀 중심 좌표
       const cx = xmin + (c + 0.5) * cellSize;
       const cy = ymin + (r + 0.5) * cellSize;
-      // bbox 사전 필터
       if (cx < bxmin || cx > bxmax || cy < bymin || cy > bymax) {
         masked[idx] = NaN; clipped++; continue;
       }
-      // 폴리곤 내부 판별 (외부 링 기준)
-      const inside = rings.some(ring => pointInPolygon(cx, cy, ring));
-      if (!inside) { masked[idx] = NaN; clipped++; }
+      const isInside = rings.some(ring => pointInPolygon(cx, cy, ring));
+      if (!isInside) { masked[idx] = NaN; clipped++; }
+      else inside++;
     }
   }
 
-  console.log(`[CLIP] 클리핑 완료: ${clipped.toLocaleString()}셀 제거, 유효 ${(rows*cols-clipped).toLocaleString()}셀 남음`);
+  console.log(`[CLIP] 완료 — 내부: ${inside.toLocaleString()}셀, 제거: ${clipped.toLocaleString()}셀`);
+
+  // 클리핑 후 유효셀이 너무 적으면 원본 반환
+  if (inside < 10) {
+    console.warn('[CLIP] ⚠️ 클리핑 후 유효셀이 너무 적습니다 — 원본 사용');
+    showToast('⚠️ 클리핑 결과가 비어있습니다 — 원본 DEM 사용');
+    return grid;
+  }
+
   return { ...grid, data: masked };
 }
 
