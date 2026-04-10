@@ -2131,15 +2131,21 @@ function calcElevGradeAreas(elevPolys, grades, cellArea) {
 function renderElevLegend(grades, total) {
   const el = document.getElementById('elevLegend');
   if (!el) return;
-  // 경사도 범례와 동일한 slope-item 구조 사용
-  el.innerHTML = grades.map(g => `
-    <div class="slope-item" style="border-left:4px solid ${g.color};background:rgba(255,255,255,0.05)">
+  el.innerHTML = grades.map(g => {
+    // g.color는 'rgb(r,g,b)' 형식 → 연한 배경색 생성
+    const m = g.color.match(/rgb\((\d+),(\d+),(\d+)\)/);
+    const [r, gv, b] = m ? [m[1], m[2], m[3]] : [200, 200, 200];
+    const bgColor     = `rgba(${r},${gv},${b},0.15)`;
+    const borderColor = `rgba(${r},${gv},${b},0.5)`;
+    const textColor   = g.color;
+    return `
+    <div class="slope-item" style="background:${bgColor};border-color:${borderColor};color:${textColor}">
       <div class="s-deg">${g.range}</div>
-      <div class="s-name">${g.label}</div>
+      <div class="s-name" style="color:var(--ink2)">${g.label}</div>
       <div class="s-pct">${total > 0 ? ((g.area / total) * 100).toFixed(1) : '0.0'}%</div>
       <div class="s-area">${Math.round(g.area).toLocaleString()}㎡</div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 function renderElevTable(grades, total) {
