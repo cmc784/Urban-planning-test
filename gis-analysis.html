@@ -542,6 +542,16 @@ canvas { border-radius:6px; max-width:100%; }
                 style="width:76px;padding:4px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:'DM Mono',monospace;outline:none"
                 oninput="syncLineColorPicker();redrawCanvases()">
             </div>
+            <!-- 범례 표시 토글 -->
+            <span style="font-size:12px;font-weight:700;color:var(--ink2);white-space:nowrap">📋 범례</span>
+            <div style="display:flex;gap:6px">
+              <button type="button" id="btnLegendDEM"
+                style="padding:4px 12px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;background:var(--green);color:white;border:1.5px solid var(--green)"
+                onclick="toggleLegend('DEM')">표고 ON</button>
+              <button type="button" id="btnLegendSlope"
+                style="padding:4px 12px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;background:var(--green);color:white;border:1.5px solid var(--green)"
+                onclick="toggleLegend('Slope')">경사 ON</button>
+            </div>
           </div>
         </div>
 
@@ -1582,7 +1592,7 @@ function renderDEMFromPolygons(theme, clippedPolys, minElev, maxElev) {
       }).length * elevCellArea;
     });
   }
-  drawElevGradeLegend(ctx, W, H, elevGradesForLegend);
+  if (_legendVisible.DEM) drawElevGradeLegend(ctx, W, H, elevGradesForLegend);
   ctx.fillStyle='rgba(255,255,255,0.9)';
   ctx.font='bold 15px "DM Mono",monospace';
   ctx.fillText('DEM — 표고분포도', 16, 28);
@@ -1648,7 +1658,7 @@ function renderSlopeFromPolygons(grades, total, clippedPolys, thresholds) {
   // ③ 구역계 경계선
   drawZoneBoundary(ctx, toCanvasX, toCanvasY);
 
-  drawSlopeLegend(ctx, W, H, grades, total);
+  if (_legendVisible.Slope) drawSlopeLegend(ctx, W, H, grades, total);
   ctx.fillStyle='rgba(255,255,255,0.9)';
   ctx.font='bold 15px "DM Mono",monospace';
   ctx.fillText('경사도 분포도', 16, 28);
@@ -1918,6 +1928,21 @@ function renderSlopeTable(grades, total) {
       <td style="font-family:'DM Mono',monospace;font-weight:700;color:var(--green)">100.0%</td>
     </tr>
   `;
+}
+
+// ─── 범례 표시 토글 ──────────────────────────────────────
+const _legendVisible = { DEM: true, Slope: true };
+
+function toggleLegend(key) {
+  _legendVisible[key] = !_legendVisible[key];
+  const btn = document.getElementById('btnLegend' + key);
+  const label = key === 'DEM' ? '표고' : '경사';
+  const on = _legendVisible[key];
+  btn.textContent = label + (on ? ' ON' : ' OFF');
+  btn.style.background    = on ? 'var(--green)' : 'white';
+  btn.style.color         = on ? 'white' : 'var(--ink3)';
+  btn.style.borderColor   = on ? 'var(--green)' : 'var(--border)';
+  triggerRerender();
 }
 
 // ─── 캔버스 확대·축소·이동 ───────────────────────────────
