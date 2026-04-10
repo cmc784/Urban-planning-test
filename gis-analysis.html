@@ -1734,6 +1734,7 @@ function polygonizeDEM(grid, mode = 'elev', slopeGrid = null) {
       polys.push(poly);
     }
   }
+  console.log(`[POLY:${mode}] ${polys.length.toLocaleString()}개 폴리곤 생성, bbox: ${xmin.toFixed(0)},${ymin.toFixed(0)} ~ ${(xmin+cols*cellSize).toFixed(0)},${(ymin+rows*cellSize).toFixed(0)}`);
   return polys;
 }
 
@@ -1741,30 +1742,42 @@ function polygonizeDEM(grid, mode = 'elev', slopeGrid = null) {
 // 각 폴리곤의 중심점이 구역계 안에 있는지 판별 (Point-in-Polygon)
 function clipPolygonsByZone(polys, zoneGeoJSON) {
   const rings = zoneGeoJSON.features.flatMap(f => extractRings(f));
-  if (rings.length === 0) return polys;
+  if (rings.length === 0) { console.warn('[CLIP] 구역계 링 없음'); return polys; }
 
-  // bbox 사전 필터
+  // 구역계 bbox
   let bxmin=Infinity, bxmax=-Infinity, bymin=Infinity, bymax=-Infinity;
   rings.forEach(ring => ring.forEach(([x,y]) => {
     if(x<bxmin)bxmin=x; if(x>bxmax)bxmax=x;
     if(y<bymin)bymin=y; if(y>bymax)bymax=y;
   }));
 
+  // DEM 전체 bbox (폴리곤 배열에서 계산)
+  let dxmin=Infinity, dxmax=-Infinity, dymin=Infinity, dymax=-Infinity;
+  polys.forEach(p => {
+    if(p.xmin<dxmin)dxmin=p.xmin; if(p.xmax>dxmax)dxmax=p.xmax;
+    if(p.ymin<dymin)dymin=p.ymin; if(p.ymax>dymax)dymax=p.ymax;
+  });
+
+  console.log(`[CLIP] DEM bbox: ${dxmin.toFixed(0)},${dymin.toFixed(0)} ~ ${dxmax.toFixed(0)},${dymax.toFixed(0)}`);
+  console.log(`[CLIP] 구역계 bbox: ${bxmin.toFixed(0)},${bymin.toFixed(0)} ~ ${bxmax.toFixed(0)},${bymax.toFixed(0)}`);
+
   // 좌표계 불일치 감지
-  const firstPoly = polys[0];
-  const noOverlap = bxmax < firstPoly.xmin || bxmin > firstPoly.xmax ||
-                    bymax < firstPoly.ymin || bymin > firstPoly.ymax;
+  const noOverlap = bxmax < dxmin || bxmin > dxmax || bymax < dymin || bymin > dymax;
   if (noOverlap) {
-    showToast('⚠️ DEM과 구역계 좌표계가 다릅니다');
-    return polys;
+    console.warn('[CLIP] ⚠️ DEM과 구역계 bbox가 겹치지 않음 — 좌표계 확인 필요');
+    showToast('⚠️ DEM과 구역계 좌표계가 다릅니다 — 클리핑 생략');
+    return [];
   }
 
-  return polys.filter(p => {
+  const result = polys.filter(p => {
     const cx = (p.xmin + p.xmax) / 2;
     const cy = (p.ymin + p.ymax) / 2;
     if (cx < bxmin || cx > bxmax || cy < bymin || cy > bymax) return false;
     return rings.some(ring => pointInPolygon(cx, cy, ring));
   });
+
+  console.log(`[CLIP] 입력 ${polys.length.toLocaleString()}개 → 클리핑 후 ${result.length.toLocaleString()}개`);
+  return result;
 }
 
 // ─── 폴리곤 기반 결과 표시 ───────────────────────────────
