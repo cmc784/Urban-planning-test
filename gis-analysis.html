@@ -2188,13 +2188,163 @@ function roundRect(ctx,x,y,w,h,r) {
 
 // ─── 다운로드 ─────────────────────────────────────────
 function downloadCanvas(id, name) {
-  const canvas = document.getElementById(id);
+  if (!_clippedPolygons || !_analysisResult) {
+    // 분석 전이면 현재 캔버스 그대로 저장
+    const canvas = document.getElementById(id);
+    const a = document.createElement('a');
+    const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
+    a.download = `${name}_${today}.png`;
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+    return;
+  }
+
+  const SCALE = 3; // 화면 대비 3배 고해상도
+  const srcCanvas = document.getElementById(id);
+  const W = srcCanvas.width  * SCALE;
+  const H = srcCanvas.height * SCALE;
+
+  // 오프스크린 캔버스 생성
+  const offscreen = document.createElement('canvas');
+  offscreen.width  = W;
+  offscreen.height = H;
+
+  const { grades, minElev, maxElev, totalArea } = _analysisResult;
+  const theme = document.getElementById('colorTheme').value;
+  const std   = document.getElementById('slopeStandard').value;
+  const gradeThresh = getSlopeThresholds() || getGradeThresholds(std);
+
+  // 오프스크린 캔버스에 고해상도 렌더링
+  if (id === 'canvasDEM') {
+    renderDEMToCanvas(offscreen, theme, _clippedPolygons.elev, minElev, maxElev);
+  } else {
+    renderSlopeToCanvas(offscreen, grades, totalArea, _clippedPolygons.slope, gradeThresh);
+  }
+
   const a = document.createElement('a');
-  const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
   a.download = `${name}_${today}.png`;
-  a.href = canvas.toDataURL('image/png');
+  a.href = offscreen.toDataURL('image/png');
   a.click();
-  showToast(`📥 ${name}.png 다운로드 완료`);
+  showToast(`📥 ${name} (${W}×${H}px) 다운로드 완료`);
+}
+
+// ── 오프스크린 캔버스용 렌더 함수 (캔버스 인수 받음) ────
+function getRenderBboxForCanvas(W, H) {
+  const grid = _elevGrid;
+  let rxmin = grid.xmin, rxmax = grid.xmin + grid.cols * grid.cellSize;
+  let rymin = grid.ymin, rymax = grid.ymin + grid.rows * grid.cellSize;
+  const dataAR = (rxmax-rxmin)/(rymax-rymin);
+  const canvAR = W/H;
+  if (dataAR > canvAR) {
+    const pad = ((rxmax-rxmin)/canvAR - (rymax-rymin))/2;
+    rymin -= pad; rymax += pad;
+  } else {
+    const pad = ((rymax-rymin)*canvAR - (rxmax-rxmin))/2;
+    rxmin -= pad; rxmax += pad;
+  }
+  return { xmin:rxmin, xmax:rxmax, ymin:rymin, ymax:rymax };
+}
+
+function renderDEMToCanvas(canvas, theme, clippedPolys, minElev, maxElev) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = '#2a2a3e';
+  ctx.fillRect(0,0,W,H);
+
+  const rb = getRenderBboxForCanvas(W, H);
+  const toX = x => (x-rb.xmin)/(rb.xmax-rb.xmin)*W;
+  const toY = y => (1-(y-rb.ymin)/(rb.ymax-rb.ymin))*H;
+
+  // 배경 DEM
+  if (_rawElevData && _elevGrid) {
+    const { cols, rows, xmin, ymin, cellSize } = _elevGrid;
+    const imgData = ctx.createImageData(W, H);
+    for (let py=0;py<H;py++) for (let px=0;px<W;px++) {
+      const wx=rb.xmin+(px/W)*(rb.xmax-rb.xmin), wy=rb.ymin+(1-py/H)*(rb.ymax-rb.ymin);
+      const gc=Math.floor((wx-xmin)/cellSize), gr=Math.floor((wy-ymin)/cellSize);
+      const i4=(py*W+px)*4;
+      if(gc<0||gc>=cols||gr<0||gr>=rows){imgData.data[i4+3]=0;continue;}
+      const v=_rawElevData[gr*cols+gc];
+      if(isNaN(v)){imgData.data[i4+3]=0;continue;}
+      const t=1-(v-minElev)/(maxElev-minElev||1);
+      const [r,g,b]=elevColor(Math.max(0,Math.min(1,t)),theme);
+      imgData.data[i4]=r;imgData.data[i4+1]=g;imgData.data[i4+2]=b;imgData.data[i4+3]=255;
+    }
+    ctx.putImageData(imgData,0,0);
+  }
+  // 클리핑 폴리곤
+  clippedPolys.forEach(p => {
+    const t=1-(p.elev-minElev)/(maxElev-minElev||1);
+    const [r,g,b]=elevColor(Math.max(0,Math.min(1,t)),theme);
+    ctx.fillStyle=`rgb(${r},${g},${b})`;
+    const px1=toX(p.xmin),py1=toY(p.ymax);
+    ctx.fillRect(px1,py1,Math.max(1,toX(p.xmax)-px1),Math.max(1,toY(p.ymin)-py1));
+  });
+  drawZoneBoundary(ctx, toX, toY);
+  // 표고 등급 범례
+  const elevGradesL = getElevGrades(minElev, maxElev, theme);
+  if(_analysisResult){
+    const ca=clippedPolys.length>0?(clippedPolys[0].xmax-clippedPolys[0].xmin)*(clippedPolys[0].ymax-clippedPolys[0].ymin):100;
+    elevGradesL.forEach(g=>{
+      g.area=clippedPolys.filter((p,idx)=>{
+        const isLast=idx===elevGradesL.length-1;
+        return isLast?p.elev>=g.lo&&p.elev<=g.hi:p.elev>=g.lo&&p.elev<g.hi;
+      }).length*ca;
+    });
+  }
+  drawElevGradeLegend(ctx, W, H, elevGradesL);
+  ctx.fillStyle='rgba(255,255,255,0.9)';ctx.font=`bold ${Math.round(15*W/860)}px "DM Mono",monospace`;
+  ctx.fillText('DEM — 표고분포도',16,28*H/480);
+  ctx.font=`${Math.round(12*W/860)}px "DM Mono",monospace`;ctx.fillStyle='rgba(255,255,255,0.6)';
+  ctx.fillText(`구역계 기준  ${minElev.toFixed(1)}m ~ ${maxElev.toFixed(1)}m`,16,46*H/480);
+}
+
+function renderSlopeToCanvas(canvas, grades, total, clippedPolys, thresholds) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#2a2a3e';ctx.fillRect(0,0,W,H);
+
+  const rb = getRenderBboxForCanvas(W, H);
+  const toX = x => (x-rb.xmin)/(rb.xmax-rb.xmin)*W;
+  const toY = y => (1-(y-rb.ymin)/(rb.ymax-rb.ymin))*H;
+  const slopeColors = grades.map(g => hexToRgb(g.color));
+
+  // 배경 경사
+  if (_rawSlopeData && _elevGrid) {
+    const { cols, rows, xmin, ymin, cellSize } = _elevGrid;
+    const imgData = ctx.createImageData(W, H);
+    for (let py=0;py<H;py++) for (let px=0;px<W;px++) {
+      const wx=rb.xmin+(px/W)*(rb.xmax-rb.xmin), wy=rb.ymin+(1-py/H)*(rb.ymax-rb.ymin);
+      const gc=Math.floor((wx-xmin)/cellSize), gr=Math.floor((wy-ymin)/cellSize);
+      const i4=(py*W+px)*4;
+      if(gc<0||gc>=cols||gr<0||gr>=rows){imgData.data[i4+3]=0;continue;}
+      const sv=_rawSlopeData[gr*cols+gc];
+      if(isNaN(sv)||sv<0){imgData.data[i4+3]=0;continue;}
+      let gi=thresholds.length-1;
+      for(let k=0;k<thresholds.length;k++){if(sv<(thresholds[k+1]??999)){gi=k;break;}}
+      const [r,g,b]=slopeColors[Math.min(gi,slopeColors.length-1)];
+      imgData.data[i4]=r;imgData.data[i4+1]=g;imgData.data[i4+2]=b;imgData.data[i4+3]=255;
+    }
+    ctx.putImageData(imgData,0,0);
+  }
+  // 클리핑 폴리곤
+  clippedPolys.forEach(p => {
+    const sv=p.slope;
+    if(isNaN(sv)||sv<0)return;
+    let gi=thresholds.length-1;
+    for(let k=0;k<thresholds.length;k++){if(sv<(thresholds[k+1]??999)){gi=k;break;}}
+    const [r,g,b]=slopeColors[Math.min(gi,slopeColors.length-1)];
+    ctx.fillStyle=`rgb(${r},${g},${b})`;
+    const px1=toX(p.xmin),py1=toY(p.ymax);
+    ctx.fillRect(px1,py1,Math.max(1,toX(p.xmax)-px1),Math.max(1,toY(p.ymin)-py1));
+  });
+  drawZoneBoundary(ctx, toX, toY);
+  drawSlopeLegend(ctx, W, H, grades, total);
+  ctx.fillStyle='rgba(255,255,255,0.9)';ctx.font=`bold ${Math.round(15*W/860)}px "DM Mono",monospace`;
+  ctx.fillText('경사도 분포도',16,28*H/480);
 }
 
 function downloadSlopeCSV() {
