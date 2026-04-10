@@ -1780,6 +1780,32 @@ function clipPolygonsByZone(polys, zoneGeoJSON) {
   return result;
 }
 
+// ─── 신발끈 공식 (Shoelace Formula) — 폴리곤 면적 계산 ──
+function calcPolygonArea(ring) {
+  let area = 0;
+  const n = ring.length;
+  for (let i = 0; i < n; i++) {
+    const [x1, y1] = ring[i];
+    const [x2, y2] = ring[(i + 1) % n];
+    area += x1 * y2 - x2 * y1;
+  }
+  return Math.abs(area) / 2;
+}
+
+function calcZoneArea(zoneGeoJSON) {
+  if (!zoneGeoJSON || !zoneGeoJSON.features) return null;
+  let total = 0;
+  zoneGeoJSON.features.forEach(f => {
+    const rings = extractRings(f);
+    rings.forEach((ring, idx) => {
+      const a = calcPolygonArea(ring);
+      // 첫 번째 링(외부 링) 더하기, 나머지(내부 홀) 빼기
+      total += idx === 0 ? a : -a;
+    });
+  });
+  return Math.abs(total);
+}
+
 // ─── 폴리곤 기반 결과 표시 ───────────────────────────────
 function showResultsFromPolygons(elevPolys, slopePolys) {
   const std    = document.getElementById('slopeStandard').value;
@@ -1798,10 +1824,17 @@ function showResultsFromPolygons(elevPolys, slopePolys) {
   slopeVals.forEach(v => sumSlope+=v);
   const avgSlope = slopeVals.length > 0 ? sumSlope/slopeVals.length : 0;
 
-  // 면적 (경사 폴리곤 기준 — 구역계 내 실제 셀)
+  // 면적 — 구역계 폴리곤 신발끈 공식으로 정확 계산
+  const zoneArea = zoneFile?._parsedGeoJSON
+    ? calcZoneArea(zoneFile._parsedGeoJSON)
+    : null;
   const cellArea  = slopePolys.length > 0
     ? (slopePolys[0].xmax-slopePolys[0].xmin) * (slopePolys[0].ymax-slopePolys[0].ymin) : 0;
-  const totalArea = slopePolys.length * cellArea;
+  // 구역계 면적이 계산됐으면 사용, 없으면 셀 기반 면적 사용
+  const totalArea = zoneArea ?? (slopePolys.length * cellArea);
+
+  console.log(`[AREA] 구역계 폴리곤 면적: ${zoneArea ? zoneArea.toFixed(2) : '미계산'}㎡`);
+  console.log(`[AREA] 셀 기반 면적: ${(slopePolys.length * cellArea).toFixed(2)}㎡`);
 
   // 경사 등급별 면적
   const gradeAreas = grades.map((g, i) => {
