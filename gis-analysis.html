@@ -550,19 +550,45 @@ canvas { border-radius:6px; max-width:100%; }
           <div class="img-card">
             <div class="img-card-header">
               <span class="img-card-title">📊 표고 분포도 (DEM)</span>
-              <button class="btn-sm" onclick="downloadCanvas('canvasDEM','표고분포도')">💾 PNG</button>
+              <div style="display:flex;gap:6px;align-items:center">
+                <button class="btn-sm" onclick="zoomCanvas('DEM', 1.3)" title="확대">🔍+</button>
+                <button class="btn-sm" onclick="zoomCanvas('DEM', 0.77)" title="축소">🔍-</button>
+                <button class="btn-sm" onclick="resetZoom('DEM')" title="초기화">↺</button>
+                <button class="btn-sm" onclick="downloadCanvas('canvasDEM','표고분포도')">💾 PNG</button>
+              </div>
             </div>
-            <div class="img-canvas-wrap">
-              <canvas id="canvasDEM" width="860" height="480"></canvas>
+            <div class="img-canvas-wrap" id="wrapDEM"
+              style="overflow:hidden;cursor:grab;position:relative"
+              onwheel="onCanvasWheel(event,'DEM')"
+              onmousedown="onCanvasDragStart(event,'DEM')"
+              onmousemove="onCanvasDrag(event,'DEM')"
+              onmouseup="onCanvasDragEnd('DEM')"
+              onmouseleave="onCanvasDragEnd('DEM')">
+              <div id="zoomDEM" style="transform-origin:0 0;display:inline-block">
+                <canvas id="canvasDEM" width="860" height="480"></canvas>
+              </div>
             </div>
           </div>
           <div class="img-card">
             <div class="img-card-header">
               <span class="img-card-title">📊 경사도 분포도</span>
-              <button class="btn-sm" onclick="downloadCanvas('canvasSlope','경사도분포도')">💾 PNG</button>
+              <div style="display:flex;gap:6px;align-items:center">
+                <button class="btn-sm" onclick="zoomCanvas('Slope', 1.3)" title="확대">🔍+</button>
+                <button class="btn-sm" onclick="zoomCanvas('Slope', 0.77)" title="축소">🔍-</button>
+                <button class="btn-sm" onclick="resetZoom('Slope')" title="초기화">↺</button>
+                <button class="btn-sm" onclick="downloadCanvas('canvasSlope','경사도분포도')">💾 PNG</button>
+              </div>
             </div>
-            <div class="img-canvas-wrap">
-              <canvas id="canvasSlope" width="860" height="480"></canvas>
+            <div class="img-canvas-wrap" id="wrapSlope"
+              style="overflow:hidden;cursor:grab;position:relative"
+              onwheel="onCanvasWheel(event,'Slope')"
+              onmousedown="onCanvasDragStart(event,'Slope')"
+              onmousemove="onCanvasDrag(event,'Slope')"
+              onmouseup="onCanvasDragEnd('Slope')"
+              onmouseleave="onCanvasDragEnd('Slope')">
+              <div id="zoomSlope" style="transform-origin:0 0;display:inline-block">
+                <canvas id="canvasSlope" width="860" height="480"></canvas>
+              </div>
             </div>
           </div>
         </div>
@@ -1898,7 +1924,77 @@ function renderSlopeTable(grades, total) {
   `;
 }
 
-// ─── 캔버스 렌더링 (실제 데이터 기반) ──────────────────
+// ─── 캔버스 확대·축소·이동 ───────────────────────────────
+const _zoomState = {
+  DEM:   { scale: 1, tx: 0, ty: 0, dragging: false, sx: 0, sy: 0 },
+  Slope: { scale: 1, tx: 0, ty: 0, dragging: false, sx: 0, sy: 0 }
+};
+const ZOOM_MIN = 0.5, ZOOM_MAX = 10;
+
+function applyZoomTransform(key) {
+  const s = _zoomState[key];
+  const el = document.getElementById('zoom' + key);
+  if (!el) return;
+  el.style.transform = `translate(${s.tx}px, ${s.ty}px) scale(${s.scale})`;
+}
+
+function zoomCanvas(key, factor) {
+  const s = _zoomState[key];
+  const wrap = document.getElementById('wrap' + key);
+  const newScale = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, s.scale * factor));
+  // 화면 중심 기준으로 확대
+  const cx = wrap.clientWidth  / 2;
+  const cy = wrap.clientHeight / 2;
+  s.tx = cx - (cx - s.tx) * (newScale / s.scale);
+  s.ty = cy - (cy - s.ty) * (newScale / s.scale);
+  s.scale = newScale;
+  applyZoomTransform(key);
+}
+
+function resetZoom(key) {
+  const s = _zoomState[key];
+  s.scale = 1; s.tx = 0; s.ty = 0;
+  applyZoomTransform(key);
+}
+
+function onCanvasWheel(e, key) {
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.15 : 0.87;
+  const s = _zoomState[key];
+  const wrap = document.getElementById('wrap' + key);
+  const rect = wrap.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const newScale = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, s.scale * factor));
+  s.tx = mx - (mx - s.tx) * (newScale / s.scale);
+  s.ty = my - (my - s.ty) * (newScale / s.scale);
+  s.scale = newScale;
+  applyZoomTransform(key);
+}
+
+function onCanvasDragStart(e, key) {
+  if (e.button !== 0) return;
+  const s = _zoomState[key];
+  s.dragging = true;
+  s.sx = e.clientX - s.tx;
+  s.sy = e.clientY - s.ty;
+  document.getElementById('wrap' + key).style.cursor = 'grabbing';
+}
+
+function onCanvasDrag(e, key) {
+  const s = _zoomState[key];
+  if (!s.dragging) return;
+  s.tx = e.clientX - s.sx;
+  s.ty = e.clientY - s.sy;
+  applyZoomTransform(key);
+}
+
+function onCanvasDragEnd(key) {
+  _zoomState[key].dragging = false;
+  document.getElementById('wrap' + key).style.cursor = 'grab';
+}
+
+
 // ── 구역계 내부 bbox 계산 ──────────────────────────────
 function getZoneBbox() {
   const zoneGeoJSON = zoneFile?._parsedGeoJSON;
