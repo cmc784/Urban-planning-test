@@ -1930,25 +1930,11 @@ function renderDEMFromPolygons(theme, clippedPolys, minElev, maxElev) {
     ctx.putImageData(imgData, 0, 0);
   }
 
-  // ② 클리핑된 폴리곤 — 표고 등급 색상으로 표현
-  const elevGrades = _analysisResult
-    ? getElevGrades(_analysisResult.minElev, _analysisResult.maxElev)
-    : null;
-
+  // ② 클리핑된 폴리곤 — DEM과 동일한 elevColor 그라데이션
   clippedPolys.forEach(p => {
-    let fillColor;
-    if (elevGrades) {
-      // 등급 색상 사용
-      const grade = elevGrades.find((g, i) =>
-        i === elevGrades.length-1 ? p.elev >= g.lo : p.elev >= g.lo && p.elev < g.hi
-      ) || elevGrades[0];
-      fillColor = grade.color;
-    } else {
-      const t = (p.elev - minElev) / (maxElev - minElev || 1);
-      const [r,g,b] = elevColor(Math.max(0,Math.min(1,t)), theme);
-      fillColor = `rgb(${r},${g},${b})`;
-    }
-    ctx.fillStyle = fillColor;
+    const t = (p.elev - minElev) / (maxElev - minElev || 1);
+    const [r,g,b] = elevColor(Math.max(0,Math.min(1,t)), theme);
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
     const px1 = toCanvasX(p.xmin), py1 = toCanvasY(p.ymax);
     const pw  = toCanvasX(p.xmax) - px1;
     const ph  = toCanvasY(p.ymin) - py1;
@@ -1958,13 +1944,8 @@ function renderDEMFromPolygons(theme, clippedPolys, minElev, maxElev) {
   // ③ 구역계 경계선
   drawZoneBoundary(ctx, toCanvasX, toCanvasY);
 
-  // ④ 표고 등급 범례 + 타이틀
-  if (_analysisResult) {
-    const elevGradesLegend = getElevGrades(_analysisResult.minElev, _analysisResult.maxElev);
-    drawElevGradeLegend(ctx, W, H, elevGradesLegend);
-  } else {
-    drawColorbar(ctx, W, H, theme, 'elevation', minElev, maxElev);
-  }
+  // ④ 컬러바 + 타이틀
+  drawColorbar(ctx, W, H, theme, 'elevation', minElev, maxElev);
   ctx.fillStyle='rgba(255,255,255,0.9)';
   ctx.font='bold 15px "DM Mono",monospace';
   ctx.fillText('DEM — 표고분포도', 16, 28);
