@@ -1429,10 +1429,11 @@ function calcZoneArea(zoneGeoJSON) {
 
 // ─── 폴리곤 기반 결과 표시 ───────────────────────────────
 function showResultsFromPolygons(elevPolys, slopePolys) {
-  const std    = document.getElementById('slopeStandard').value;
-  const grades = getSlopeGrades(std);
-  // 사용자 설정 경사 구간 사용
+  const std = document.getElementById('slopeStandard').value;
+  // 사용자 설정 경사 구간 — gradeThresh 먼저 결정
   const gradeThresh = getSlopeThresholds() || getGradeThresholds(std);
+  // grades는 gradeThresh 기준으로 생성 (custom이면 동적 생성)
+  const grades = getSlopeGrades(std);
 
   // 표고 통계 (표고 폴리곤 기준)
   const elevVals = elevPolys.map(p => p.elev).filter(v => !isNaN(v));
@@ -1683,11 +1684,13 @@ function showRecomputeBtn() {
 function getSlopeThresholds() {
   const std = document.getElementById('slopeStandard').value;
   if (std === 'custom') {
-    const raw = document.getElementById('slopeCustomVal').value;
-    const vals = raw.split(',').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
-    if (vals.length >= 2) return vals;
-    showToast('⚠️ 경사 구간값을 올바르게 입력해주세요 (예: 0,5,15,25,30)');
-    return null;
+    const raw  = document.getElementById('slopeCustomVal').value.trim();
+    if (!raw) { showToast('⚠️ 경사 구간값을 입력해주세요 (예: 0,5,15,25,30)'); return null; }
+    let vals = raw.split(',').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
+    if (vals.length < 2) { showToast('⚠️ 최소 2개 이상의 구간값이 필요합니다'); return null; }
+    // 첫 값이 0이 아니면 0 자동 추가
+    if (vals[0] !== 0) vals = [0, ...vals];
+    return vals;
   }
   return getGradeThresholds(std);
 }
@@ -1696,11 +1699,11 @@ function getSlopeThresholds() {
 function getElevGradeCount() {
   const val = document.getElementById('elevGradeCount').value;
   if (val === 'custom') {
-    const raw = document.getElementById('elevCustomVal').value;
+    const raw  = document.getElementById('elevCustomVal').value.trim();
+    if (!raw) { showToast('⚠️ 표고 구간값을 입력해주세요 (예: 100,150,200,250)'); return null; }
     const vals = raw.split(',').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
-    if (vals.length >= 1) return { type: 'custom', breaks: vals };
-    showToast('⚠️ 표고 구간값을 올바르게 입력해주세요 (예: 100,150,200,250)');
-    return null;
+    if (vals.length < 1) { showToast('⚠️ 올바른 표고 구간값을 입력해주세요'); return null; }
+    return { type: 'custom', breaks: vals };
   }
   return { type: 'count', count: parseInt(val) };
 }
@@ -2735,8 +2738,7 @@ function showToast(msg) {
 
 // ─── DOM 준비 후 이벤트 바인딩 ────────────────────────
 document.addEventListener('DOMContentLoaded', function () {
-  // ── elevStandard 선택 이벤트 ──
-  document.getElementById('elevStandard').addEventListener('change', function () { toggleElevCustom(this); });
+  // elevGradeCount change는 onchange 인라인으로 처리됨
 });
 </script>
 </body>
