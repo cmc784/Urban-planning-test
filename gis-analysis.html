@@ -542,6 +542,16 @@ canvas { border-radius:6px; max-width:100%; }
                 style="width:76px;padding:4px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:'DM Mono',monospace;outline:none"
                 oninput="syncLineColorPicker();redrawCanvases()">
             </div>
+            <!-- 선 스타일 -->
+            <span style="font-size:12px;font-weight:700;color:var(--ink2);white-space:nowrap">✏️ 선 스타일</span>
+            <div style="display:flex;gap:6px">
+              <button type="button" id="btnStyleSolid"
+                style="padding:4px 12px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;background:white;color:var(--ink3);border:1.5px solid var(--border)"
+                onclick="setLineStyle('solid')">실선</button>
+              <button type="button" id="btnStyleDash"
+                style="padding:4px 12px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;background:var(--green);color:white;border:1.5px solid var(--green)"
+                onclick="setLineStyle('dash')">이점쇄선</button>
+            </div>
             <!-- 범례 표시 토글 -->
             <span style="font-size:12px;font-weight:700;color:var(--ink2);white-space:nowrap">📋 범례</span>
             <div style="display:flex;gap:6px">
@@ -1932,6 +1942,21 @@ function renderSlopeTable(grades, total) {
 
 // ─── 범례 표시 토글 ──────────────────────────────────────
 const _legendVisible = { DEM: true, Slope: true };
+let _lineStyle = 'dash'; // 'solid' | 'dash'
+
+function setLineStyle(style) {
+  _lineStyle = style;
+  const isSolid = style === 'solid';
+  const btnSolid = document.getElementById('btnStyleSolid');
+  const btnDash  = document.getElementById('btnStyleDash');
+  btnSolid.style.background  = isSolid ? 'var(--green)' : 'white';
+  btnSolid.style.color       = isSolid ? 'white' : 'var(--ink3)';
+  btnSolid.style.borderColor = isSolid ? 'var(--green)' : 'var(--border)';
+  btnDash.style.background   = isSolid ? 'white' : 'var(--green)';
+  btnDash.style.color        = isSolid ? 'var(--ink3)' : 'white';
+  btnDash.style.borderColor  = isSolid ? 'var(--border)' : 'var(--green)';
+  triggerRerender();
+}
 
 function toggleLegend(key) {
   _legendVisible[key] = !_legendVisible[key];
@@ -2224,7 +2249,7 @@ function drawZoneBoundary(ctx, toCanvasX, toCanvasY) {
   ctx.strokeStyle = getZoneLineColor();
   ctx.lineWidth   = getZoneLineWidth();
   // 이점쇄선: 선-공백-점-공백-점-공백
-  ctx.setLineDash([12, 4, 2, 4, 2, 4]);
+  ctx.setLineDash(_lineStyle === 'solid' ? [] : [12, 4, 2, 4, 2, 4]);
   ctx.lineDashOffset = 0;
   ctx.shadowColor = 'rgba(0,0,0,0.8)';
   ctx.shadowBlur  = 3;
