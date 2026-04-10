@@ -313,18 +313,8 @@ canvas { border-radius:6px; max-width:100%; }
 
         <!-- 수치지형도/DEM -->
         <div class="sec-card" style="margin-bottom:0">
-          <div class="sec-card-title"><div class="dot"></div>표고 데이터 파일</div>
-          <!-- 모드 선택 -->
-          <div style="display:flex;gap:6px;margin-bottom:12px">
-            <button type="button" id="btnModeDEM" onclick="setTopoMode('dem')"
-              style="flex:1;padding:6px 8px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;background:var(--green);color:white;border:1.5px solid var(--green)">
-              📊 DEM (권장)
-            </button>
-            <button type="button" id="btnModeDXF" onclick="setTopoMode('dxf')"
-              style="flex:1;padding:6px 8px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;background:white;color:var(--ink3);border:1.5px solid var(--border)">
-              🗺️ DXF 등고선
-            </button>
-          </div>
+          <div class="sec-card-title"><div class="dot"></div>표고 데이터 파일 (DEM)</div>
+
           <div id="topoDropZone" style="border:2px dashed var(--border);border-radius:10px;padding:24px 16px;text-align:center;background:var(--bg);transition:all .2s"
             ondragover="event.preventDefault();this.style.borderColor='var(--green)';this.style.background='var(--green-light)'"
             ondragleave="this.style.borderColor='';this.style.background='var(--bg)'"
@@ -332,7 +322,7 @@ canvas { border-radius:6px; max-width:100%; }
             <div style="font-size:28px;margin-bottom:8px" id="topoIcon">📊</div>
             <div style="font-size:13px;font-weight:700;color:var(--ink2);margin-bottom:4px" id="topoTitle">DEM 파일 업로드</div>
             <div style="font-size:11px;color:var(--ink3);margin-bottom:12px" id="topoDesc">QGIS로 만든 ASCII Grid (.tif/.asc)</div>
-            <input type="file" id="_topoInput" accept=".tif,.asc,.dxf,.zip,.shp,.geojson,.json" multiple
+            <input type="file" id="_topoInput" accept=".tif,.tiff,.asc" multiple
               style="position:fixed;top:-9999px;left:-9999px;opacity:0;width:0;height:0"
               onchange="_onChangeTopo(this)">
             <button type="button" onclick="document.getElementById('_topoInput').click()"
@@ -945,20 +935,12 @@ function _onDropZone(e) {
 }
 
 async function _processTopo(files) {
-  console.log('[TOPO] _processTopo 시작, 파일수:', files.length);
   const exts = files.map(f => f.name.split('.').pop().toLowerCase());
-  let file = files[0];
-  const ext = exts[0];
-  console.log('[TOPO] 확장자:', ext);
+  const file = files[0];
+  const ext  = exts[0];
   try {
-    if (exts.includes('shp')) {
-      const shpFile = files.find(f => f.name.toLowerCase().endsWith('.shp'));
-      topoFileSet = files;
-      await applyTopoFileShpSet(shpFile, files);
-    } else if (['tif','tiff','asc'].includes(ext)) {
-      // DEM 파일 — 직접 topoFile에 저장 (파싱은 runAnalysis에서)
+    if (['tif','tiff','asc'].includes(ext)) {
       topoFile = file;
-      setTopoMode('dem', false); // UI만 DEM 모드로, 파일 초기화 안 함
       document.getElementById('topoIcon').textContent  = '✅';
       document.getElementById('topoTitle').textContent = file.name;
       document.getElementById('topoDesc').textContent  = (file.size/1024/1024).toFixed(1) + 'MB · DEM 파일';
@@ -967,15 +949,10 @@ async function _processTopo(files) {
       setChip('chip-topo', true, file.name);
       checkRunReady();
       showToast('✅ DEM 파일 로드 완료: ' + file.name);
-    } else if (['dxf','geojson','json','zip'].includes(ext)) {
-      console.log('[TOPO] applyTopoFile 호출');
-      await applyTopoFile(file);
-      console.log('[TOPO] applyTopoFile 완료');
     } else {
-      showToast('⚠️ 지원 형식: TIF, ASC (DEM), DXF, SHP, ZIP, GeoJSON');
+      showToast('⚠️ 지원 형식: TIF, TIFF, ASC (DEM)');
     }
   } catch(e) {
-    console.error('[TOPO] 오류:', e);
     showToast('❌ 파일 오류: ' + e.message);
   }
 }
@@ -1022,20 +999,6 @@ function switchSub(name) {
 }
 
 // SHP 세트 적용 (다중 파일 선택)
-async function applyTopoFileShpSet(shpFile, fileArr) {
-  try {
-    const dbfFile = fileArr.find(f => f.name.toLowerCase().endsWith('.dbf'));
-    const shpBuf = await shpFile.arrayBuffer();
-    const dbfBuf = dbfFile ? await dbfFile.arrayBuffer() : null;
-    const geojson = await parseShpBuffer(shpBuf, dbfBuf);
-    topoFile = shpFile;
-    topoFile._parsedGeoJSON = geojson;
-    _applyTopoUI(shpFile, 'SHP 세트 (' + fileArr.length + '개 파일)');
-    showToast('✅ 수치지형도 SHP 파일 로드 완료 (' + geojson.features.length + '개 피처)');
-  } catch(e) {
-    showToast('⚠️ SHP 파싱 오류: ' + e.message);
-  }
-}
 
 async function applyZoneFileShpSet(shpFile, fileArr) {
   try {
@@ -1052,28 +1015,6 @@ async function applyZoneFileShpSet(shpFile, fileArr) {
   }
 }
 
-async function applyTopoFile(file) {
-  const ext = file.name.split('.').pop().toLowerCase();
-  try {
-    if (ext === 'zip') {
-      const result = await parseShpFromZip(file);
-      file._parsedGeoJSON = result.geojson;
-      file._prj = result.prj;
-      showToast('✅ ZIP/SHP 로드 완료 (' + result.geojson.features.length + '개 피처)');
-    } else if (ext === 'shp') {
-      const result = await parseSingleShp(file);
-      file._parsedGeoJSON = result.geojson;
-      showToast('✅ SHP 로드 완료 (' + result.geojson.features.length + '개 피처) — DBF 없이 속성 미포함');
-    } else {
-      showToast('📂 수치지형도 파일이 로드되었습니다');
-    }
-  } catch(e) {
-    showToast('⚠️ 파일 파싱 오류: ' + e.message);
-    return;
-  }
-  topoFile = file;
-  _applyTopoUI(file, getFileTypeLabel(ext));
-}
 
 async function applyZoneFile(file) {
   const ext = file.name.split('.').pop().toLowerCase();
@@ -1113,15 +1054,6 @@ function _checkZoneCRS(prj) {
   }
 }
 
-function _applyTopoUI(file, typeLabel) {
-  const box = document.getElementById('topoDropZone');
-  box.classList.add('done');
-  document.getElementById('topoIcon').textContent = '✅';
-  document.getElementById('topoTitle').textContent = file.name;
-  document.getElementById('topoDesc').textContent = formatFileSize(file.size) + ' · ' + typeLabel;
-  setChip('chip-topo', true, file.name);
-  checkRunReady();
-}
 
 function _applyZoneUI(file, typeLabel) {
   const box = document.getElementById('zoneDropZone');
@@ -1157,218 +1089,6 @@ proj4.defs('EPSG:5174', '+proj=tmerc +lat_0=38 +lon_0=127.0028902777778 +k=1 +x_
 proj4.defs('EPSG:5186', '+proj=tmerc +lat_0=38 +lon_0=127 +k=1 +x_0=200000 +y_0=600000 +ellps=GRS80 +towgs84=0,0,0 +units=m +no_defs');
 
 // ─── DXF 등고선 파싱 ──────────────────────────────────
-async function parseDXFContours(file) {
-  const TARGET = new Set(['F0017111','F0017114','CONTOUR','SPOTPOINT','등고선']);
-  const text = await file.text();
-  const lines = text.split(/\r?\n/).map(l => l.trim());
-  const contourPts   = [];
-  const contourLines = [];
-
-  // 전체 레이어 목록 (디버깅)
-  const allLayers = new Set();
-  for (let i = 0; i < lines.length - 1; i += 2) {
-    if (parseInt(lines[i]) === 8) allLayers.add(lines[i+1]);
-  }
-  console.log('[DXF] 전체 레이어:', Array.from(allLayers).join(', '));
-  console.log('[DXF] TARGET 매칭:', Array.from(allLayers).filter(l => TARGET.has(l.trim())));
-
-  let i = 0, inEntities = false;
-
-  // ── 현재 POLYLINE 상태 ──
-  let polyLayer  = '';     // 현재 POLYLINE 레이어
-  let polyPts    = [];     // 수집된 꼭짓점들
-  let inPolyline = false;  // POLYLINE 수집 중
-  let inVertex   = false;  // VERTEX 수집 중
-  let vx = 0, vy = 0, vz = 0; // 현재 VERTEX 좌표
-
-  // ── LWPOLYLINE 상태 ──
-  let lwLayer = '', lwPts = [], lwZBuf = [], lwElev = 0, inLW = false;
-
-  const savePolyline = () => {
-    if (TARGET.has(polyLayer.trim()) && polyPts.length >= 2) {
-      contourLines.push({ pts: polyPts, layer: polyLayer });
-      polyPts.forEach(p => contourPts.push(p));
-    }
-    polyPts = []; polyLayer = ''; inPolyline = false; inVertex = false;
-  };
-
-  const saveLW = () => {
-    if (TARGET.has(lwLayer.trim()) && lwPts.length >= 2) {
-      const pts = lwPts.map((p, idx) => ({
-        x: p.x, y: p.y,
-        z: lwZBuf[idx] !== undefined ? lwZBuf[idx] : lwElev
-      }));
-      if (pts.some(p => p.z !== 0)) {
-        contourLines.push({ pts, layer: lwLayer });
-        pts.forEach(p => contourPts.push(p));
-      }
-    }
-    lwPts = []; lwZBuf = []; lwElev = 0; lwLayer = ''; inLW = false;
-  };
-
-  while (i < lines.length - 1) {
-    const code = parseInt(lines[i]);
-    const val  = lines[i + 1];
-
-    // ENTITIES 섹션 감지
-    if (code === 2 && val === 'ENTITIES') { inEntities = true; i += 2; continue; }
-    if (code === 2 && val === 'ENDSEC'   && inEntities) {
-      if (inPolyline) savePolyline();
-      if (inLW) saveLW();
-      inEntities = false; i += 2; continue;
-    }
-    if (!inEntities) { i += 2; continue; }
-
-    // ── 새 엔티티 ──────────────────────────────────────
-    if (code === 0) {
-      // VERTEX 종료 → 점 저장
-      if (inVertex) {
-        polyPts.push({ x: vx, y: vy, z: vz });
-        inVertex = false; vx = 0; vy = 0; vz = 0;
-      }
-      // SEQEND = POLYLINE 끝
-      if (val === 'SEQEND') {
-        savePolyline();
-        i += 2; continue;
-      }
-      // LWPOLYLINE 끝 (다음 엔티티 시작)
-      if (inLW && val !== 'LWPOLYLINE') {
-        saveLW();
-      }
-
-      if (val === 'POLYLINE' || val === '3DPOLYLINE') {
-        inPolyline = true; polyPts = []; polyLayer = '';
-      } else if (val === 'VERTEX') {
-        inVertex = true; vx = 0; vy = 0; vz = 0;
-      } else if (val === 'LWPOLYLINE') {
-        inLW = true; lwPts = []; lwZBuf = []; lwElev = 0; lwLayer = '';
-      } else {
-        inPolyline = false;
-      }
-      i += 2; continue;
-    }
-
-    // ── 레이어명 ───────────────────────────────────────
-    if (code === 8) {
-      if (inPolyline && !inVertex) polyLayer = val;
-      if (inVertex)  { /* VERTEX 레이어는 무시 (POLYLINE 레이어 사용) */ }
-      if (inLW)      lwLayer = val;
-      i += 2; continue;
-    }
-
-    // ── VERTEX 좌표 ────────────────────────────────────
-    if (inVertex) {
-      if (code === 10) { vx = parseFloat(val); i += 2; continue; }
-      if (code === 20) { vy = parseFloat(val); i += 2; continue; }
-      if (code === 30) { vz = parseFloat(val); i += 2; continue; }
-    }
-
-    // ── LWPOLYLINE 좌표 ────────────────────────────────
-    if (inLW) {
-      if (code === 38) { lwElev = parseFloat(val); i += 2; continue; }
-      if (code === 10) { lwPts.push({ x: parseFloat(val), y: 0 }); i += 2; continue; }
-      if (code === 20 && lwPts.length > 0) { lwPts[lwPts.length-1].y = parseFloat(val); i += 2; continue; }
-      if (code === 30) { lwZBuf.push(parseFloat(val)); i += 2; continue; }
-    }
-
-    i += 2;
-  }
-
-  console.log('[DXF] 등고선 선:', contourLines.length, '/ 점:', contourPts.length);
-  if (contourPts.length > 0) {
-    const zv = contourPts.map(p => p.z).filter(z => !isNaN(z) && z !== 0);
-    if (zv.length > 0) {
-      let zMin=Infinity, zMax=-Infinity;
-      zv.forEach(z=>{ if(z<zMin) zMin=z; if(z>zMax) zMax=z; });
-      console.log('[DXF] Z 범위:', zMin.toFixed(1), '~', zMax.toFixed(1), 'm');
-    }
-  }
-  return { contourPts, contourLines };
-}
-
-// ─── 좌표계 자동 감지 ─────────────────────────────────
-function detectCRS(pts) {
-  if (pts.length === 0) return 'EPSG:5174';
-  const x = pts[0].x, y = pts[0].y;
-  // GRS80 중부원점(5186): Y 600000대, Bessel(5174): Y 500000대
-  if (y > 550000) return 'EPSG:5186';
-  return 'EPSG:5174';
-}
-
-// ─── IDW 보간 (청크 비동기 처리) ─────────────────────────
-async function buildElevGrid(pts, cellSize, progressCb) {
-  let valid = pts.filter(p => p.z !== 0 && !isNaN(p.z));
-  if (valid.length === 0) return null;
-
-  // 최대 30,000점으로 샘플링
-  const MAX_PTS = 30000;
-  if (valid.length > MAX_PTS) {
-    const step = Math.ceil(valid.length / MAX_PTS);
-    valid = valid.filter((_, i) => i % step === 0);
-    console.log('[GRID] 샘플링:', valid.length, '점 사용');
-  }
-
-  let xmin=Infinity, xmax=-Infinity, ymin=Infinity, ymax=-Infinity;
-  valid.forEach(p => {
-    if(p.x < xmin) xmin=p.x; if(p.x > xmax) xmax=p.x;
-    if(p.y < ymin) ymin=p.y; if(p.y > ymax) ymax=p.y;
-  });
-
-  const cols = Math.ceil((xmax - xmin) / cellSize) + 1;
-  const rows = Math.ceil((ymax - ymin) / cellSize) + 1;
-  console.log('[GRID] 격자:', cols, 'x', rows, '=', cols*rows, '셀');
-
-  // 격자가 너무 크면 셀 크기 자동 조정
-  const MAX_CELLS = 200000;
-  if (cols * rows > MAX_CELLS) {
-    const factor = Math.ceil(Math.sqrt(cols * rows / MAX_CELLS));
-    const newCellSize = cellSize * factor;
-    console.log('[GRID] 격자 너무 큼 → 셀 크기 자동 조정:', cellSize, '→', newCellSize, 'm');
-    return buildElevGrid(pts, newCellSize, progressCb);
-  }
-
-  const data = new Float32Array(cols * rows).fill(NaN);
-  const K = 4, power = 2;  // 탐색 점 수 줄임
-
-  // 청크 단위로 처리 (브라우저 블로킹 방지)
-  const CHUNK = 500;
-  const total = rows * cols;
-
-  for (let start = 0; start < total; start += CHUNK) {
-    const end = Math.min(start + CHUNK, total);
-    for (let idx = start; idx < end; idx++) {
-      const r = Math.floor(idx / cols);
-      const c = idx % cols;
-      const gx = xmin + c * cellSize;
-      const gy = ymin + r * cellSize;
-
-      // 가까운 K개 점 탐색
-      let best = [];
-      for (let j = 0; j < valid.length; j++) {
-        const d = Math.hypot(valid[j].x - gx, valid[j].y - gy);
-        if (best.length < K) {
-          best.push({ d, z: valid[j].z });
-          if (best.length === K) best.sort((a,b) => a.d - b.d);
-        } else if (d < best[K-1].d) {
-          best[K-1] = { d, z: valid[j].z };
-          best.sort((a,b) => a.d - b.d);
-        }
-      }
-      if (best.length === 0) continue;
-      if (best[0].d < 0.001) { data[idx] = best[0].z; continue; }
-      let wSum = 0, zSum = 0;
-      best.forEach(({ d, z }) => { const w = 1/Math.pow(d, power); wSum+=w; zSum+=w*z; });
-      data[idx] = zSum / wSum;
-    }
-    // 진행률 업데이트 + 브라우저에 제어권 반환
-    if (progressCb) progressCb(Math.round(end / total * 100));
-    await new Promise(r => setTimeout(r, 0));
-  }
-
-  return { data, cols, rows, xmin, ymin, cellSize };
-}
-
-// ─── 경사 계산 ────────────────────────────────────────
 function computeSlopeGrid(grid) {
   const { data, cols, rows, cellSize } = grid;
   const slope = new Float32Array(cols * rows).fill(NaN);
@@ -1383,36 +1103,6 @@ function computeSlopeGrid(grid) {
 }
 
 // ─── 표고 데이터 모드 (DEM / DXF) ───────────────────────
-let _topoMode = 'dem'; // 'dem' | 'dxf'
-
-function setTopoMode(mode, resetFile = true) {
-  _topoMode = mode;
-  const isDEM = mode === 'dem';
-  document.getElementById('btnModeDEM').style.background = isDEM ? 'var(--green)' : 'white';
-  document.getElementById('btnModeDEM').style.color      = isDEM ? 'white' : 'var(--ink3)';
-  document.getElementById('btnModeDEM').style.borderColor= isDEM ? 'var(--green)' : 'var(--border)';
-  document.getElementById('btnModeDXF').style.background = isDEM ? 'white' : 'var(--green)';
-  document.getElementById('btnModeDXF').style.color      = isDEM ? 'var(--ink3)' : 'white';
-  document.getElementById('btnModeDXF').style.borderColor= isDEM ? 'var(--border)' : 'var(--green)';
-  document.getElementById('_topoInput').accept = isDEM
-    ? '.tif,.tiff,.asc,.txt'
-    : '.dxf,.zip,.shp,.geojson,.json';
-  // 버튼 클릭 시에만 파일·UI 초기화
-  if (resetFile) {
-    topoFile = null;
-    document.getElementById('topoIcon').textContent  = isDEM ? '📊' : '🗺️';
-    document.getElementById('topoTitle').textContent = isDEM ? 'DEM 파일 업로드' : '수치지형도 DXF 업로드';
-    document.getElementById('topoDesc').textContent  = isDEM
-      ? 'QGIS로 만든 GeoTIFF 또는 ASCII Grid (.tif/.asc)'
-      : 'F0017111 · F0017114 레이어 포함 DXF';
-    setChip('chip-topo', false, '');
-    document.getElementById('topoDropZone').style.borderColor = '';
-    document.getElementById('topoDropZone').style.background  = 'var(--bg)';
-    checkRunReady();
-  }
-}
-
-// ─── GeoTIFF 파서 ────────────────────────────────────────
 async function parseGeoTIFF(file) {
   const arrayBuffer = await file.arrayBuffer();
   const tiff   = await GeoTIFF.fromArrayBuffer(arrayBuffer);
@@ -1535,66 +1225,6 @@ function extractRings(feature) {
 }
 
 // DEM 격자에 구역계 마스크 적용
-function applyZoneMask(grid, zoneGeoJSON) {
-  if (!zoneGeoJSON || !zoneGeoJSON.features || zoneGeoJSON.features.length === 0) return grid;
-
-  const { data, cols, rows, xmin, ymin, cellSize } = grid;
-  const masked = new Float32Array(data);
-
-  const rings = zoneGeoJSON.features.flatMap(f => extractRings(f));
-  if (rings.length === 0) return grid;
-
-  // 구역계 bbox
-  let bxmin=Infinity, bxmax=-Infinity, bymin=Infinity, bymax=-Infinity;
-  rings.forEach(ring => ring.forEach(([x, y]) => {
-    if(x<bxmin)bxmin=x; if(x>bxmax)bxmax=x;
-    if(y<bymin)bymin=y; if(y>bymax)bymax=y;
-  }));
-
-  // DEM bbox
-  const dxmin = xmin, dxmax = xmin + cols * cellSize;
-  const dymin = ymin, dymax = ymin + rows * cellSize;
-
-  console.log(`[CLIP] DEM bbox: ${dxmin.toFixed(0)},${dymin.toFixed(0)} ~ ${dxmax.toFixed(0)},${dymax.toFixed(0)}`);
-  console.log(`[CLIP] 구역계 bbox: ${bxmin.toFixed(0)},${bymin.toFixed(0)} ~ ${bxmax.toFixed(0)},${bymax.toFixed(0)}`);
-
-  // 좌표계 불일치 감지 — bbox가 겹치지 않으면 클리핑 생략
-  const noOverlap = bxmax < dxmin || bxmin > dxmax || bymax < dymin || bymin > dymax;
-  if (noOverlap) {
-    console.warn('[CLIP] ⚠️ DEM과 구역계 bbox가 겹치지 않습니다 — 좌표계를 확인해주세요. 클리핑 생략.');
-    showToast('⚠️ DEM과 구역계 좌표계가 다릅니다 — 클리핑 생략');
-    return grid;
-  }
-
-  let clipped = 0, inside = 0;
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const idx = r * cols + c;
-      if (isNaN(masked[idx])) continue;
-      const cx = xmin + (c + 0.5) * cellSize;
-      const cy = ymin + (r + 0.5) * cellSize;
-      if (cx < bxmin || cx > bxmax || cy < bymin || cy > bymax) {
-        masked[idx] = NaN; clipped++; continue;
-      }
-      const isInside = rings.some(ring => pointInPolygon(cx, cy, ring));
-      if (!isInside) { masked[idx] = NaN; clipped++; }
-      else inside++;
-    }
-  }
-
-  console.log(`[CLIP] 완료 — 내부: ${inside.toLocaleString()}셀, 제거: ${clipped.toLocaleString()}셀`);
-
-  // 클리핑 후 유효셀이 너무 적으면 원본 반환
-  if (inside < 10) {
-    console.warn('[CLIP] ⚠️ 클리핑 후 유효셀이 너무 적습니다 — 원본 사용');
-    showToast('⚠️ 클리핑 결과가 비어있습니다 — 원본 DEM 사용');
-    return grid;
-  }
-
-  return { ...grid, data: masked };
-}
-
-// ─── 분석 실행 ────────────────────────────────────────
 let _elevGrid = null, _slopeData = null, _analysisResult = null;
 let _rawElevData = null;  // 클리핑 전 원본 표고 데이터
 let _rawSlopeData = null; // 원본 경사 데이터 (전체 DEM 기준)
@@ -1616,10 +1246,8 @@ async function runAnalysis() {
 
   try {
     const ext = topoFile.name.split('.').pop().toLowerCase();
-    const isDEM = _topoMode === 'dem' || ext === 'tif' || ext === 'asc';
 
-    if (isDEM) {
-      // ── Step 1: DEM 파싱 ──
+    // ── Step 1: DEM 파싱 ──
       const header = await topoFile.slice(0, 4).arrayBuffer();
       const bytes  = new Uint8Array(header);
       const isTIFF = (bytes[0]===0x49&&bytes[1]===0x49)||(bytes[0]===0x4D&&bytes[1]===0x4D);
@@ -1671,48 +1299,6 @@ async function runAnalysis() {
 
       _clippedPolygons = { elev: clippedElevPolys, slope: clippedSlopePolys };
       showResultsFromPolygons(clippedElevPolys, clippedSlopePolys);
-
-    } else {
-      // ── DXF 모드 ──
-      setProgress('등고선 파싱 중 (F0017111/F0017114)...', 10);
-      await tick();
-      let contourPts = [], contourLines = [];
-      if (ext === 'dxf') {
-        const parsed = await parseDXFContours(topoFile);
-        contourPts   = parsed.contourPts;
-        contourLines = parsed.contourLines;
-      } else if (topoFile._parsedGeoJSON) {
-        const geojson = topoFile._parsedGeoJSON;
-        geojson.features.forEach(f => {
-          const coords = f.geometry?.coordinates;
-          if (!coords) return;
-          const flat = f.geometry.type === 'MultiLineString'
-            ? coords.flat() : f.geometry.type === 'LineString' ? [coords] : [];
-          flat.forEach(ring => {
-            const pts = ring.map(c => ({ x: c[0], y: c[1], z: c[2] ?? 0 }));
-            pts.forEach(p => contourPts.push(p));
-            if (pts.length >= 2) contourLines.push({ pts, layer: 'GeoJSON' });
-          });
-        });
-      }
-      if (contourPts.length === 0) throw new Error('등고선 데이터를 찾을 수 없습니다');
-      setProgress('IDW 보간 중...', 30);
-      await tick();
-      const cellSize = parseInt(document.getElementById('demResolution').value);
-      _elevGrid = await buildElevGrid(contourPts, cellSize, pct => {
-        setProgress(`IDW 보간 중... ${pct}%`, 30 + Math.round(pct * 0.4));
-      });
-      if (!_elevGrid) throw new Error('표고 격자 생성 실패');
-      _rawElevData  = new Float32Array(_elevGrid.data);
-      _rawSlopeData = computeSlopeGrid(_elevGrid);
-      const zoneGeoJSON2 = zoneFile?._parsedGeoJSON;
-      if (zoneGeoJSON2) _elevGrid = applyZoneMask(_elevGrid, zoneGeoJSON2);
-      _slopeData = computeSlopeGrid(_elevGrid);
-      _clippedPolygons = null;
-      setProgress('결과 렌더링 중...', 85);
-      await tick();
-      showResults();
-    }
 
     setProgress('완료!', 100);
     await tick();
@@ -1919,7 +1505,7 @@ function renderDEMFromPolygons(theme, clippedPolys, minElev, maxElev) {
         if (gc<0||gc>=cols||gr<0||gr>=rows) { imgData.data[idx4+3]=0; continue; }
         const v = _rawElevData[gr*cols+gc];
         if (isNaN(v)) { imgData.data[idx4+3]=0; continue; }
-        const t = (v-minElev)/(maxElev-minElev||1);
+        const t = 1 - (v-minElev)/(maxElev-minElev||1);
         const [r,g,b] = elevColor(Math.max(0,Math.min(1,t)), theme);
         imgData.data[idx4]=r;
         imgData.data[idx4+1]=g;
@@ -1932,7 +1518,7 @@ function renderDEMFromPolygons(theme, clippedPolys, minElev, maxElev) {
 
   // ② 클리핑된 폴리곤 — DEM과 동일한 elevColor 그라데이션
   clippedPolys.forEach(p => {
-    const t = (p.elev - minElev) / (maxElev - minElev || 1);
+    const t = 1 - (p.elev - minElev) / (maxElev - minElev || 1);
     const [r,g,b] = elevColor(Math.max(0,Math.min(1,t)), theme);
     ctx.fillStyle = `rgb(${r},${g},${b})`;
     const px1 = toCanvasX(p.xmin), py1 = toCanvasY(p.ymax);
@@ -2048,41 +1634,6 @@ function redrawCanvases() {
   }
 }
 
-// ─── 결과 표시 (DXF 모드용 기존 방식 유지) ──────────────
-function showResults() {
-  const std    = document.getElementById('slopeStandard').value;
-  const grades = getSlopeGrades(std);
-  const { data: elevData, cols, rows, cellSize } = _elevGrid;
-  const slopeData = _slopeData;
-  const elevValid = Array.from(elevData).filter(v => !isNaN(v));
-  let minElev=Infinity, maxElev=-Infinity;
-  elevValid.forEach(v=>{ if(v<minElev)minElev=v; if(v>maxElev)maxElev=v; });
-  const avgElev = elevValid.reduce((s,v)=>s+v,0)/elevValid.length;
-  const slopeValid = Array.from(slopeData).filter(v=>!isNaN(v)&&v>=0);
-  const avgSlope   = slopeValid.length>0 ? slopeValid.reduce((s,v)=>s+v,0)/slopeValid.length : 0;
-  const cellArea   = cellSize*cellSize;
-  const totalArea  = slopeValid.length*cellArea;
-  const gradeThresh = getGradeThresholds(std);
-  const gradeAreas = grades.map((g,i)=>{
-    const lo=gradeThresh[i], hi=gradeThresh[i+1]??999;
-    const cnt=slopeValid.filter(v=>v>=lo&&v<hi).length;
-    return {...g, area:cnt*cellArea};
-  });
-  _analysisResult = { totalArea, minElev, maxElev, avgSlope, grades:gradeAreas };
-  document.getElementById('r-totalArea').textContent   = Math.round(totalArea).toLocaleString();
-  document.getElementById('r-totalAreaHa').textContent = (totalArea/10000).toFixed(2)+'ha';
-  document.getElementById('r-minElev').textContent     = minElev.toFixed(1);
-  document.getElementById('r-maxElev').textContent     = maxElev.toFixed(1);
-  document.getElementById('r-avgSlope').textContent    = avgSlope.toFixed(1);
-  renderSlopeLegend(gradeAreas, totalArea);
-  renderSlopeTable(gradeAreas, totalArea);
-  const theme = document.getElementById('colorTheme').value;
-  renderDEMCanvas(theme, elevData, cols, rows, minElev, maxElev);
-  renderSlopeCanvas(gradeAreas, totalArea, slopeData, cols, rows, gradeThresh);
-  const rs = document.getElementById('resultSection');
-  rs.classList.add('show');
-  setTimeout(()=>rs.scrollIntoView({behavior:'smooth',block:'start'}),100);
-}
 
 function getGradeThresholds(std) {
   return {
@@ -2103,7 +1654,7 @@ function getElevGrades(minElev, maxElev, theme) {
   for (let i = 0; i < 5; i++) {
     const lo = minElev + i * interval;
     const hi = i === 4 ? maxElev : minElev + (i+1) * interval;
-    const t  = (i + 0.5) / 5; // 등급 중간값의 정규화 t
+    const t  = 1 - (i + 0.5) / 5; // 등급 중간값의 정규화 t (반전: 높은 표고 → 진한 색)
     const [r, g, b] = elevColor(t, usedTheme);
     grades.push({
       label: `${i+1}등급`,
@@ -2309,7 +1860,7 @@ function renderDEMCanvas(theme, elevData, cols, rows, minElev, maxElev) {
       if (isNaN(v)) {
         imgData.data[idx4]=50; imgData.data[idx4+1]=50; imgData.data[idx4+2]=60; imgData.data[idx4+3]=160;
       } else {
-        const t = (v - minElev) / (maxElev - minElev || 1);
+        const t = 1 - (v - minElev) / (maxElev - minElev || 1);
         const [r, g, b] = elevColor(t, theme);
         imgData.data[idx4]=r; imgData.data[idx4+1]=g; imgData.data[idx4+2]=b; imgData.data[idx4+3]=255;
       }
