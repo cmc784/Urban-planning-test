@@ -1944,8 +1944,21 @@ function renderDEMFromPolygons(theme, clippedPolys, minElev, maxElev) {
   // ③ 구역계 경계선
   drawZoneBoundary(ctx, toCanvasX, toCanvasY);
 
-  // ④ 컬러바 + 타이틀
-  drawColorbar(ctx, W, H, theme, 'elevation', minElev, maxElev);
+  // ④ 표고 등급 범례 + 타이틀
+  const theme2 = document.getElementById('colorTheme')?.value || 'terrain';
+  const elevGradesForLegend = getElevGrades(minElev, maxElev, theme2);
+  // 면적 정보 임시 반영 (캔버스 범례용)
+  if (_analysisResult?.grades) {
+    const elevCellArea = clippedPolys.length > 0
+      ? (clippedPolys[0].xmax-clippedPolys[0].xmin)*(clippedPolys[0].ymax-clippedPolys[0].ymin) : 100;
+    elevGradesForLegend.forEach(g => {
+      g.area = clippedPolys.filter((p, idx) => {
+        const isLast = idx === elevGradesForLegend.length - 1;
+        return isLast ? p.elev >= g.lo && p.elev <= g.hi : p.elev >= g.lo && p.elev < g.hi;
+      }).length * elevCellArea;
+    });
+  }
+  drawElevGradeLegend(ctx, W, H, elevGradesForLegend);
   ctx.fillStyle='rgba(255,255,255,0.9)';
   ctx.font='bold 15px "DM Mono",monospace';
   ctx.fillText('DEM — 표고분포도', 16, 28);
@@ -2080,42 +2093,47 @@ function getGradeThresholds(std) {
 }
 
 // ─── 표고 등급 ────────────────────────────────────────────
-function getElevGrades(minElev, maxElev) {
-  const range = maxElev - minElev;
-  const interval = range / 5; // 5등분
-  const grades = [];
-  const colors = ['#1565c0','#42a5f5','#66bb6a','#ff9800','#e53935'];
-  const judges = ['최저구간','저지대','중간지대','고지대','최고구간'];
+function getElevGrades(minElev, maxElev, theme) {
+  const usedTheme = theme || document.getElementById('colorTheme')?.value || 'terrain';
+  const range    = maxElev - minElev;
+  const interval = range / 5;
+  const grades   = [];
+  const judges   = ['최저구간', '저지대', '중간지대', '고지대', '최고구간'];
+  // 각 등급 중간값의 t로 elevColor 색상 추출
   for (let i = 0; i < 5; i++) {
     const lo = minElev + i * interval;
     const hi = i === 4 ? maxElev : minElev + (i+1) * interval;
+    const t  = (i + 0.5) / 5; // 등급 중간값의 정규화 t
+    const [r, g, b] = elevColor(t, usedTheme);
     grades.push({
       label: `${i+1}등급`,
       range: `${lo.toFixed(1)} ~ ${hi.toFixed(1)}m`,
       lo, hi,
       judge: judges[i],
-      color: colors[i]
+      color: `rgb(${r},${g},${b})`,
+      cls: `e-grade-${i+1}`
     });
   }
   return grades;
 }
 
 function calcElevGradeAreas(elevPolys, grades, cellArea) {
-  return grades.map(g => {
-    const cnt = elevPolys.filter(p => p.elev >= g.lo && p.elev < g.hi).length;
-    // 마지막 등급은 최고값 포함
-    const cntFinal = g === grades[grades.length-1]
-      ? elevPolys.filter(p => p.elev >= g.lo && p.elev <= g.hi).length
-      : cnt;
-    return { ...g, area: cntFinal * cellArea };
+  return grades.map((g, idx) => {
+    const isLast = idx === grades.length - 1;
+    const cnt = elevPolys.filter(p =>
+      isLast ? p.elev >= g.lo && p.elev <= g.hi
+              : p.elev >= g.lo && p.elev < g.hi
+    ).length;
+    return { ...g, area: cnt * cellArea };
   });
 }
 
 function renderElevLegend(grades, total) {
   const el = document.getElementById('elevLegend');
   if (!el) return;
+  // 경사도 범례와 동일한 slope-item 구조 사용
   el.innerHTML = grades.map(g => `
-    <div class="slope-item" style="border-left:4px solid ${g.color}">
+    <div class="slope-item" style="border-left:4px solid ${g.color};background:rgba(255,255,255,0.05)">
       <div class="s-deg">${g.range}</div>
       <div class="s-name">${g.label}</div>
       <div class="s-pct">${total > 0 ? ((g.area / total) * 100).toFixed(1) : '0.0'}%</div>
@@ -2131,7 +2149,7 @@ function renderElevTable(grades, total) {
     <tr>
       <td><span class="color-dot" style="background:${g.color}"></span>${g.label}</td>
       <td style="font-family:'DM Mono',monospace">${g.range}</td>
-      <td><span style="font-size:11px;font-weight:700;color:#1a5c3a">${g.judge}</span></td>
+      <td><span style="font-size:11px;font-weight:700;color:var(--ink2)">${g.judge}</span></td>
       <td style="font-family:'DM Mono',monospace">${Math.round(g.area).toLocaleString()}</td>
       <td style="font-family:'DM Mono',monospace">${(g.area/10000).toFixed(4)}</td>
       <td style="font-family:'DM Mono',monospace;font-weight:700">${total>0?((g.area/total)*100).toFixed(1):'0.0'}%</td>
@@ -2430,17 +2448,21 @@ function hexToRgb(hex) {
 
 function drawElevGradeLegend(ctx, W, H, grades) {
   const itemH = 20, padX = 14, padY = 10;
-  const boxW = 190, boxH = grades.length * itemH + padY * 2;
+  const boxW = 210, boxH = grades.length * itemH + padY * 2;
   const lx = W - boxW - 16, ly = H - boxH - 16;
   ctx.fillStyle = 'rgba(0,0,0,0.55)';
   roundRect(ctx, lx-8, ly-8, boxW+16, boxH+16, 8); ctx.fill();
   grades.forEach((g, i) => {
     const y = ly + padY + i * itemH;
+    // elevColor와 동일한 색상 (g.color에 이미 rgb() 포함)
     ctx.fillStyle = g.color;
     ctx.fillRect(lx, y, 14, 14);
     ctx.fillStyle = 'rgba(255,255,255,0.9)';
     ctx.font = '11px "DM Mono",monospace';
-    ctx.fillText(`${g.range}`, lx+20, y+11);
+    const pct = g.area > 0 && _analysisResult
+      ? (g.area / _analysisResult.totalArea * 100).toFixed(1) + '%'
+      : '';
+    ctx.fillText(`${g.range}  ${pct}`, lx+20, y+11);
   });
 }
 
