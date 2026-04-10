@@ -1859,11 +1859,10 @@ function renderDEMFromPolygons(theme, clippedPolys, minElev, maxElev) {
         if (isNaN(v)) { imgData.data[idx4+3]=0; continue; }
         const t = (v-minElev)/(maxElev-minElev||1);
         const [r,g,b] = elevColor(Math.max(0,Math.min(1,t)), theme);
-        // 구역계 밖은 약간 어둡게
-        imgData.data[idx4]=Math.round(r*0.45);
-        imgData.data[idx4+1]=Math.round(g*0.45);
-        imgData.data[idx4+2]=Math.round(b*0.45);
-        imgData.data[idx4+3]=220;
+        imgData.data[idx4]=r;
+        imgData.data[idx4+1]=g;
+        imgData.data[idx4+2]=b;
+        imgData.data[idx4+3]=255;
       }
     }
     ctx.putImageData(imgData, 0, 0);
@@ -1924,10 +1923,10 @@ function renderSlopeFromPolygons(grades, total, clippedPolys, thresholds) {
         let gi = thresholds.length-1;
         for (let k=0;k<thresholds.length;k++) { if(sv<(thresholds[k+1]??999)){gi=k;break;} }
         const [r,g,b] = slopeColors[Math.min(gi,slopeColors.length-1)];
-        imgData.data[idx4]=Math.round(r*0.45);
-        imgData.data[idx4+1]=Math.round(g*0.45);
-        imgData.data[idx4+2]=Math.round(b*0.45);
-        imgData.data[idx4+3]=220;
+        imgData.data[idx4]=r;
+        imgData.data[idx4+1]=g;
+        imgData.data[idx4+2]=b;
+        imgData.data[idx4+3]=255;
       }
     }
     ctx.putImageData(imgData, 0, 0);
