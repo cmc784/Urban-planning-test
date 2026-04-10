@@ -1590,50 +1590,57 @@ async function runAnalysis() {
     const isDEM = _topoMode === 'dem' || ext === 'tif' || ext === 'asc';
 
     if (isDEM) {
-      // ── DEM 모드: GeoTIFF 또는 ASCII Grid 자동 감지 ──
-      setProgress('DEM 파일 읽는 중...', 15);
-      await tick();
-
-      // 파일 앞 4바이트로 TIFF 여부 판별
+      // ── Step 1: DEM 파싱 ──
       const header = await topoFile.slice(0, 4).arrayBuffer();
       const bytes  = new Uint8Array(header);
-      const isTIFF = (bytes[0] === 0x49 && bytes[1] === 0x49) ||  // II (little-endian)
-                     (bytes[0] === 0x4D && bytes[1] === 0x4D);     // MM (big-endian)
+      const isTIFF = (bytes[0]===0x49&&bytes[1]===0x49)||(bytes[0]===0x4D&&bytes[1]===0x4D);
 
-      if (isTIFF) {
-        setProgress('GeoTIFF 파싱 중...', 20);
-        await tick();
-        _elevGrid = await parseGeoTIFF(topoFile);
-      } else {
-        setProgress('ASCII Grid 파싱 중...', 20);
-        await tick();
-        _elevGrid = await parseASCIIGrid(topoFile);
-      }
+      setProgress(isTIFF ? 'GeoTIFF 파싱 중...' : 'ASCII Grid 파싱 중...', 10);
+      await tick();
+      _elevGrid = await (isTIFF ? parseGeoTIFF(topoFile) : parseASCIIGrid(topoFile));
       if (!_elevGrid) throw new Error('DEM 파싱 실패');
 
-      // ── 원본 데이터 보존 (렌더링에서 DEM 전체 표현용) ──
-      _rawElevData  = new Float32Array(_elevGrid.data); // 클리핑 전 원본
-      _rawSlopeData = computeSlopeGrid(_elevGrid);      // 전체 기준 경사
+      // ── Step 2: 원본 경사 계산 (전체 DEM 기준, 렌더링용) ──
+      setProgress('경사도 계산 중 (전체 DEM)...', 25);
+      await tick();
+      _rawElevData  = new Float32Array(_elevGrid.data);
+      _rawSlopeData = computeSlopeGrid(_elevGrid);
 
-      // 구역계 클리핑 적용 (통계 계산용)
-      setProgress('구역계 클리핑 중...', 70);
+      // ── Step 3: DEM 폴리곤화 ──
+      setProgress('DEM 폴리곤화 중...', 35);
+      await tick();
+      const demPolygons = polygonizeDEM(_elevGrid);
+      console.log(`[POLY] DEM 폴리곤 ${demPolygons.length.toLocaleString()}개 생성`);
+
+      // ── Step 4: 구역계로 Clip ──
+      setProgress('구역계로 클리핑 중...', 55);
       await tick();
       const zoneGeoJSON = zoneFile?._parsedGeoJSON;
-      if (zoneGeoJSON) {
-        _elevGrid = applyZoneMask(_elevGrid, zoneGeoJSON);
-      } else {
-        console.warn('[CLIP] 구역계 GeoJSON 없음 — 클리핑 생략');
-      }
+      const clippedPolygons = zoneGeoJSON
+        ? clipPolygonsByZone(demPolygons, zoneGeoJSON)
+        : demPolygons;
+      console.log(`[CLIP] 클리핑 후 ${clippedPolygons.length.toLocaleString()}개 폴리곤`);
 
-      setProgress('경사도 계산 중...', 80);
+      if (clippedPolygons.length === 0) throw new Error('구역계 클리핑 결과가 없습니다 — 좌표계를 확인해주세요');
+
+      // ── Step 5: 클리핑된 폴리곤으로 통계 계산 ──
+      setProgress('표고·경사 통계 계산 중...', 75);
       await tick();
-      _slopeData = computeSlopeGrid(_elevGrid); // 구역계 기준 (통계용)
+      _clippedPolygons = clippedPolygons;
+      _slopeData = computeSlopeGrid(_elevGrid); // 구역계 내부 통계용 (마스킹 후)
+
+      // 클리핑된 폴리곤 기반 통계
+      const elevVals  = clippedPolygons.map(p => p.elev).filter(v => !isNaN(v));
+      const slopeVals = clippedPolygons.map(p => p.slope).filter(v => !isNaN(v) && v >= 0);
+
+      setProgress('결과 렌더링 중...', 88);
+      await tick();
+      showResultsFromPolygons(clippedPolygons, elevVals, slopeVals);
 
     } else {
-      // ── DXF 모드: 등고선 파싱 + IDW 보간 ──
+      // ── DXF 모드 ──
       setProgress('등고선 파싱 중 (F0017111/F0017114)...', 10);
       await tick();
-
       let contourPts = [], contourLines = [];
       if (ext === 'dxf') {
         const parsed = await parseDXFContours(topoFile);
@@ -1653,38 +1660,27 @@ async function runAnalysis() {
           });
         });
       }
-
-      if (contourPts.length === 0) throw new Error('등고선 데이터를 찾을 수 없습니다 (F0017111/F0017114)');
-
-      setProgress('IDW 보간 중... (시간이 걸릴 수 있습니다)', 30);
+      if (contourPts.length === 0) throw new Error('등고선 데이터를 찾을 수 없습니다');
+      setProgress('IDW 보간 중...', 30);
       await tick();
-
       const cellSize = parseInt(document.getElementById('demResolution').value);
       _elevGrid = await buildElevGrid(contourPts, cellSize, pct => {
         setProgress(`IDW 보간 중... ${pct}%`, 30 + Math.round(pct * 0.4));
       });
-      if (!_elevGrid) throw new Error('표고 격자 생성 실패 — Z값이 있는 점이 없습니다');
-
-      // 구역계 클리핑 적용
-      setProgress('구역계 클리핑 중...', 75);
-      await tick();
-      const zoneGeoJSONdxf = zoneFile?._parsedGeoJSON;
-      if (zoneGeoJSONdxf) {
-        _elevGrid = applyZoneMask(_elevGrid, zoneGeoJSONdxf);
-      }
-
-      setProgress('경사도 계산 중...', 85);
-      await tick();
+      if (!_elevGrid) throw new Error('표고 격자 생성 실패');
+      _rawElevData  = new Float32Array(_elevGrid.data);
+      _rawSlopeData = computeSlopeGrid(_elevGrid);
+      const zoneGeoJSON2 = zoneFile?._parsedGeoJSON;
+      if (zoneGeoJSON2) _elevGrid = applyZoneMask(_elevGrid, zoneGeoJSON2);
       _slopeData = computeSlopeGrid(_elevGrid);
+      _clippedPolygons = null;
+      setProgress('결과 렌더링 중...', 85);
+      await tick();
+      showResults();
     }
 
-    setProgress('면적 집계 및 결과 렌더링 중...', 85);
-    await tick();
-
-    showResults();
     setProgress('완료!', 100);
     await tick();
-
     document.getElementById('progressArea').style.display = 'none';
     btn.textContent = '✅ 분석 완료 — 다시 실행';
     btn.disabled = false;
@@ -1698,61 +1694,290 @@ async function runAnalysis() {
   }
 }
 
-function tick() { return new Promise(r => setTimeout(r, 0)); }
+// ─── 전역: 클리핑된 폴리곤 ───────────────────────────────
+let _clippedPolygons = null;
 
-function setProgress(msg, pct) {
-  document.getElementById('progressMsg').textContent = msg;
-  document.getElementById('progressPct').textContent = pct + '%';
-  document.getElementById('progressFill').style.width = pct + '%';
+// ─── DEM 폴리곤화 ────────────────────────────────────────
+// 각 셀 → { xmin, ymin, xmax, ymax, elev, slope } 사각형 폴리곤
+function polygonizeDEM(grid) {
+  const { data, cols, rows, xmin, ymin, cellSize } = grid;
+  const slope = computeSlopeGrid(grid);
+  const polys = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const idx = r * cols + c;
+      const elev = data[idx];
+      if (isNaN(elev)) continue;
+      polys.push({
+        xmin: xmin + c * cellSize,
+        ymin: ymin + r * cellSize,
+        xmax: xmin + (c+1) * cellSize,
+        ymax: ymin + (r+1) * cellSize,
+        elev,
+        slope: slope[idx]
+      });
+    }
+  }
+  return polys;
 }
 
-// ─── 결과 표시 ────────────────────────────────────────
-function showResults() {
+// ─── 구역계로 Clip ────────────────────────────────────────
+// 각 폴리곤의 중심점이 구역계 안에 있는지 판별 (Point-in-Polygon)
+function clipPolygonsByZone(polys, zoneGeoJSON) {
+  const rings = zoneGeoJSON.features.flatMap(f => extractRings(f));
+  if (rings.length === 0) return polys;
+
+  // bbox 사전 필터
+  let bxmin=Infinity, bxmax=-Infinity, bymin=Infinity, bymax=-Infinity;
+  rings.forEach(ring => ring.forEach(([x,y]) => {
+    if(x<bxmin)bxmin=x; if(x>bxmax)bxmax=x;
+    if(y<bymin)bymin=y; if(y>bymax)bymax=y;
+  }));
+
+  // 좌표계 불일치 감지
+  const firstPoly = polys[0];
+  const noOverlap = bxmax < firstPoly.xmin || bxmin > firstPoly.xmax ||
+                    bymax < firstPoly.ymin || bymin > firstPoly.ymax;
+  if (noOverlap) {
+    showToast('⚠️ DEM과 구역계 좌표계가 다릅니다');
+    return polys;
+  }
+
+  return polys.filter(p => {
+    const cx = (p.xmin + p.xmax) / 2;
+    const cy = (p.ymin + p.ymax) / 2;
+    if (cx < bxmin || cx > bxmax || cy < bymin || cy > bymax) return false;
+    return rings.some(ring => pointInPolygon(cx, cy, ring));
+  });
+}
+
+// ─── 폴리곤 기반 결과 표시 ───────────────────────────────
+function showResultsFromPolygons(polys, elevVals, slopeVals) {
   const std    = document.getElementById('slopeStandard').value;
   const grades = getSlopeGrades(std);
-  const { data: elevData, cols, rows, cellSize } = _elevGrid;
-  const slopeData = _slopeData;
-
-  // 표고 통계
-  const elevValid = Array.from(elevData).filter(v => !isNaN(v));
-  let minElev=Infinity, maxElev=-Infinity;
-  elevValid.forEach(v=>{ if(v<minElev) minElev=v; if(v>maxElev) maxElev=v; });
-  const avgElev   = elevValid.reduce((s, v) => s + v, 0) / elevValid.length;
-
-  // 경사 통계 + 등급별 면적
-  const slopeValid = Array.from(slopeData).filter(v => !isNaN(v) && v >= 0);
-  const avgSlope   = slopeValid.length > 0
-    ? slopeValid.reduce((s, v) => s + v, 0) / slopeValid.length : 0;
-
-  const cellArea    = cellSize * cellSize;
-  const totalArea   = slopeValid.length * cellArea;
   const gradeThresh = getGradeThresholds(std);
 
+  // 표고 통계
+  let minElev=Infinity, maxElev=-Infinity, sumElev=0;
+  elevVals.forEach(v => { if(v<minElev)minElev=v; if(v>maxElev)maxElev=v; sumElev+=v; });
+  const avgElev = elevVals.length > 0 ? sumElev/elevVals.length : 0;
+
+  // 경사 통계
+  let sumSlope=0;
+  slopeVals.forEach(v => sumSlope+=v);
+  const avgSlope = slopeVals.length > 0 ? sumSlope/slopeVals.length : 0;
+
+  // 셀 면적 (폴리곤 하나의 면적)
+  const cellArea = polys.length > 0
+    ? (polys[0].xmax-polys[0].xmin) * (polys[0].ymax-polys[0].ymin) : 0;
+  const totalArea = polys.length * cellArea;
+
+  // 경사 등급별 면적
   const gradeAreas = grades.map((g, i) => {
-    const lo = gradeThresh[i], hi = gradeThresh[i + 1] ?? 999;
-    const cnt = slopeValid.filter(v => v >= lo && v < hi).length;
+    const lo = gradeThresh[i], hi = gradeThresh[i+1] ?? 999;
+    const cnt = slopeVals.filter(v => v >= lo && v < hi).length;
     return { ...g, area: cnt * cellArea };
   });
 
   _analysisResult = { totalArea, minElev, maxElev, avgSlope, grades: gradeAreas };
 
-  // 요약 통계
-  document.getElementById('r-totalArea').textContent    = Math.round(totalArea).toLocaleString();
-  document.getElementById('r-totalAreaHa').textContent  = (totalArea / 10000).toFixed(2) + 'ha';
-  document.getElementById('r-minElev').textContent      = minElev.toFixed(1);
-  document.getElementById('r-maxElev').textContent      = maxElev.toFixed(1);
-  document.getElementById('r-avgSlope').textContent     = avgSlope.toFixed(1);
+  // 요약 통계 표시
+  document.getElementById('r-totalArea').textContent   = Math.round(totalArea).toLocaleString();
+  document.getElementById('r-totalAreaHa').textContent = (totalArea/10000).toFixed(2) + 'ha';
+  document.getElementById('r-minElev').textContent     = minElev.toFixed(1);
+  document.getElementById('r-maxElev').textContent     = maxElev.toFixed(1);
+  document.getElementById('r-avgSlope').textContent    = avgSlope.toFixed(1);
 
   renderSlopeLegend(gradeAreas, totalArea);
   renderSlopeTable(gradeAreas, totalArea);
 
   const theme = document.getElementById('colorTheme').value;
-  renderDEMCanvas(theme, elevData, cols, rows, minElev, maxElev);
-  renderSlopeCanvas(gradeAreas, totalArea, slopeData, cols, rows, gradeThresh);
+  renderDEMFromPolygons(theme, polys, minElev, maxElev);
+  renderSlopeFromPolygons(gradeAreas, totalArea, polys, gradeThresh);
 
   const rs = document.getElementById('resultSection');
   rs.classList.add('show');
-  setTimeout(() => rs.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+  setTimeout(() => rs.scrollIntoView({ behavior:'smooth', block:'start' }), 100);
+}
+
+// ─── 폴리곤 기반 DEM 렌더링 ──────────────────────────────
+function renderDEMFromPolygons(theme, clippedPolys, minElev, maxElev) {
+  const canvas = document.getElementById('canvasDEM');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#2a2a3e';
+  ctx.fillRect(0, 0, W, H);
+
+  const rb = getRenderBbox(W, H);
+  const toCanvasX = x => (x - rb.xmin) / (rb.xmax - rb.xmin) * W;
+  const toCanvasY = y => (1 - (y - rb.ymin) / (rb.ymax - rb.ymin)) * H;
+
+  // ① DEM 전체 배경 (원본 격자 기반, 회색 음영)
+  if (_rawElevData && _elevGrid) {
+    const { cols, rows, xmin, ymin, cellSize } = _elevGrid;
+    const imgData = ctx.createImageData(W, H);
+    for (let py = 0; py < H; py++) {
+      for (let px = 0; px < W; px++) {
+        const worldX = rb.xmin + (px/W)*(rb.xmax-rb.xmin);
+        const worldY = rb.ymin + (1-py/H)*(rb.ymax-rb.ymin);
+        const gc = Math.floor((worldX-xmin)/cellSize);
+        const gr = Math.floor((worldY-ymin)/cellSize);
+        const idx4 = (py*W+px)*4;
+        if (gc<0||gc>=cols||gr<0||gr>=rows) { imgData.data[idx4+3]=0; continue; }
+        const v = _rawElevData[gr*cols+gc];
+        if (isNaN(v)) { imgData.data[idx4+3]=0; continue; }
+        const t = (v-minElev)/(maxElev-minElev||1);
+        const [r,g,b] = elevColor(Math.max(0,Math.min(1,t)), theme);
+        // 구역계 밖은 약간 어둡게
+        imgData.data[idx4]=Math.round(r*0.45);
+        imgData.data[idx4+1]=Math.round(g*0.45);
+        imgData.data[idx4+2]=Math.round(b*0.45);
+        imgData.data[idx4+3]=220;
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
+  }
+
+  // ② 클리핑된 폴리곤 위에 색상 표현
+  clippedPolys.forEach(p => {
+    const t = (p.elev - minElev) / (maxElev - minElev || 1);
+    const [r,g,b] = elevColor(Math.max(0,Math.min(1,t)), theme);
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    const px1 = toCanvasX(p.xmin), py1 = toCanvasY(p.ymax);
+    const pw  = toCanvasX(p.xmax) - px1;
+    const ph  = toCanvasY(p.ymin) - py1;
+    ctx.fillRect(px1, py1, Math.max(1,pw), Math.max(1,ph));
+  });
+
+  // ③ 구역계 경계선
+  drawZoneBoundary(ctx, toCanvasX, toCanvasY);
+
+  // ④ 컬러바 + 타이틀
+  drawColorbar(ctx, W, H, theme, 'elevation', minElev, maxElev);
+  ctx.fillStyle='rgba(255,255,255,0.9)';
+  ctx.font='bold 15px "DM Mono",monospace';
+  ctx.fillText('DEM — 표고분포도', 16, 28);
+  ctx.font='12px "DM Mono",monospace';
+  ctx.fillStyle='rgba(255,255,255,0.6)';
+  ctx.fillText(`구역계 기준  ${minElev.toFixed(1)}m ~ ${maxElev.toFixed(1)}m`, 16, 46);
+}
+
+// ─── 폴리곤 기반 경사 렌더링 ─────────────────────────────
+function renderSlopeFromPolygons(grades, total, clippedPolys, thresholds) {
+  const canvas = document.getElementById('canvasSlope');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#2a2a3e';
+  ctx.fillRect(0, 0, W, H);
+
+  const rb = getRenderBbox(W, H);
+  const toCanvasX = x => (x - rb.xmin) / (rb.xmax - rb.xmin) * W;
+  const toCanvasY = y => (1 - (y - rb.ymin) / (rb.ymax - rb.ymin)) * H;
+  const slopeColors = grades.map(g => hexToRgb(g.color));
+
+  // ① DEM 전체 배경 (경사 어두운 버전)
+  if (_rawSlopeData && _elevGrid) {
+    const { cols, rows, xmin, ymin, cellSize } = _elevGrid;
+    const imgData = ctx.createImageData(W, H);
+    for (let py = 0; py < H; py++) {
+      for (let px = 0; px < W; px++) {
+        const worldX = rb.xmin + (px/W)*(rb.xmax-rb.xmin);
+        const worldY = rb.ymin + (1-py/H)*(rb.ymax-rb.ymin);
+        const gc = Math.floor((worldX-xmin)/cellSize);
+        const gr = Math.floor((worldY-ymin)/cellSize);
+        const idx4 = (py*W+px)*4;
+        if (gc<0||gc>=cols||gr<0||gr>=rows) { imgData.data[idx4+3]=0; continue; }
+        const sv = _rawSlopeData[gr*cols+gc];
+        if (isNaN(sv)||sv<0) { imgData.data[idx4+3]=0; continue; }
+        let gi = thresholds.length-1;
+        for (let k=0;k<thresholds.length;k++) { if(sv<(thresholds[k+1]??999)){gi=k;break;} }
+        const [r,g,b] = slopeColors[Math.min(gi,slopeColors.length-1)];
+        imgData.data[idx4]=Math.round(r*0.45);
+        imgData.data[idx4+1]=Math.round(g*0.45);
+        imgData.data[idx4+2]=Math.round(b*0.45);
+        imgData.data[idx4+3]=220;
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
+  }
+
+  // ② 클리핑된 폴리곤 위에 경사 색상
+  clippedPolys.forEach(p => {
+    const sv = p.slope;
+    if (isNaN(sv)||sv<0) return;
+    let gi = thresholds.length-1;
+    for (let k=0;k<thresholds.length;k++) { if(sv<(thresholds[k+1]??999)){gi=k;break;} }
+    const [r,g,b] = slopeColors[Math.min(gi,slopeColors.length-1)];
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    const px1 = toCanvasX(p.xmin), py1 = toCanvasY(p.ymax);
+    const pw  = toCanvasX(p.xmax) - px1;
+    const ph  = toCanvasY(p.ymin) - py1;
+    ctx.fillRect(px1, py1, Math.max(1,pw), Math.max(1,ph));
+  });
+
+  // ③ 구역계 경계선
+  drawZoneBoundary(ctx, toCanvasX, toCanvasY);
+
+  drawSlopeLegend(ctx, W, H, grades, total);
+  ctx.fillStyle='rgba(255,255,255,0.9)';
+  ctx.font='bold 15px "DM Mono",monospace';
+  ctx.fillText('경사도 분포도', 16, 28);
+}
+
+// ─── redrawCanvases 업데이트 ─────────────────────────────
+function redrawCanvases() {
+  if (!_analysisResult) return;
+  const { grades, minElev, maxElev, totalArea } = _analysisResult;
+  const theme = document.getElementById('colorTheme').value;
+  const std   = document.getElementById('slopeStandard').value;
+  const gradeThresh = getGradeThresholds(std);
+
+  if (_clippedPolygons) {
+    renderDEMFromPolygons(theme, _clippedPolygons, minElev, maxElev);
+    renderSlopeFromPolygons(grades, totalArea, _clippedPolygons, gradeThresh);
+  } else if (_elevGrid && _slopeData) {
+    const { data: elevData, cols, rows } = _elevGrid;
+    renderDEMCanvas(theme, elevData, cols, rows, minElev, maxElev);
+    renderSlopeCanvas(grades, totalArea, _slopeData, cols, rows, gradeThresh);
+  }
+}
+
+// ─── 결과 표시 (DXF 모드용 기존 방식 유지) ──────────────
+function showResults() {
+  const std    = document.getElementById('slopeStandard').value;
+  const grades = getSlopeGrades(std);
+  const { data: elevData, cols, rows, cellSize } = _elevGrid;
+  const slopeData = _slopeData;
+  const elevValid = Array.from(elevData).filter(v => !isNaN(v));
+  let minElev=Infinity, maxElev=-Infinity;
+  elevValid.forEach(v=>{ if(v<minElev)minElev=v; if(v>maxElev)maxElev=v; });
+  const avgElev = elevValid.reduce((s,v)=>s+v,0)/elevValid.length;
+  const slopeValid = Array.from(slopeData).filter(v=>!isNaN(v)&&v>=0);
+  const avgSlope   = slopeValid.length>0 ? slopeValid.reduce((s,v)=>s+v,0)/slopeValid.length : 0;
+  const cellArea   = cellSize*cellSize;
+  const totalArea  = slopeValid.length*cellArea;
+  const gradeThresh = getGradeThresholds(std);
+  const gradeAreas = grades.map((g,i)=>{
+    const lo=gradeThresh[i], hi=gradeThresh[i+1]??999;
+    const cnt=slopeValid.filter(v=>v>=lo&&v<hi).length;
+    return {...g, area:cnt*cellArea};
+  });
+  _analysisResult = { totalArea, minElev, maxElev, avgSlope, grades:gradeAreas };
+  document.getElementById('r-totalArea').textContent   = Math.round(totalArea).toLocaleString();
+  document.getElementById('r-totalAreaHa').textContent = (totalArea/10000).toFixed(2)+'ha';
+  document.getElementById('r-minElev').textContent     = minElev.toFixed(1);
+  document.getElementById('r-maxElev').textContent     = maxElev.toFixed(1);
+  document.getElementById('r-avgSlope').textContent    = avgSlope.toFixed(1);
+  renderSlopeLegend(gradeAreas, totalArea);
+  renderSlopeTable(gradeAreas, totalArea);
+  const theme = document.getElementById('colorTheme').value;
+  renderDEMCanvas(theme, elevData, cols, rows, minElev, maxElev);
+  renderSlopeCanvas(gradeAreas, totalArea, slopeData, cols, rows, gradeThresh);
+  const rs = document.getElementById('resultSection');
+  rs.classList.add('show');
+  setTimeout(()=>rs.scrollIntoView({behavior:'smooth',block:'start'}),100);
 }
 
 function getGradeThresholds(std) {
