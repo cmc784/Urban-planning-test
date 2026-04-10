@@ -1396,19 +1396,26 @@ async function processGuyeokShp(file) {
         if (!intersectionJsts || intersectionJsts.isEmpty()) continue;
         cntClipOk++;
 
-        const intersectionGeo = jstsWriter.write(intersectionJsts);
-
-        // 편입면적 계산
+        // ── 편입면적: JSTS geometry에서 직접 계산 (GeoJSON 변환 오차 방지) ──
         let pyeonipArea = 0;
-        if (_shpIsProjected) {
-          pyeonipArea = Math.round(planarArea(intersectionGeo) * 10) / 10;
-        } else {
-          try {
-            pyeonipArea = Math.round(turf.area({ type: 'Feature', geometry: intersectionGeo }) * 10) / 10;
-          } catch(e) {
-            pyeonipArea = Math.round(planarArea(intersectionGeo) * 10) / 10;
+        try {
+          // JSTS getArea()는 투영좌표계(m)에서 정확한 평면 면적 반환
+          const jstsArea = Math.round(intersectionJsts.getArea() * 10) / 10;
+          if (jstsArea >= 0.5) {
+            pyeonipArea = jstsArea;
+          } else {
+            // getArea() 결과가 작으면 GeoJSON 변환 후 재계산 (fallback)
+            const intersectionGeo = jstsWriter.write(intersectionJsts);
+            pyeonipArea = _shpIsProjected
+              ? Math.round(planarArea(intersectionGeo) * 10) / 10
+              : Math.round(turf.area({ type: 'Feature', geometry: intersectionGeo }) * 10) / 10;
           }
+        } catch(e) {
+          const intersectionGeo = jstsWriter.write(intersectionJsts);
+          pyeonipArea = Math.round(planarArea(intersectionGeo) * 10) / 10;
         }
+
+        const intersectionGeo = jstsWriter.write(intersectionJsts);
 
         if (pyeonipArea < 0.5) { cntAreaZero++; continue; }
 
