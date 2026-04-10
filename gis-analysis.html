@@ -358,39 +358,47 @@ canvas { border-radius:6px; max-width:100%; }
       <div class="sec-card">
         <div class="sec-card-title"><div class="dot"></div>분석 옵션</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;margin-bottom:16px">
+
+          <!-- 경사 구간 -->
           <div>
             <label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:8px">경사 구간 기준</label>
-            <select id="slopeStandard" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;font-family:'Noto Sans KR',sans-serif;outline:none;background:var(--white)">
+            <select id="slopeStandard" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;font-family:'Noto Sans KR',sans-serif;outline:none;background:var(--white)"
+              onchange="onSlopeStandardChange(this)">
               <option value="urban">도시계획 기준 (0/5/15/25/30°)</option>
               <option value="dev">개발행위허가 기준 (0/5/15/20/25°)</option>
               <option value="forest">산지관리법 기준 (0/15/25/30/35°)</option>
               <option value="custom">직접 입력</option>
             </select>
+            <div id="slopeCustomWrap" style="display:none;margin-top:8px">
+              <div style="font-size:11px;color:var(--ink3);margin-bottom:4px">구간 경계값 입력 (°, 쉼표 구분, 오름차순)</div>
+              <input id="slopeCustomVal" type="text" placeholder="예: 0,5,15,25,30"
+                style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Mono',monospace;outline:none;box-sizing:border-box">
+              <div style="font-size:10px;color:var(--ink3);margin-top:3px">첫 값은 0, 마지막 값 이상은 자동으로 최고 등급 처리</div>
+            </div>
           </div>
+
+          <!-- 표고 구간 -->
           <div>
-            <label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:8px">표고 구간 기준</label>
-            <select id="elevStandard" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;font-family:'Noto Sans KR',sans-serif;outline:none;background:var(--white)">
-              <option value="50">50m 간격 (일반 지형)</option>
-              <option value="25">25m 간격 (완경사 지형)</option>
-              <option value="100">100m 간격 (산악 지형)</option>
-              <option value="custom">직접 입력 (m 단위)</option>
+            <label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:8px">표고 등급 수</label>
+            <select id="elevGradeCount" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;font-family:'Noto Sans KR',sans-serif;outline:none;background:var(--white)"
+              onchange="onElevGradeChange()">
+              <option value="3">3등급</option>
+              <option value="4">4등급</option>
+              <option value="5" selected>5등급 (기본)</option>
+              <option value="6">6등급</option>
+              <option value="7">7등급</option>
+              <option value="custom">직접 입력</option>
             </select>
-            <div id="elevCustomWrap" style="display:none;margin-top:6px">
-              <input id="elevCustomVal" type="text" placeholder="예: 50,100,150,200,250" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Mono',monospace;outline:none">
-              <div style="font-size:10px;color:var(--ink3);margin-top:4px">쉼표로 구분된 표고 기준값 입력</div>
+            <div id="elevCustomWrap" style="display:none;margin-top:8px">
+              <div style="font-size:11px;color:var(--ink3);margin-bottom:4px">구간 경계값 입력 (m, 쉼표 구분)</div>
+              <input id="elevCustomVal" type="text" placeholder="예: 100,150,200,250,300"
+                style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Mono',monospace;outline:none;box-sizing:border-box">
+              <div style="font-size:10px;color:var(--ink3);margin-top:3px">입력값 사이 구간으로 등급 분류 (최저·최고 자동 처리)</div>
             </div>
           </div>
         </div>
+
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
-          <div>
-            <label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:8px">DEM 격자 해상도</label>
-            <select id="demResolution" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;font-family:'Noto Sans KR',sans-serif;outline:none;background:var(--white)">
-              <option value="5">5m (정밀 · 느림)</option>
-              <option value="10" selected>10m (기본 권장)</option>
-              <option value="20">20m (빠름)</option>
-              <option value="50">50m (매우 빠름)</option>
-            </select>
-          </div>
           <div>
             <label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:8px">출력 색상 테마</label>
             <select id="colorTheme" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;font-family:'Noto Sans KR',sans-serif;outline:none;background:var(--white)">
@@ -398,6 +406,12 @@ canvas { border-radius:6px; max-width:100%; }
               <option value="heatmap">히트맵 (청→황→적)</option>
               <option value="gray">흑백 음영</option>
             </select>
+          </div>
+          <div style="display:flex;align-items:flex-end">
+            <button type="button" id="btnRecompute" onclick="recomputeFromOptions()"
+              style="display:none;width:100%;padding:9px 0;background:var(--green);color:white;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif">
+              🔄 등간격 재적용
+            </button>
           </div>
         </div>
       </div>
@@ -1417,7 +1431,8 @@ function calcZoneArea(zoneGeoJSON) {
 function showResultsFromPolygons(elevPolys, slopePolys) {
   const std    = document.getElementById('slopeStandard').value;
   const grades = getSlopeGrades(std);
-  const gradeThresh = getGradeThresholds(std);
+  // 사용자 설정 경사 구간 사용
+  const gradeThresh = getSlopeThresholds() || getGradeThresholds(std);
 
   // 표고 통계 (표고 폴리곤 기준)
   const elevVals = elevPolys.map(p => p.elev).filter(v => !isNaN(v));
@@ -1476,6 +1491,8 @@ function showResultsFromPolygons(elevPolys, slopePolys) {
   const rs = document.getElementById('resultSection');
   rs.classList.add('show');
   setTimeout(() => rs.scrollIntoView({ behavior:'smooth', block:'start' }), 100);
+  // 재적용 버튼 표시
+  document.getElementById('btnRecompute').style.display = 'block';
 }
 
 // ─── 폴리곤 기반 DEM 렌더링 ──────────────────────────────
@@ -1643,26 +1660,101 @@ function getGradeThresholds(std) {
   }[std] || [0, 5, 15, 25, 30];
 }
 
-// ─── 표고 등급 ────────────────────────────────────────────
+// ─── 등간격 옵션 제어 ────────────────────────────────────
+function onSlopeStandardChange(sel) {
+  const isCustom = sel.value === 'custom';
+  document.getElementById('slopeCustomWrap').style.display = isCustom ? 'block' : 'none';
+  showRecomputeBtn();
+}
+
+function onElevGradeChange() {
+  const val = document.getElementById('elevGradeCount').value;
+  document.getElementById('elevCustomWrap').style.display = val === 'custom' ? 'block' : 'none';
+  showRecomputeBtn();
+}
+
+function showRecomputeBtn() {
+  if (_clippedPolygons) {
+    document.getElementById('btnRecompute').style.display = 'block';
+  }
+}
+
+// 경사 구간 경계값 가져오기
+function getSlopeThresholds() {
+  const std = document.getElementById('slopeStandard').value;
+  if (std === 'custom') {
+    const raw = document.getElementById('slopeCustomVal').value;
+    const vals = raw.split(',').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
+    if (vals.length >= 2) return vals;
+    showToast('⚠️ 경사 구간값을 올바르게 입력해주세요 (예: 0,5,15,25,30)');
+    return null;
+  }
+  return getGradeThresholds(std);
+}
+
+// 표고 등급 수 또는 직접 입력 경계값 가져오기
+function getElevGradeCount() {
+  const val = document.getElementById('elevGradeCount').value;
+  if (val === 'custom') {
+    const raw = document.getElementById('elevCustomVal').value;
+    const vals = raw.split(',').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
+    if (vals.length >= 1) return { type: 'custom', breaks: vals };
+    showToast('⚠️ 표고 구간값을 올바르게 입력해주세요 (예: 100,150,200,250)');
+    return null;
+  }
+  return { type: 'count', count: parseInt(val) };
+}
+
+// 등간격 재적용 (분석 없이 통계·캔버스만 재계산)
+function recomputeFromOptions() {
+  if (!_clippedPolygons || !_clippedPolygons.elev) {
+    showToast('⚠️ 먼저 분석을 실행해주세요');
+    return;
+  }
+  const thresholds = getSlopeThresholds();
+  if (!thresholds) return;
+  const elevOpt = getElevGradeCount();
+  if (!elevOpt) return;
+
+  // 표고 등급 재계산
+  const elevPolys  = _clippedPolygons.elev;
+  const slopePolys = _clippedPolygons.slope;
+
+  showResultsFromPolygons(elevPolys, slopePolys);
+  showToast('✅ 등간격 재적용 완료');
+}
+
+// ─── 표고 등급 생성 (등급 수 또는 직접 입력 지원) ─────────
 function getElevGrades(minElev, maxElev, theme) {
   const usedTheme = theme || document.getElementById('colorTheme')?.value || 'terrain';
-  const range    = maxElev - minElev;
-  const interval = range / 5;
-  const grades   = [];
-  const judges   = ['최저구간', '저지대', '중간지대', '고지대', '최고구간'];
-  // 각 등급 중간값의 t로 elevColor 색상 추출
-  for (let i = 0; i < 5; i++) {
-    const lo = minElev + i * interval;
-    const hi = i === 4 ? maxElev : minElev + (i+1) * interval;
-    const t  = 1 - (i + 0.5) / 5; // 등급 중간값의 정규화 t (반전: 높은 표고 → 진한 색)
+  const elevOpt   = getElevGradeCount() || { type: 'count', count: 5 };
+
+  let breaks = []; // 구간 경계값 (lo, hi 쌍으로 변환)
+
+  if (elevOpt.type === 'custom' && elevOpt.breaks.length >= 1) {
+    // 직접 입력: minElev ~ 첫값 ~ ... ~ maxElev
+    breaks = [minElev, ...elevOpt.breaks, maxElev];
+  } else {
+    // 등분
+    const n = elevOpt.count || 5;
+    const interval = (maxElev - minElev) / n;
+    for (let i = 0; i <= n; i++) breaks.push(minElev + i * interval);
+  }
+
+  const n = breaks.length - 1;
+  const judges = ['최저구간','저지대','중간지대','고지대','최고구간','상위구간','최상위구간'];
+  const grades = [];
+
+  for (let i = 0; i < n; i++) {
+    const lo = breaks[i], hi = breaks[i+1];
+    const t  = 1 - (i + 0.5) / n; // 반전: 높은 표고 → 진한 색
     const [r, g, b] = elevColor(t, usedTheme);
     grades.push({
       label: `${i+1}등급`,
       range: `${lo.toFixed(1)} ~ ${hi.toFixed(1)}m`,
       lo, hi,
-      judge: judges[i],
-      color: `rgb(${r},${g},${b})`,
-      cls: `e-grade-${i+1}`
+      judge: judges[Math.min(i, judges.length-1)],
+      color: `rgb(${r},${g},${b})`
     });
   }
   return grades;
@@ -1722,6 +1814,25 @@ function renderElevTable(grades, total) {
 }
 
 function getSlopeGrades(std) {
+  // custom: 직접 입력 구간으로 등급 생성
+  if (std === 'custom') {
+    const thresholds = getSlopeThresholds();
+    if (!thresholds) return getSlopeGrades('urban');
+    const colors = ['#4caf50','#ff9800','#ff5722','#e91e63','#b71c1c','#880e4f','#4a148c'];
+    const labels = ['1등급','2등급','3등급','4등급','5등급','6등급','7등급'];
+    const clses  = ['s-flat','s-gentle','s-moderate','s-steep','s-limit','s-limit','s-limit'];
+    return thresholds.slice(0, -1).map((lo, i) => {
+      const hi = thresholds[i+1];
+      const isLast = i === thresholds.length - 2;
+      return {
+        label: labels[i] || `${i+1}등급`,
+        range: isLast ? `${lo}° 이상` : `${lo} ~ ${hi}°`,
+        cls:   clses[i] || 's-limit',
+        judge: isLast ? '절대 불가' : '—',
+        color: colors[i] || '#4a148c'
+      };
+    });
+  }
   const presets = {
     urban:  [
       { label: '평탄지',   range: '0 ~ 5°',   cls: 's-flat',     judge: '개발 적합',   color: '#4caf50' },
