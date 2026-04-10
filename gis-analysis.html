@@ -1578,6 +1578,14 @@ let _elevGrid = null, _slopeData = null, _analysisResult = null;
 let _rawElevData = null;  // 클리핑 전 원본 표고 데이터
 let _rawSlopeData = null; // 원본 경사 데이터 (전체 DEM 기준)
 
+function tick() { return new Promise(r => setTimeout(r, 0)); }
+
+function setProgress(msg, pct) {
+  document.getElementById('progressMsg').textContent = msg;
+  document.getElementById('progressPct').textContent = pct + '%';
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+
 async function runAnalysis() {
   if (!topoFile || !zoneFile) return;
   const btn = document.getElementById('btnRun');
@@ -2230,17 +2238,6 @@ function getZoneLineColor() {
 }
 
 // ── 캔버스 재렌더 (설정 변경 시 호출) ───────────────────
-function redrawCanvases() {
-  if (!_elevGrid || !_slopeData || !_analysisResult) return;
-  const { grades, minElev, maxElev, totalArea } = _analysisResult;
-  const { data: elevData, cols, rows } = _elevGrid;
-  const theme = document.getElementById('colorTheme').value;
-  const std   = document.getElementById('slopeStandard').value;
-  const gradeThresh = getGradeThresholds(std);
-  renderDEMCanvas(theme, elevData, cols, rows, minElev, maxElev);
-  renderSlopeCanvas(grades, totalArea, _slopeData, cols, rows, gradeThresh);
-}
-
 // ── 구역계 경계선 캔버스에 그리기 ──────────────────────
 function drawZoneBoundary(ctx, toCanvasX, toCanvasY) {
   const zoneGeoJSON = zoneFile?._parsedGeoJSON;
