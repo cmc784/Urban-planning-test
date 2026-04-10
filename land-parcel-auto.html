@@ -1380,8 +1380,16 @@ async function processGuyeokShp(file) {
         if (!parcelEnv.intersects(guyeokEnv)) continue;
         cntBboxPass++;
 
-        // 실제 교차 여부
-        if (!parcelJsts.intersects(_guyeokJsts)) continue;
+        // 실제 교차 여부 — 경계 접촉(touches)은 제외, 면적 교차만 선별
+        // overlaps: 부분 교차 | covers: 구역계가 필지 포함 | within: 필지가 구역계 안
+        const hasAreaIntersect = parcelJsts.overlaps(_guyeokJsts)
+          || _guyeokJsts.covers(parcelJsts)
+          || parcelJsts.covers(_guyeokJsts);
+        if (!hasAreaIntersect) {
+          // 위 조건 모두 false여도 intersects면 경계 접촉일 수 있으므로
+          // intersection 직접 시도 후 면적으로 판단
+          if (!parcelJsts.intersects(_guyeokJsts)) continue;
+        }
         cntIntersectPass++;
 
         // 교차 클립
@@ -1424,7 +1432,11 @@ async function processGuyeokShp(file) {
               pyeonipArea = Math.round(parcelJsts.getArea() * 10) / 10;
             }
           } catch(e) {}
-          if (pyeonipArea < 0.5) { cntAreaZero++; continue; }
+          if (pyeonipArea < 0.5) {
+            cntAreaZero++;
+            log(`  ⚠️ 0.5㎡미만 제외: ${row.pnu} ${row.jibun} — intersection면적:${pyeonipArea}㎡ / 필지면적:${row.jijuArea}㎡`);
+            continue;
+          }
         }
 
         const intersectionGeo = jstsWriter.write(intersectionJsts);
