@@ -942,10 +942,10 @@ input[type="range"] {
       <button class="map-ctrl-btn" title="구역계 맞춤" onclick="fitZone()">⬡</button>
       <button class="map-ctrl-btn" title="전체보기" onclick="fitAll()">⊡</button>
       <div class="zoom-slider-wrap">
-        <button class="map-ctrl-btn" style="border:none;box-shadow:none;width:28px;height:24px;font-size:18px" title="확대" onclick="map.zoomIn()">+</button>
-        <input type="range" id="zoomSlider" min="7" max="19" step="0.5" value="14"
-          oninput="map.setZoom(parseFloat(this.value))" title="줌 레벨">
-        <button class="map-ctrl-btn" style="border:none;box-shadow:none;width:28px;height:24px;font-size:18px" title="축소" onclick="map.zoomOut()">−</button>
+        <button class="map-ctrl-btn" style="border:none;box-shadow:none;width:28px;height:24px;font-size:18px" title="확대" onclick="zoomSliderStep(1)">+</button>
+        <input type="range" id="zoomSlider" min="1" max="100" step="1" value="50"
+          oninput="applyZoomSlider(this.value)" title="줌 레벨">
+        <button class="map-ctrl-btn" style="border:none;box-shadow:none;width:28px;height:24px;font-size:18px" title="축소" onclick="zoomSliderStep(-1)">−</button>
       </div>
     </div>
   </div>
@@ -1360,9 +1360,32 @@ function fitZone() {
 }
 
 // 줌 슬라이더 ↔ 지도 줌 동기화
+// 슬라이더 1~100 ↔ Leaflet 줌 7~19 선형 매핑
+const ZOOM_SL_MIN = 1, ZOOM_SL_MAX = 100;
+const ZOOM_MAP_MIN = 7, ZOOM_MAP_MAX = 19;
+
+function sliderToZoom(val) {
+  return ZOOM_MAP_MIN + (val - ZOOM_SL_MIN) / (ZOOM_SL_MAX - ZOOM_SL_MIN) * (ZOOM_MAP_MAX - ZOOM_MAP_MIN);
+}
+function zoomToSlider(zoom) {
+  return Math.round(ZOOM_SL_MIN + (zoom - ZOOM_MAP_MIN) / (ZOOM_MAP_MAX - ZOOM_MAP_MIN) * (ZOOM_SL_MAX - ZOOM_SL_MIN));
+}
+
+function applyZoomSlider(val) {
+  map.setZoom(sliderToZoom(parseInt(val)));
+}
+
+function zoomSliderStep(dir) {
+  const sl = document.getElementById('zoomSlider');
+  if (!sl) return;
+  const next = Math.min(Math.max(parseInt(sl.value) + dir, ZOOM_SL_MIN), ZOOM_SL_MAX);
+  sl.value = next;
+  applyZoomSlider(next);
+}
+
 function syncZoomSlider() {
   const sl = document.getElementById('zoomSlider');
-  if (sl) sl.value = map.getZoom();
+  if (sl) sl.value = zoomToSlider(map.getZoom());
 }
 
 map.on('zoomend', syncZoomSlider);
