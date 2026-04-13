@@ -889,6 +889,7 @@ input[type="range"] {
 
     <!-- 지도 버튼 -->
     <div class="map-ctrl">
+      <button class="map-ctrl-btn" title="구역계 맞춤" onclick="fitZone()">⬡</button>
       <button class="map-ctrl-btn" title="전체보기" onclick="fitAll()">⊡</button>
       <button class="map-ctrl-btn" title="확대" onclick="map.zoomIn()">+</button>
       <button class="map-ctrl-btn" title="축소" onclick="map.zoomOut()">−</button>
@@ -1287,6 +1288,21 @@ async function generateMap() {
 function fitAll() {
   if (drawnLayers.length === 0) return;
   map.fitBounds(L.featureGroup(drawnLayers).getBounds(), { padding:[60,60] });
+}
+
+function fitZone() {
+  // 구역계 레이어 기준으로 지도 맞춤
+  if (zoneLayers.length > 0) {
+    try {
+      const bounds = L.featureGroup(zoneLayers).getBounds();
+      if (bounds.isValid()) {
+        map.fitBounds(bounds, { padding:[40, 40] });
+        return;
+      }
+    } catch(e) {}
+  }
+  // 구역계가 없으면 편입필지 전체로 대체
+  fitAll();
 }
 
 /* ── 출력 ── */
