@@ -536,6 +536,7 @@ input[type="range"] {
 }
 .wms-row:hover { background:var(--gray); border-radius:4px; }
 /* WMS 레이어 토글 스위치 */
+.wms-toggle {
   width:32px; height:18px; border-radius:9px; background:#ccc;
   position:relative; cursor:pointer; flex-shrink:0; transition:background .2s;
 }
@@ -1036,7 +1037,6 @@ fetch('config.js').then(r => r.ok ? r.text() : '').then(code => {
           </div>
           <div id="wms-grp-yongdo-area">
             <div class="wms-row"><div class="wms-toggle" id="wms-tog-yd_all" onclick="toggleWmsLayer('yd_all')"></div><span>용도지역 전체</span></div>
-            <div class="wms-row"><div class="wms-toggle" id="wms-tog-yd_dosi" onclick="toggleWmsLayer('yd_dosi')"></div><span>도시지역</span></div>
             <div class="wms-row"><div class="wms-toggle" id="wms-tog-yd_juyeo1" onclick="toggleWmsLayer('yd_juyeo1')"></div><span>제1종전용주거</span></div>
             <div class="wms-row"><div class="wms-toggle" id="wms-tog-yd_juyeo2" onclick="toggleWmsLayer('yd_juyeo2')"></div><span>제2종전용주거</span></div>
             <div class="wms-row"><div class="wms-toggle" id="wms-tog-yd_il1" onclick="toggleWmsLayer('yd_il1')"></div><span>제1종일반주거</span></div>
@@ -2555,54 +2555,56 @@ window.addEventListener('load', function() {
 });
 
 // ── 공간정보 WMS 레이어 ──────────────────────────────────
+// Vworld WMS 레이어명 기준 (소문자)
+// lt_u_ugjiguboua : 용도지역지구(국토계획법) — utype: A=용도지역, B=용도지구, C=용도구역
+// lt_u_ugjiguboue : 용도지역지구(기타법령)
 const WMS_LAYERS = {
-  // ① 용도지역
-  yd_all:      { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null },
-  yd_dosi:     { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='도시지역'" },
-  yd_juyeo1:   { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='제1종전용주거지역'" },
-  yd_juyeo2:   { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='제2종전용주거지역'" },
-  yd_il1:      { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='제1종일반주거지역'" },
-  yd_il2:      { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='제2종일반주거지역'" },
-  yd_il3:      { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='제3종일반주거지역'" },
-  yd_jun:      { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='준주거지역'" },
-  yd_jungsim:  { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='중심상업지역'" },
-  yd_ilban:    { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='일반상업지역'" },
-  yd_geunlin:  { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='근린상업지역'" },
-  yd_yutong:   { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='유통상업지역'" },
-  yd_jungong:  { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='준공업지역'" },
-  yd_ilgong:   { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='일반공업지역'" },
-  yd_jeongnok: { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='보전녹지지역'" },
-  yd_saengnok: { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='생산녹지지역'" },
-  yd_janok:    { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='자연녹지지역'" },
-  yd_gwan:     { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='관리지역'" },
-  yd_nongnim:  { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='농림지역'" },
-  yd_jabohwan: { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='자연환경보전지역'" },
-  // ② 용도지구
-  dist_all:    { layer:'lt_u_ugjigubouab',    opacity:0.7, visible:false, obj:null },
-  dist_gyeong: { layer:'lt_u_ugjigubouab',    opacity:0.7, visible:false, obj:null, cql:"uname LIKE '경관지구%'" },
-  dist_godo:   { layer:'lt_u_ugjigubouab',    opacity:0.7, visible:false, obj:null, cql:"uname='고도지구'" },
-  dist_banghwa:{ layer:'lt_u_ugjigubouab',    opacity:0.7, visible:false, obj:null, cql:"uname='방화지구'" },
-  dist_bangjae:{ layer:'lt_u_ugjigubouab',    opacity:0.7, visible:false, obj:null, cql:"uname LIKE '방재지구%'" },
-  dist_bojo:   { layer:'lt_u_ugjigubouab',    opacity:0.7, visible:false, obj:null, cql:"uname LIKE '보존지구%'" },
-  dist_siboho: { layer:'lt_u_ugjigubouab',    opacity:0.7, visible:false, obj:null, cql:"uname LIKE '시설보호지구%'" },
-  dist_chunak: { layer:'lt_u_ugjigubouab',    opacity:0.7, visible:false, obj:null, cql:"uname LIKE '취락지구%'" },
-  dist_gaejin: { layer:'lt_u_ugjigubouab',    opacity:0.7, visible:false, obj:null, cql:"uname LIKE '개발진흥지구%'" },
-  dist_teukje: { layer:'lt_u_ugjigubouab',    opacity:0.7, visible:false, obj:null, cql:"uname='특정용도제한지구'" },
-  // ③ 용도구역
-  zone_gb:     { layer:'lt_u_ugjigubouac',    opacity:0.7, visible:false, obj:null, cql:"uname='개발제한구역'" },
-  zone_siga:   { layer:'lt_u_ugjigubouac',    opacity:0.7, visible:false, obj:null, cql:"uname='시가화조정구역'" },
-  zone_dogan:  { layer:'lt_u_ugjigubouac',    opacity:0.7, visible:false, obj:null, cql:"uname='도시자연공원구역'" },
-  zone_sujasan:{ layer:'lt_u_ugjigubouac',    opacity:0.7, visible:false, obj:null, cql:"uname='수산자원보호구역'" },
+  // ① 용도지역 (utype='A')
+  yd_all:       { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null },
+  yd_juyeo1:    { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='A' AND uname='제1종전용주거지역'" },
+  yd_juyeo2:    { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='A' AND uname='제2종전용주거지역'" },
+  yd_il1:       { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='A' AND uname='제1종일반주거지역'" },
+  yd_il2:       { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='A' AND uname='제2종일반주거지역'" },
+  yd_il3:       { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='A' AND uname='제3종일반주거지역'" },
+  yd_jun:       { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='A' AND uname='준주거지역'" },
+  yd_jungsim:   { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='A' AND uname='중심상업지역'" },
+  yd_ilban:     { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='A' AND uname='일반상업지역'" },
+  yd_geunlin:   { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='A' AND uname='근린상업지역'" },
+  yd_yutong:    { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='A' AND uname='유통상업지역'" },
+  yd_jungong:   { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='A' AND uname='준공업지역'" },
+  yd_ilgong:    { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='A' AND uname='일반공업지역'" },
+  yd_jeongnok:  { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='A' AND uname='보전녹지지역'" },
+  yd_saengnok:  { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='A' AND uname='생산녹지지역'" },
+  yd_janok:     { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='A' AND uname='자연녹지지역'" },
+  yd_gwan:      { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='A' AND uname LIKE '관리지역%'" },
+  yd_nongnim:   { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='A' AND uname='농림지역'" },
+  yd_jabohwan:  { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='A' AND uname='자연환경보전지역'" },
+  // ② 용도지구 (utype='B')
+  dist_all:     { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='B'" },
+  dist_gyeong:  { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='B' AND uname LIKE '경관지구%'" },
+  dist_godo:    { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='B' AND uname='고도지구'" },
+  dist_banghwa: { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='B' AND uname='방화지구'" },
+  dist_bangjae: { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='B' AND uname LIKE '방재지구%'" },
+  dist_bojo:    { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='B' AND uname LIKE '보존지구%'" },
+  dist_siboho:  { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='B' AND uname LIKE '시설보호지구%'" },
+  dist_chunak:  { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='B' AND uname LIKE '취락지구%'" },
+  dist_gaejin:  { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='B' AND uname LIKE '개발진흥지구%'" },
+  dist_teukje:  { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='B' AND uname='특정용도제한지구'" },
+  // ③ 용도구역 (utype='C')
+  zone_gb:      { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='C' AND uname='개발제한구역'" },
+  zone_siga:    { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='C' AND uname='시가화조정구역'" },
+  zone_dogan:   { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='C' AND uname='도시자연공원구역'" },
+  zone_sujasan: { layer:'lt_u_ugjiguboua', opacity:0.7, visible:false, obj:null, cql:"utype='C' AND uname='수산자원보호구역'" },
   // ④ 개별법령
-  etc_all:     { layer:'lt_u_ugjiguboue',     opacity:0.7, visible:false, obj:null },
-  etc_gachuk:  { layer:'lt_u_ugjiguboue',     opacity:0.7, visible:false, obj:null, cql:"uname='가축사육제한지역'" },
-  etc_gwangwang:{ layer:'lt_u_ugjiguboue',    opacity:0.7, visible:false, obj:null, cql:"uname='관광지'" },
-  etc_geupgyeong:{ layer:'lt_u_ugjiguboue',   opacity:0.7, visible:false, obj:null, cql:"uname='급경사재해예방지역'" },
-  etc_saji:    { layer:'lt_l_forestarea',     opacity:0.7, visible:false, obj:null },
-  etc_taekji:  { layer:'lt_u_ugjiguboue',     opacity:0.7, visible:false, obj:null, cql:"uname='택지개발지구'" },
+  etc_all:      { layer:'lt_u_ugjiguboue', opacity:0.7, visible:false, obj:null },
+  etc_gachuk:   { layer:'lt_u_ugjiguboue', opacity:0.7, visible:false, obj:null, cql:"uname='가축사육제한지역'" },
+  etc_gwangwang:{ layer:'lt_u_ugjiguboue', opacity:0.7, visible:false, obj:null, cql:"uname LIKE '관광지%'" },
+  etc_geupgyeong:{ layer:'lt_u_ugjiguboue',opacity:0.7, visible:false, obj:null, cql:"uname='급경사재해예방지역'" },
+  etc_saji:     { layer:'lt_l_forestarea', opacity:0.7, visible:false, obj:null },
+  etc_taekji:   { layer:'lt_c_lhblpn',    opacity:0.7, visible:false, obj:null },
   // ⑤ 기타
-  jijuk:       { layer:'lt_c_landinfobasemap',opacity:0.8, visible:false, obj:null },
-  dosi_si:     { layer:'lt_u_udosiboua',      opacity:0.7, visible:false, obj:null },
+  jijuk:        { layer:'lt_c_landinfobasemap', opacity:0.8, visible:false, obj:null },
+  dosi_si:      { layer:'lt_u_udosiboua',  opacity:0.7, visible:false, obj:null },
 };
 
 function buildWmsLayer(id) {
@@ -2615,6 +2617,8 @@ function buildWmsLayer(id) {
     transparent:true, opacity: info.opacity,
     attribution:'© Vworld 국토지리정보원', maxZoom:19,
   };
+  // CQL 필터가 있으면 추가
+  if (info.cql) params.CQL_FILTER = info.cql;
   return L.tileLayer.wms('https://api.vworld.kr/req/wms', params);
 }
 
