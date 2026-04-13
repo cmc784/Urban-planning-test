@@ -1317,7 +1317,7 @@ async function processGuyeokShp(file) {
       throw new Error('JSTS 초기화 실패: ' + e.message);
     }
 
-    // ── 구역계 전체를 Union → 단일 JSTS geometry ──
+    // ── 구역계 JSTS geometry 준비 (단일 폴리곤 직접 사용) ──
     log('▸ STEP 2  구역계 폴리곤 준비 중...');
     _guyeokJsts = null;
     let guyeokReadOk = 0, guyeokReadFail = 0;
@@ -1326,8 +1326,13 @@ async function processGuyeokShp(file) {
       try {
         const g = jstsReader.read(feat.geometry);
         if (!g || g.isEmpty()) continue;
-        const gValid = g.buffer(0);
-        _guyeokJsts = _guyeokJsts ? _guyeokJsts.union(gValid) : gValid;
+        // Union 없이 직접 사용 (단일 폴리곤 기준)
+        // 여러 피처인 경우에만 union 적용
+        if (_guyeokJsts === null) {
+          _guyeokJsts = g; // buffer(0) 없이 원본 그대로
+        } else {
+          _guyeokJsts = _guyeokJsts.union(g);
+        }
         guyeokReadOk++;
       } catch(e) {
         guyeokReadFail++;
@@ -1335,7 +1340,7 @@ async function processGuyeokShp(file) {
     }
 
     if (!_guyeokJsts || _guyeokJsts.isEmpty()) {
-      throw new Error('구역계 Union 결과가 비어있습니다. SHP 파일 내용을 확인해주세요.');
+      throw new Error('구역계 geometry가 비어있습니다. SHP 파일 내용을 확인해주세요.');
     }
     log(`  ✅ 구역계 준비 완료 (${guyeokReadOk}개 피처)`);
     bar(25);
@@ -1369,7 +1374,6 @@ async function processGuyeokShp(file) {
         let parcelJsts;
         try {
           parcelJsts = jstsReader.read(row.geometry);
-          parcelJsts = parcelJsts.buffer(0);
         } catch(e) { cntClipFail++; continue; }
 
         if (!parcelJsts || parcelJsts.isEmpty()) { cntGeomEmpty++; continue; }
@@ -1402,6 +1406,47 @@ async function processGuyeokShp(file) {
           } catch(e2) { cntClipFail++; continue; }
         }
         if (!intersectionJsts || intersectionJsts.isEmpty()) continue;
+
+        // intersection 결과가 면적 없는 경우 → 단계적 복구 시도
+        if (intersectionJsts.getArea() < 0.5) {
+          let recovered = false;
+
+          // 복구 1: 구역계가 필지를 완전히 포함하는지 확인
+          try {
+            if (_guyeokJsts.covers(parcelJsts) || _guyeokJsts.contains(parcelJsts)) {
+              intersectionJsts = parcelJsts;
+              recovered = true;
+            }
+          } catch(e) {}
+
+          // 복구 2: 미세 buffer로 geometry 정규화 후 재시도
+          if (!recovered) {
+            try {
+              const pFixed = parcelJsts.buffer(0.01).buffer(-0.01);
+              const gFixed = _guyeokJsts.buffer(0.01).buffer(-0.01);
+              const retried = pFixed.intersection(gFixed);
+              if (retried && !retried.isEmpty() && retried.getArea() >= 0.5) {
+                intersectionJsts = retried;
+                recovered = true;
+              }
+            } catch(e) {}
+          }
+
+          // 복구 3: PrecisionModel 스냅 후 재시도
+          if (!recovered) {
+            try {
+              const pm = new jsts.geom.PrecisionModel(10); // 0.1m 단위
+              const reducer = new jsts.precision.GeometryPrecisionReducer(pm);
+              const pSnapped = reducer.reduce(parcelJsts);
+              const gSnapped = reducer.reduce(_guyeokJsts);
+              const retried = pSnapped.intersection(gSnapped);
+              if (retried && !retried.isEmpty() && retried.getArea() >= 0.5) {
+                intersectionJsts = retried;
+                recovered = true;
+              }
+            } catch(e) {}
+          }
+        }
         cntClipOk++;
 
         // ── 편입면적: JSTS geometry에서 직접 계산 (GeoJSON 변환 오차 방지) ──
