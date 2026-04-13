@@ -999,9 +999,9 @@ fetch('config.js').then(r => r.ok ? r.text() : '').then(code => {
       </div>
     </div>
 
-    <!-- 공간정보 레이어 플로팅 패널 (지도 우측) -->
+    <!-- 공간정보 레이어 플로팅 패널 (지도 우측 하단) -->
     <div id="wms-float-panel" style="
-      position:absolute; top:12px; left:12px; z-index:900;
+      position:absolute; bottom:40px; right:12px; z-index:900;
       background:rgba(255,255,255,0.96); border:1px solid var(--border);
       border-radius:10px; box-shadow:0 4px 16px rgba(0,0,0,0.12);
       width:210px; font-family:'Noto Sans KR',sans-serif;">
