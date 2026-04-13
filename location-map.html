@@ -259,19 +259,6 @@ input[type="range"] {
 .map-empty-text { font-size:13px; color:var(--ink3); text-align:center; line-height:1.7; }
 .map-empty-text strong { color:var(--teal); }
 
-/* WMS 레이어 토글 스위치 */
-.wms-toggle {
-  width:32px; height:18px; border-radius:9px; background:#ddd;
-  position:relative; cursor:pointer; flex-shrink:0; transition:background .2s;
-}
-.wms-toggle::after {
-  content:''; position:absolute; top:2px; left:2px;
-  width:14px; height:14px; border-radius:50%; background:white;
-  box-shadow:0 1px 3px rgba(0,0,0,0.25); transition:left .2s;
-}
-.wms-toggle.on { background:var(--teal,#1a7f7a); }
-.wms-toggle.on::after { left:16px; }
-
 /* 지도 컨트롤 버튼 */
 .map-ctrl {
   position:absolute; top:12px; right:12px; z-index:1000;
@@ -533,6 +520,18 @@ input[type="range"] {
   border-radius:4px; transition:background .12s;
 }
 .lyr-jimok-row:hover { background:var(--bg); }
+/* ── 공간정보 레이어 플로팅 패널 ── */
+.wms-toggle {
+  width:32px; height:18px; border-radius:9px; background:#ccc;
+  position:relative; cursor:pointer; flex-shrink:0; transition:background .2s;
+}
+.wms-toggle::after {
+  content:''; position:absolute; top:2px; left:2px;
+  width:14px; height:14px; border-radius:50%; background:white;
+  box-shadow:0 1px 3px rgba(0,0,0,0.25); transition:left .2s;
+}
+.wms-toggle.on { background:var(--teal,#1a7f7a); }
+.wms-toggle.on::after { left:16px; }
 </style>
 <script>
 // config.js 없어도 오류 없이 동작하도록 기본값 설정
@@ -653,6 +652,7 @@ fetch('config.js').then(r => r.ok ? r.text() : '').then(code => {
         </div>
       </div>
 
+      <!-- 레이어 편집 플로팅 패널 -->
       <div id="layer-edit-panel" style="display:none;position:fixed;top:50%;left:260px;transform:translateY(-50%);
         background:var(--white);border:1px solid var(--border);border-radius:12px;
         box-shadow:0 8px 32px rgba(0,0,0,0.18);padding:18px;width:240px;z-index:500">
@@ -829,8 +829,6 @@ fetch('config.js').then(r => r.ok ? r.text() : '').then(code => {
         <button class="btn btn-export btn-pdf" style="margin-top:6px" onclick="exportPDF()">📄 PDF 다운로드</button>
       </div>
 
-
-      </div>
     </div><!-- /pyeonip-sidebar -->
 
     <!-- ── 기존 DXF 모드 패널 ── -->
@@ -978,9 +976,8 @@ fetch('config.js').then(r => r.ok ? r.text() : '').then(code => {
       </div>
     </div>
 
-
-      </div>
     </div><!-- /dxf-sidebar -->
+
   </div><!-- /sidebar -->
 
   <!-- 지도 -->
@@ -999,60 +996,57 @@ fetch('config.js').then(r => r.ok ? r.text() : '').then(code => {
       </div>
     </div>
 
-    <!-- 공간정보 레이어 플로팅 패널 (지도 우측 하단) -->
+    <!-- 공간정보 레이어 플로팅 패널 (우측 하단) -->
     <div id="wms-float-panel" style="
-      position:absolute; bottom:40px; right:12px; z-index:900;
-      background:rgba(255,255,255,0.96); border:1px solid var(--border);
-      border-radius:10px; box-shadow:0 4px 16px rgba(0,0,0,0.12);
-      width:210px; font-family:'Noto Sans KR',sans-serif;">
+        position:absolute; bottom:48px; right:50px; z-index:900;
+        background:rgba(255,255,255,0.96); border:1px solid var(--border);
+        border-radius:10px; box-shadow:0 4px 16px rgba(0,0,0,0.12);
+        width:215px; font-family:'Noto Sans KR',sans-serif;">
       <div style="display:flex;align-items:center;justify-content:space-between;
-        padding:10px 12px 8px; border-bottom:1px solid var(--border2);cursor:pointer"
-        onclick="toggleWmsPanel()">
-        <div style="font-size:12px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:6px">
-          🗺️ 공간정보 레이어
-        </div>
+          padding:9px 12px 8px; border-bottom:1px solid var(--border2); cursor:pointer"
+          onclick="toggleWmsPanel()">
+        <span style="font-size:12px;font-weight:700;color:var(--ink)">🗺️ 공간정보 레이어</span>
         <span id="wms-panel-chevron" style="font-size:11px;color:var(--ink3)">▲</span>
       </div>
       <div id="wms-panel-body" style="padding:8px 12px 10px">
-        <div id="wms-no-key" style="font-size:11px;color:var(--amber);padding:4px 0;display:none">
-          ⚠️ Vworld API 키 필요
+        <div id="wms-no-key" style="font-size:11px;color:var(--amber);padding:2px 0 4px;display:none">
+          ⚠️ Vworld API 키가 필요합니다
         </div>
-        <!-- 레이어 행: 레이어명 + 토글 + 투명도 슬라이더 -->
-        <div style="display:flex;flex-direction:column;gap:6px" id="wms-layer-list">
-          <!-- 연속지적도 -->
-          <div style="display:flex;align-items:center;gap:6px">
-            <div class="wms-toggle" id="wms-tog-jijuk" onclick="toggleWmsLayer('jijuk')" title="ON/OFF"></div>
-            <span style="font-size:11.5px;flex:1;color:var(--ink)">연속지적도</span>
-            <input type="range" min="0" max="1" step="0.1" value="0.8" style="width:54px;accent-color:var(--teal)"
-              title="투명도" oninput="setWmsOpacity('jijuk',this.value)">
+        <div style="display:flex;flex-direction:column;gap:7px">
+          <div style="display:flex;align-items:center;gap:7px">
+            <div class="wms-toggle" id="wms-tog-jijuk" onclick="toggleWmsLayer('jijuk')"></div>
+            <span style="font-size:11.5px;flex:1">연속지적도</span>
+            <input type="range" min="0" max="1" step="0.1" value="0.8"
+              style="width:52px;accent-color:var(--teal)" title="투명도"
+              oninput="setWmsOpacity('jijuk',this.value)">
           </div>
-          <!-- 용도지역 -->
-          <div style="display:flex;align-items:center;gap:6px">
-            <div class="wms-toggle" id="wms-tog-yongdo" onclick="toggleWmsLayer('yongdo')" title="ON/OFF"></div>
-            <span style="font-size:11.5px;flex:1;color:var(--ink)">용도지역</span>
-            <input type="range" min="0" max="1" step="0.1" value="0.7" style="width:54px;accent-color:var(--teal)"
-              title="투명도" oninput="setWmsOpacity('yongdo',this.value)">
+          <div style="display:flex;align-items:center;gap:7px">
+            <div class="wms-toggle" id="wms-tog-yongdo" onclick="toggleWmsLayer('yongdo')"></div>
+            <span style="font-size:11.5px;flex:1">용도지역</span>
+            <input type="range" min="0" max="1" step="0.1" value="0.7"
+              style="width:52px;accent-color:var(--teal)" title="투명도"
+              oninput="setWmsOpacity('yongdo',this.value)">
           </div>
-          <!-- 도시계획시설 -->
-          <div style="display:flex;align-items:center;gap:6px">
-            <div class="wms-toggle" id="wms-tog-dosi" onclick="toggleWmsLayer('dosi')" title="ON/OFF"></div>
-            <span style="font-size:11.5px;flex:1;color:var(--ink)">도시계획시설</span>
-            <input type="range" min="0" max="1" step="0.1" value="0.7" style="width:54px;accent-color:var(--teal)"
-              title="투명도" oninput="setWmsOpacity('dosi',this.value)">
+          <div style="display:flex;align-items:center;gap:7px">
+            <div class="wms-toggle" id="wms-tog-dosi" onclick="toggleWmsLayer('dosi')"></div>
+            <span style="font-size:11.5px;flex:1">도시계획시설</span>
+            <input type="range" min="0" max="1" step="0.1" value="0.7"
+              style="width:52px;accent-color:var(--teal)" title="투명도"
+              oninput="setWmsOpacity('dosi',this.value)">
           </div>
-          <!-- 개발제한구역 -->
-          <div style="display:flex;align-items:center;gap:6px">
-            <div class="wms-toggle" id="wms-tog-gb" onclick="toggleWmsLayer('gb')" title="ON/OFF"></div>
-            <span style="font-size:11.5px;flex:1;color:var(--ink)">개발제한구역</span>
-            <input type="range" min="0" max="1" step="0.1" value="0.7" style="width:54px;accent-color:var(--teal)"
-              title="투명도" oninput="setWmsOpacity('gb',this.value)">
+          <div style="display:flex;align-items:center;gap:7px">
+            <div class="wms-toggle" id="wms-tog-gb" onclick="toggleWmsLayer('gb')"></div>
+            <span style="font-size:11.5px;flex:1">개발제한구역</span>
+            <input type="range" min="0" max="1" step="0.1" value="0.7"
+              style="width:52px;accent-color:var(--teal)" title="투명도"
+              oninput="setWmsOpacity('gb',this.value)">
           </div>
-          <!-- 산지구분도 -->
-          <div style="display:flex;align-items:center;gap:6px">
-            <div class="wms-toggle" id="wms-tog-saji" onclick="toggleWmsLayer('saji')" title="ON/OFF"></div>
-            <span style="font-size:11.5px;flex:1;color:var(--ink)">산지구분도</span>
-            <input type="range" min="0" max="1" step="0.1" value="0.7" style="width:54px;accent-color:var(--teal)"
-              title="투명도" oninput="setWmsOpacity('saji',this.value)">
+          <div style="display:flex;align-items:center;gap:7px">
+            <div class="wms-toggle" id="wms-tog-saji" onclick="toggleWmsLayer('saji')"></div>
+            <span style="font-size:11.5px;flex:1">산지구분도</span>
+            <input type="range" min="0" max="1" step="0.1" value="0.7"
+              style="width:52px;accent-color:var(--teal)" title="투명도"
+              oninput="setWmsOpacity('saji',this.value)">
           </div>
         </div>
       </div>
@@ -1258,9 +1252,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const selP = document.getElementById('map-layer-p');
     if (selP && selP.value === 'esri-sat') selP.value = 'vworld-sat';
   }
-  // 공간정보 레이어 패널 — 키 없으면 안내 표시
-  const noKey = document.getElementById('wms-no-key');
-  if (noKey) noKey.style.display = key ? 'none' : 'block';
 });
 
 // 스케일바
@@ -2448,83 +2439,6 @@ function buildHatchInner(h, color, sp) {
 }
 
 // 편입 모드용 타일 전환
-// ── 공간정보 WMS 레이어 ─────────────────────────────────
-const WMS_LAYERS = {
-  jijuk: { name:'연속지적도',  layer:'lt_c_landinfobasemap', opacity:0.8, visible:false, obj:null },
-  yongdo:{ name:'용도지역',    layer:'lt_u_ugjiguboua',      opacity:0.7, visible:false, obj:null },
-  dosi:  { name:'도시계획시설',layer:'lt_u_udosiboua',       opacity:0.7, visible:false, obj:null },
-  gb:    { name:'개발제한구역',layer:'lt_u_greenbelt',       opacity:0.7, visible:false, obj:null },
-  saji:  { name:'산지구분도',  layer:'lt_l_forestarea',      opacity:0.7, visible:false, obj:null },
-};
-
-function buildWmsLayer(id) {
-  const info = WMS_LAYERS[id];
-  const key = getVworldKey();
-  if (!key) return null;
-  return L.tileLayer.wms('https://api.vworld.kr/req/wms', {
-    key: key,
-    service: 'WMS',
-    version: '1.3.0',
-    request: 'GetMap',
-    layers: info.layer,
-    styles: '',
-    format: 'image/png',
-    transparent: true,
-    opacity: info.opacity,
-    attribution: '© Vworld 국토지리정보원',
-    maxZoom: 19,
-  });
-}
-
-function toggleWmsLayer(id) {
-  const info = WMS_LAYERS[id];
-  const tog  = document.getElementById('wms-tog-' + id);
-  const key  = getVworldKey();
-
-  if (!key) {
-    const noKey = document.getElementById('wms-no-key');
-    if (noKey) noKey.style.display = 'block';
-    return;
-  }
-
-  if (info.visible) {
-    if (info.obj && map.hasLayer(info.obj)) map.removeLayer(info.obj);
-    info.obj = null; info.visible = false;
-    if (tog) tog.classList.remove('on');
-  } else {
-    info.obj = buildWmsLayer(id);
-    if (info.obj) { info.obj.addTo(map); info.visible = true; }
-    if (tog) tog.classList.add('on');
-    const noKey = document.getElementById('wms-no-key');
-    if (noKey) noKey.style.display = 'none';
-  }
-}
-
-function toggleWmsPanel() {
-  const body = document.getElementById('wms-panel-body');
-  const chev = document.getElementById('wms-panel-chevron');
-  if (!body) return;
-  const collapsed = body.style.display === 'none';
-  body.style.display = collapsed ? 'block' : 'none';
-  if (chev) chev.textContent = collapsed ? '▲' : '▼';
-}
-
-function setWmsOpacity(id, val) {
-  WMS_LAYERS[id].opacity = parseFloat(val);
-  if (WMS_LAYERS[id].obj) WMS_LAYERS[id].obj.setOpacity(parseFloat(val));
-}
-
-function refreshWmsLayers() {
-  Object.keys(WMS_LAYERS).forEach(id => {
-    const info = WMS_LAYERS[id];
-    if (info.visible && info.obj) {
-      map.removeLayer(info.obj);
-      info.obj = buildWmsLayer(id);
-      if (info.obj) info.obj.addTo(map);
-    }
-  });
-}
-
 function switchTilesP() {
   const v = document.getElementById('map-layer-p').value;
   document.getElementById('map-layer').value = v;
@@ -2572,6 +2486,64 @@ window.addEventListener('load', function() {
     setTimeout(initPyeonipMode, 300);
   }
 });
-</script>
+
+// ── 공간정보 WMS 레이어 ──────────────────────────────────
+const WMS_LAYERS = {
+  jijuk:  { layer:'lt_c_landinfobasemap', opacity:0.8, visible:false, obj:null },
+  yongdo: { layer:'lt_u_ugjiguboua',      opacity:0.7, visible:false, obj:null },
+  dosi:   { layer:'lt_u_udosiboua',       opacity:0.7, visible:false, obj:null },
+  gb:     { layer:'lt_u_greenbelt',       opacity:0.7, visible:false, obj:null },
+  saji:   { layer:'lt_l_forestarea',      opacity:0.7, visible:false, obj:null },
+};
+
+function buildWmsLayer(id) {
+  const key = getVworldKey();
+  if (!key) return null;
+  return L.tileLayer.wms('https://api.vworld.kr/req/wms', {
+    key: key, service:'WMS', version:'1.3.0', request:'GetMap',
+    layers: WMS_LAYERS[id].layer, styles:'', format:'image/png',
+    transparent:true, opacity: WMS_LAYERS[id].opacity,
+    attribution:'© Vworld 국토지리정보원', maxZoom:19,
+  });
+}
+
+function toggleWmsLayer(id) {
+  const info = WMS_LAYERS[id];
+  const tog  = document.getElementById('wms-tog-' + id);
+  const key  = getVworldKey();
+  const noKey = document.getElementById('wms-no-key');
+  if (!key) { if (noKey) noKey.style.display = 'block'; return; }
+  if (info.visible) {
+    if (info.obj && map.hasLayer(info.obj)) map.removeLayer(info.obj);
+    info.obj = null; info.visible = false;
+    if (tog) tog.classList.remove('on');
+  } else {
+    info.obj = buildWmsLayer(id);
+    if (info.obj) { info.obj.addTo(map); info.visible = true; }
+    if (tog) tog.classList.add('on');
+    if (noKey) noKey.style.display = 'none';
+  }
+}
+
+function setWmsOpacity(id, val) {
+  WMS_LAYERS[id].opacity = parseFloat(val);
+  if (WMS_LAYERS[id].obj) WMS_LAYERS[id].obj.setOpacity(parseFloat(val));
+}
+
+function toggleWmsPanel() {
+  const body = document.getElementById('wms-panel-body');
+  const chev = document.getElementById('wms-panel-chevron');
+  if (!body) return;
+  const collapsed = body.style.display === 'none';
+  body.style.display = collapsed ? 'block' : 'none';
+  if (chev) chev.textContent = collapsed ? '▲' : '▼';
+}
+
+// 페이지 로드 시 키 없으면 안내 표시
+window.addEventListener('load', function() {
+  const key = getVworldKey();
+  const noKey = document.getElementById('wms-no-key');
+  if (noKey) noKey.style.display = key ? 'none' : 'block';
+});</script>
 </body>
 </html>
