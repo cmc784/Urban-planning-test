@@ -656,6 +656,19 @@ input[type="range"] {
           <option value="pnu">PNU</option>
         </select>
 
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;margin-top:10px">
+          <span style="font-size:11.5px;color:var(--ink2)">글씨 색상</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+          <input type="color" id="lbl-color" value="#000000"
+            style="width:36px;height:28px;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:2px"
+            oninput="syncLabelColorHex();applyLabelSettings()">
+          <input type="text" id="lbl-color-hex" value="#000000" maxlength="7"
+            placeholder="#rrggbb"
+            style="width:80px;padding:4px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:'DM Mono',monospace;outline:none"
+            oninput="syncLabelColorPicker();applyLabelSettings()">
+        </div>
+
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
           <span style="font-size:11.5px;color:var(--ink2)">글씨 크기</span>
           <input type="number" id="lbl-sz-num" min="7" max="18" step="1" value="11"
@@ -915,9 +928,9 @@ let zoneLayers = [];    // 구역계 Leaflet layers
 let psCurrentTab = 'full';
 
 const PS_DEFAULTS = {
-  full: { fillColor:'#dc2626', fillOpacity:0.35, hatch:'none', strokeColor:'#991b1b', strokeWidth:2, strokeDash:'none', labelContent:'jibun', labelSize:11 },
-  part: { fillColor:'#ea580c', fillOpacity:0.30, hatch:'diagonal', strokeColor:'#9a3412', strokeWidth:2, strokeDash:'none', labelContent:'jibun', labelSize:11 },
-  zone: { fillColor:'#1a5c3a', fillOpacity:0.08, hatch:'none', strokeColor:'#1a5c3a', strokeWidth:2.5, strokeDash:'12,4,2,4', labelContent:'none', labelSize:11 },
+  full: { fillColor:'#dc2626', fillOpacity:0.35, hatch:'none', strokeColor:'#991b1b', strokeWidth:2, strokeDash:'none', labelContent:'jibun', labelSize:11, labelColor:'#000000' },
+  part: { fillColor:'#ea580c', fillOpacity:0.30, hatch:'diagonal', strokeColor:'#9a3412', strokeWidth:2, strokeDash:'none', labelContent:'jibun', labelSize:11, labelColor:'#000000' },
+  zone: { fillColor:'#1a5c3a', fillOpacity:0.08, hatch:'none', strokeColor:'#1a5c3a', strokeWidth:2.5, strokeDash:'12,4,2,4', labelContent:'none', labelSize:11, labelColor:'#000000' },
 };
 let psStyles = JSON.parse(JSON.stringify(PS_DEFAULTS));
 
@@ -1530,25 +1543,44 @@ function psUpdatePreview() {} // 제거됨
 // 색상 모드 전환
 // ── 독립 라벨 패널 ──────────────────────────────────────
 function initLabelPanel() {
-  // 현재 full 스타일 기준으로 패널 초기값 설정
   const s = psStyles['full'];
   const contentSel = document.getElementById('lbl-content');
   if (contentSel) contentSel.value = s.labelContent || 'jibun';
-  const szEl = document.getElementById('lbl-sz');
+  const szEl  = document.getElementById('lbl-sz');
   const szNum = document.getElementById('lbl-sz-num');
   if (szEl)  szEl.value  = s.labelSize || 11;
   if (szNum) szNum.value = s.labelSize || 11;
+  const lc = s.labelColor || '#000000';
+  const colorEl    = document.getElementById('lbl-color');
+  const colorHexEl = document.getElementById('lbl-color-hex');
+  if (colorEl)    colorEl.value    = lc;
+  if (colorHexEl) colorHexEl.value = lc;
 }
 
 function applyLabelSettings() {
   const content = document.getElementById('lbl-content').value;
   const size    = parseInt(document.getElementById('lbl-sz').value) || 11;
-  // 완전편입·부분편입·구역계 전체에 동일하게 적용
+  const color   = document.getElementById('lbl-color-hex')?.value || '#000000';
   ['full','part','zone'].forEach(key => {
     psStyles[key].labelContent = content;
     psStyles[key].labelSize    = size;
+    psStyles[key].labelColor   = color;
   });
   renderPyeonipLayers();
+}
+
+function syncLabelColorHex() {
+  const picker = document.getElementById('lbl-color');
+  const hex    = document.getElementById('lbl-color-hex');
+  if (picker && hex) hex.value = picker.value;
+}
+
+function syncLabelColorPicker() {
+  const hex    = document.getElementById('lbl-color-hex');
+  const picker = document.getElementById('lbl-color');
+  if (hex && picker && /^#[0-9a-fA-F]{6}$/.test(hex.value)) {
+    picker.value = hex.value;
+  }
 }
 
 function syncLabelNumToRange() {
@@ -2002,7 +2034,7 @@ function renderPyeonipLayers() {
             const lbl = L.marker([cx, cy], {
               icon: L.divIcon({
                 className: '',
-                html: `<div style="font-family:'Noto Sans KR',sans-serif;font-size:${s.labelSize}px;font-weight:700;color:${strokeColor};white-space:nowrap;text-shadow:0 0 3px rgba(255,255,255,0.9),0 0 3px rgba(255,255,255,0.9)">${labelText}</div>`,
+                html: `<div style="font-family:'Noto Sans KR',sans-serif;font-size:${s.labelSize}px;font-weight:700;color:${s.labelColor || '#000000'};white-space:nowrap;text-shadow:0 0 3px rgba(255,255,255,0.9),0 0 3px rgba(255,255,255,0.9)">${labelText}</div>`,
                 iconAnchor: [0, 0],
               }),
               interactive: false,

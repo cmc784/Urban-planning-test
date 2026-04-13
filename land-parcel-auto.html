@@ -891,7 +891,7 @@ tbody.result-body td:last-child { border-right:none; }
 
             <!-- 라벨 -->
             <div class="style-section-title">라벨 표시</div>
-            <div class="style-grid-2">
+            <div class="style-grid">
               <div class="style-field">
                 <div class="style-label">표시 내용</div>
                 <select class="map-select" id="labelContent" onchange="updatePreview()">
@@ -902,6 +902,15 @@ tbody.result-body td:last-child { border-right:none; }
                   <option value="pyeonip">편입면적</option>
                   <option value="pnu">PNU</option>
                 </select>
+              </div>
+              <div class="style-field">
+                <div class="style-label">글씨 색상</div>
+                <div class="color-row">
+                  <input type="color" class="color-swatch-input" id="labelColor" value="#000000"
+                    oninput="syncLabelColorHex();updatePreview()">
+                  <input type="text" class="color-hex-input" id="labelColorHex" value="#000000" maxlength="7"
+                    placeholder="#rrggbb" oninput="syncLabelColorPicker();updatePreview()">
+                </div>
               </div>
               <div class="style-field">
                 <div class="style-label">글씨 크기 <span id="labelSizeVal">11</span>px</div>
@@ -1511,17 +1520,17 @@ const DEFAULT_STYLES = {
   full: {
     fillColor: '#ff4444', fillOpacity: 0.35, hatch: 'none',
     strokeColor: '#cc0000', strokeWidth: 2, strokeDash: 'none',
-    labelContent: 'jibun', labelSize: 11,
+    labelContent: 'jibun', labelSize: 11, labelColor: '#000000',
   },
   part: {
     fillColor: '#ff8c00', fillOpacity: 0.30, hatch: 'diagonal',
     strokeColor: '#cc6600', strokeWidth: 2, strokeDash: 'none',
-    labelContent: 'jibun', labelSize: 11,
+    labelContent: 'jibun', labelSize: 11, labelColor: '#000000',
   },
   zone: {
     fillColor: '#1a5c3a', fillOpacity: 0.08, hatch: 'none',
     strokeColor: '#1a5c3a', strokeWidth: 2.5, strokeDash: '12,4,2,4',
-    labelContent: 'none', labelSize: 11,
+    labelContent: 'none', labelSize: 11, labelColor: '#000000',
   },
 };
 
@@ -1647,6 +1656,9 @@ function loadStyleToUI(tab) {
   document.getElementById('labelContent').value       = s.labelContent;
   document.getElementById('labelSize').value          = s.labelSize;
   document.getElementById('labelSizeVal').textContent = s.labelSize;
+  const lc = s.labelColor || '#000000';
+  document.getElementById('labelColor').value         = lc;
+  document.getElementById('labelColorHex').value      = lc;
   updatePreview();
 }
 
@@ -1659,6 +1671,7 @@ function saveUIToStyle() {
   s.strokeDash   = document.getElementById('strokeDash').value;
   s.labelContent = document.getElementById('labelContent').value;
   s.labelSize    = parseInt(document.getElementById('labelSize').value);
+  s.labelColor   = document.getElementById('labelColorHex').value || s.labelColor;
 }
 
 function syncColorHex(which) {
@@ -1673,6 +1686,17 @@ function syncColorPicker(which) {
   if (/^#[0-9a-fA-F]{6}$/.test(hex.value)) {
     picker.value = hex.value;
     saveUIToStyle(); updatePreview();
+  }
+}
+function syncLabelColorHex() {
+  document.getElementById('labelColorHex').value = document.getElementById('labelColor').value;
+  saveUIToStyle();
+}
+function syncLabelColorPicker() {
+  const hex = document.getElementById('labelColorHex').value;
+  if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
+    document.getElementById('labelColor').value = hex;
+    saveUIToStyle();
   }
 }
 function updateOpacityLabel(inputId, labelId) {
@@ -1767,7 +1791,7 @@ function updatePreview() {
       labelEl.setAttribute('x', sh.cx);
       labelEl.setAttribute('y', sh.cy);
       labelEl.setAttribute('font-size', s.labelSize);
-      labelEl.setAttribute('fill', s.strokeColor);
+      labelEl.setAttribute('fill', s.labelColor || '#000000');
       labelEl.textContent = sh.label;
     } else {
       labelEl.textContent = '';
@@ -2225,6 +2249,18 @@ function ldLinkApply() {
       ldLinkExtra[pnu][f.key] = ld[f.colIdx] !== undefined ? String(ld[f.colIdx]) : '';
     });
 
+    // ── 행정구역(통합/개별) 선택 시 — ldLinkExtra에도 저장 (테이블 컬럼 표시용) ──
+    const haengjeongFieldExtra = adminSelected.find(f => f.key === 'haengjeong');
+    if (haengjeongFieldExtra && haengjeongFieldExtra.colIdx >= 0) {
+      ldLinkExtra[pnu]['haengjeong'] = String(ld[haengjeongFieldExtra.colIdx] || '');
+    }
+    const sidoFieldExtra    = adminSelected.find(f => f.key === 'sido');
+    const sigunguFieldExtra = adminSelected.find(f => f.key === 'sigungu');
+    const emdFieldExtra     = adminSelected.find(f => f.key === 'emd');
+    if (sidoFieldExtra    && sidoFieldExtra.colIdx    >= 0) ldLinkExtra[pnu]['sido']    = String(ld[sidoFieldExtra.colIdx]    || '');
+    if (sigunguFieldExtra && sigunguFieldExtra.colIdx >= 0) ldLinkExtra[pnu]['sigungu'] = String(ld[sigunguFieldExtra.colIdx] || '');
+    if (emdFieldExtra     && emdFieldExtra.colIdx     >= 0) ldLinkExtra[pnu]['emd']     = String(ld[emdFieldExtra.colIdx]     || '');
+
     // ── 행정구역: 토지대장 PNU로 직접 파싱 (가장 정확) ──
     const ldPnu  = String(ld[pnuColIdx] || '').replace(/[^0-9]/g, '').padStart(19,'0');
     const parsed = parsePNUInfo(ldPnu);
@@ -2256,7 +2292,9 @@ function ldLinkApply() {
     matched++;
   });
 
-  ldLinkSelectedFields = normalSelected;
+  // 행정구역 항목(sido/sigungu/emd/haengjeong) 선택 시 테이블 컬럼에도 표시
+  const adminForTable = adminSelected; // sido, sigungu, emd, haengjeong 모두 포함
+  ldLinkSelectedFields = [...normalSelected, ...adminForTable];
   renderShpResult();
 
   const resultEl = document.getElementById('ldLink-result');
