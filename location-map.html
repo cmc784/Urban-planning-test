@@ -2115,17 +2115,20 @@ function applyHatchToPath(pathEl, hatchId, color, opacity, uid) {
     if (!defs) { defs = document.createElementNS('http://www.w3.org/2000/svg','defs'); svgEl.prepend(defs); }
 
     const patId = 'hatch-' + uid.replace(/[^a-zA-Z0-9]/g,'_');
-    if (!defs.querySelector('#' + patId)) {
-      const h = PS_HATCHES.find(h => h.id === hatchId);
-      if (!h || h.id === 'none') return;
-      const sp = h.sp || 8;
-      const pat = document.createElementNS('http://www.w3.org/2000/svg','pattern');
-      pat.setAttribute('id', patId);
-      pat.setAttribute('patternUnits','userSpaceOnUse');
-      pat.setAttribute('width', sp); pat.setAttribute('height', sp);
-      pat.innerHTML = buildHatchInner(h, color, sp);
-      defs.appendChild(pat);
-    }
+    // 기존 패턴 제거 후 재생성 (변경 시 항상 반영되도록)
+    const existing = defs.querySelector('#' + patId);
+    if (existing) existing.remove();
+
+    const h = PS_HATCHES.find(h => h.id === hatchId);
+    if (!h || h.id === 'none') return;
+    const sp = h.sp || 8;
+    const pat = document.createElementNS('http://www.w3.org/2000/svg','pattern');
+    pat.setAttribute('id', patId);
+    pat.setAttribute('patternUnits','userSpaceOnUse');
+    pat.setAttribute('width', sp); pat.setAttribute('height', sp);
+    pat.innerHTML = buildHatchInner(h, color, sp);
+    defs.appendChild(pat);
+
     pathEl.style.fill = `url(#${patId})`;
     pathEl.style.fillOpacity = opacity;
   } catch(e) {}
