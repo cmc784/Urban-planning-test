@@ -1053,7 +1053,6 @@ currentTileSat = L.tileLayer(ESRI_SAT, {
 /* ── 배경지도 전환 ── */
 function switchTiles() {
   const v = document.getElementById('map-layer').value;
-  // config.js → localStorage → 입력란 순서로 키 가져오기
   const inputEl = document.getElementById('vworld-key');
   const inputVal = (inputEl && inputEl.value.trim()) || '';
   const vk = inputVal || getVworldKey();
@@ -1063,9 +1062,11 @@ function switchTiles() {
   if (vkWrap) {
     if (v.startsWith('vworld')) {
       vkWrap.style.display = 'block';
-      // config.js 키가 있으면 자동 적용 안내만 표시
-      if (window.APP_CONFIG && window.APP_CONFIG.vworldKey) {
-        vkWrap.innerHTML = '<div style="font-size:11px;color:var(--teal);padding:4px 0">✅ config.js에서 Vworld 키 자동 적용됨</div>';
+      // config.js에 encodedKey가 있으면 자동 적용 안내
+      const hasConfigKey = window.APP_CONFIG &&
+        (window.APP_CONFIG.encodedKey || window.APP_CONFIG.vworldKey);
+      if (hasConfigKey && vk) {
+        vkWrap.innerHTML = '<div style="font-size:11px;color:var(--teal);padding:4px 0">✅ config.js 키 자동 적용됨</div>';
       }
     } else {
       vkWrap.style.display = 'none';
@@ -1087,6 +1088,7 @@ function switchTiles() {
   } else if (v === 'osm') {
     currentTileBase = L.tileLayer(OSM_URL, { maxZoom:19, attribution:'© OpenStreetMap contributors' }).addTo(map);
   } else if (v === 'vworld-sat' || v === 'vworld-hybrid') {
+    console.log('[Vworld] 키 길이:', vk.length, '/ 키 앞 4자:', vk.slice(0,4));
     currentTileSat = L.tileLayer(buildVworldUrl('Satellite', vk), { maxZoom:19, attribution:'© Vworld 국토지리정보원' }).addTo(map);
     if (v === 'vworld-hybrid') currentTileLabel = L.tileLayer(buildVworldUrl('Hybrid', vk), { maxZoom:19 }).addTo(map);
   }
