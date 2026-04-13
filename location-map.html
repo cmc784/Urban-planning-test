@@ -943,7 +943,7 @@ input[type="range"] {
       <button class="map-ctrl-btn" title="전체보기" onclick="fitAll()">⊡</button>
       <div class="zoom-slider-wrap">
         <button class="map-ctrl-btn" style="border:none;box-shadow:none;width:28px;height:24px;font-size:18px" title="확대" onclick="zoomSliderStep(1)">+</button>
-        <input type="range" id="zoomSlider" min="1" max="100" step="1" value="50"
+        <input type="range" id="zoomSlider" min="1" max="13" step="1" value="7"
           oninput="applyZoomSlider(this.value)" title="줌 레벨">
         <button class="map-ctrl-btn" style="border:none;box-shadow:none;width:28px;height:24px;font-size:18px" title="축소" onclick="zoomSliderStep(-1)">−</button>
       </div>
@@ -1360,29 +1360,20 @@ function fitZone() {
 }
 
 // 줌 슬라이더 ↔ 지도 줌 동기화
-// 100m 스케일 ≒ Leaflet 줌 17 = 슬라이더 중앙(50) 기준
-// 슬라이더 1~100, 중앙 50 = 줌 17
-// 1~50: 줌 7~17 (축소 방향), 51~100: 줌 17~19 (확대 방향)
-const ZOOM_SL_MIN = 1, ZOOM_SL_MAX = 100, ZOOM_SL_MID = 50;
-const ZOOM_MAP_MIN = 7, ZOOM_MAP_MID = 17, ZOOM_MAP_MAX = 19;
+// Leaflet 줌 7~19 = 13단계, 슬라이더 1~13으로 1:1 매핑
+// 슬라이더 7 = 줌 13 (100m 스케일 기준, 중앙)
+const ZOOM_STEPS = [7,8,9,10,11,12,13,14,15,16,17,18,19]; // 13단계
+const ZOOM_SL_MIN = 1;
+const ZOOM_SL_MAX = ZOOM_STEPS.length;
 
 function sliderToZoom(val) {
-  val = parseInt(val);
-  if (val <= ZOOM_SL_MID) {
-    // 1~50 → 줌 7~17
-    return ZOOM_MAP_MIN + (val - ZOOM_SL_MIN) / (ZOOM_SL_MID - ZOOM_SL_MIN) * (ZOOM_MAP_MID - ZOOM_MAP_MIN);
-  } else {
-    // 51~100 → 줌 17~19
-    return ZOOM_MAP_MID + (val - ZOOM_SL_MID) / (ZOOM_SL_MAX - ZOOM_SL_MID) * (ZOOM_MAP_MAX - ZOOM_MAP_MID);
-  }
+  const idx = Math.min(Math.max(parseInt(val) - 1, 0), ZOOM_STEPS.length - 1);
+  return ZOOM_STEPS[idx];
 }
 
 function zoomToSlider(zoom) {
-  if (zoom <= ZOOM_MAP_MID) {
-    return Math.round(ZOOM_SL_MIN + (zoom - ZOOM_MAP_MIN) / (ZOOM_MAP_MID - ZOOM_MAP_MIN) * (ZOOM_SL_MID - ZOOM_SL_MIN));
-  } else {
-    return Math.round(ZOOM_SL_MID + (zoom - ZOOM_MAP_MID) / (ZOOM_MAP_MAX - ZOOM_MAP_MID) * (ZOOM_SL_MAX - ZOOM_SL_MID));
-  }
+  const idx = ZOOM_STEPS.indexOf(Math.round(zoom));
+  return idx >= 0 ? idx + 1 : Math.round(1 + (zoom - 7) / (19 - 7) * (ZOOM_SL_MAX - 1));
 }
 
 function applyZoomSlider(val) {
