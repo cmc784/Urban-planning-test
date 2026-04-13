@@ -1396,21 +1396,26 @@ async function processGuyeokShp(file) {
         if (!intersectionJsts || intersectionJsts.isEmpty()) continue;
         cntClipOk++;
 
-        const intersectionGeo = jstsWriter.write(intersectionJsts);
-
-        // 편입면적 계산
+        // 편입면적: JSTS getArea() 직접 사용 (GeoJSON 변환 오차 방지)
         let pyeonipArea = 0;
-        if (_shpIsProjected) {
-          pyeonipArea = Math.round(planarArea(intersectionGeo) * 10) / 10;
-        } else {
+        try {
+          pyeonipArea = Math.round(intersectionJsts.getArea() * 10) / 10;
+        } catch(e) {}
+
+        // getArea()가 0이면 GeoJSON 변환 후 재계산
+        if (pyeonipArea < 0.5) {
           try {
-            pyeonipArea = Math.round(turf.area({ type: 'Feature', geometry: intersectionGeo }) * 10) / 10;
-          } catch(e) {
-            pyeonipArea = Math.round(planarArea(intersectionGeo) * 10) / 10;
-          }
+            const intersectionGeoFallback = jstsWriter.write(intersectionJsts);
+            const fallbackArea = _shpIsProjected
+              ? planarArea(intersectionGeoFallback)
+              : turf.area({ type: 'Feature', geometry: intersectionGeoFallback });
+            pyeonipArea = Math.round(fallbackArea * 10) / 10;
+          } catch(e) {}
         }
 
         if (pyeonipArea < 0.5) { cntAreaZero++; continue; }
+
+        const intersectionGeo = jstsWriter.write(intersectionJsts);
 
         // 완전/부분 편입 판정
         const diffRatio = Math.abs(row.jijuArea - pyeonipArea) / (row.jijuArea || 1);
