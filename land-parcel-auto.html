@@ -1413,6 +1413,25 @@ async function processGuyeokShp(file) {
           } catch(e) {}
         }
 
+        // 여전히 0이면 turf.intersect()로 재시도 (JSTS 실패 케이스 보완)
+        if (pyeonipArea < 0.5) {
+          try {
+            const parcelGeoJSON  = { type: 'Feature', geometry: row.geometry };
+            const guyeokGeoJSON  = { type: 'Feature', geometry: jstsWriter.write(_guyeokJsts) };
+            const turfResult     = turf.intersect(parcelGeoJSON, guyeokGeoJSON);
+            if (turfResult && turfResult.geometry) {
+              const turfArea = _shpIsProjected
+                ? planarArea(turfResult.geometry)
+                : turf.area(turfResult);
+              pyeonipArea = Math.round(turfArea * 10) / 10;
+              if (pyeonipArea >= 0.5) {
+                // turf 성공 시 intersectionGeo를 turf 결과로 대체
+                intersectionJsts = jstsReader.read(turfResult.geometry);
+              }
+            }
+          } catch(e) {}
+        }
+
         if (pyeonipArea < 0.5) { cntAreaZero++; continue; }
 
         const intersectionGeo = jstsWriter.write(intersectionJsts);
