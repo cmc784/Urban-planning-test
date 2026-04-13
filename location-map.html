@@ -521,7 +521,11 @@ input[type="range"] {
 }
 .lyr-jimok-row:hover { background:var(--bg); }
 </style>
-<script src="config.js" onerror="window.APP_CONFIG=window.APP_CONFIG||{vworldKey:''}"></script>
+<script>
+// config.js 없어도 오류 없이 동작하도록 기본값 설정
+window.APP_CONFIG = window.APP_CONFIG || { encodedKey: '', vworldKey: '' };
+</script>
+<script src="config.js" onerror="window.APP_CONFIG=window.APP_CONFIG||{encodedKey:'',vworldKey:''}"></script>
 </head>
 <body>
 
@@ -1138,16 +1142,7 @@ function loadVworldKey() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  const key = loadVworldKey();
-  // config.js에 키가 있으면 안내 표시
-  if (window.APP_CONFIG && window.APP_CONFIG.vworldKey) {
-    const wrap = document.getElementById('vworld-key-wrap');
-    // 입력란 안 보여도 됨 (자동 적용)
-    if (wrap) {
-      wrap.innerHTML = '<div style="font-size:11px;color:var(--teal);padding:4px 0">✅ config.js에서 Vworld 키 자동 적용됨</div>';
-      wrap.style.display = 'none'; // vworld 선택 시에만 표시
-    }
-  }
+  loadVworldKey();
 });
 
 // 스케일바
