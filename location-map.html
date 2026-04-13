@@ -535,7 +535,8 @@ fetch('config.js').then(r => r.ok ? r.text() : '').then(code => {
     if (key) {
       const sel = document.getElementById('map-layer');
       if (sel) { sel.value = 'vworld-sat'; }
-      // switchTiles는 지도 초기화 후 실행
+      const selP = document.getElementById('map-layer-p');
+      if (selP) selP.value = 'vworld-sat';
       if (typeof switchTiles === 'function') switchTiles();
       else window.addEventListener('load', () => { if(typeof switchTiles==='function') switchTiles(); });
     }
@@ -779,7 +780,24 @@ fetch('config.js').then(r => r.ok ? r.text() : '').then(code => {
               <option value="esri-sat" selected>위성 — Esri</option>
               <option value="esri-topo">지형도 — Esri</option>
               <option value="osm">일반 — OSM</option>
+              <option value="vworld-sat">위성 — Vworld</option>
+              <option value="vworld-hybrid">위성+지명 — Vworld</option>
             </select>
+          </div>
+        </div>
+        <div id="vworld-key-wrap-p" style="display:none; margin-top:6px;">
+          <label class="field-label">Vworld API 키</label>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input type="password" id="vworld-key-p" placeholder="Vworld Open API 키 입력"
+              style="font-family:'DM Mono',monospace;font-size:11px;flex:1"
+              onkeydown="if(event.key==='Enter') applyVworldKeyP()">
+            <button onclick="applyVworldKeyP()"
+              style="padding:6px 12px;background:var(--teal);color:white;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;white-space:nowrap">
+              적용
+            </button>
+          </div>
+          <div style="font-size:10.5px;color:var(--ink3);margin-top:3px;">
+            키는 이 브라우저에만 저장되며 타인과 공유되지 않습니다.
           </div>
         </div>
         <div class="toggle-row" style="margin-top:8px">
@@ -1159,13 +1177,12 @@ function loadVworldKey() {
 
 document.addEventListener('DOMContentLoaded', function() {
   const key = loadVworldKey();
-  // localStorage에 키가 있으면 자동으로 Vworld 위성으로 전환
+  // localStorage에 키가 있으면 두 배경지도 선택란 모두 자동으로 Vworld 위성으로 전환
   if (key) {
     const sel = document.getElementById('map-layer');
-    if (sel && sel.value === 'esri-sat') {
-      sel.value = 'vworld-sat';
-      switchTiles();
-    }
+    if (sel && sel.value === 'esri-sat') { sel.value = 'vworld-sat'; switchTiles(); }
+    const selP = document.getElementById('map-layer-p');
+    if (selP && selP.value === 'esri-sat') selP.value = 'vworld-sat';
   }
 });
 
@@ -2357,7 +2374,39 @@ function buildHatchInner(h, color, sp) {
 function switchTilesP() {
   const v = document.getElementById('map-layer-p').value;
   document.getElementById('map-layer').value = v;
+
+  // Vworld 키 입력창 표시 제어
+  const wrapP = document.getElementById('vworld-key-wrap-p');
+  if (wrapP) {
+    if (v.startsWith('vworld')) {
+      const hasKey = !!getVworldKey();
+      wrapP.style.display = hasKey ? 'none' : 'block';
+      // 저장된 키가 있으면 입력란에 채워두기
+      if (hasKey) {
+        const inp = document.getElementById('vworld-key-p');
+        if (inp && !inp.value) inp.value = getVworldKey();
+      }
+    } else {
+      wrapP.style.display = 'none';
+    }
+  }
   switchTiles();
+}
+
+function applyVworldKeyP() {
+  const input = document.getElementById('vworld-key-p');
+  if (!input) return;
+  const key = input.value.trim();
+  if (!key) { toast('API 키를 입력해주세요.', 'error'); return; }
+  // 메인 입력란에도 동기화 후 localStorage 저장
+  const mainInput = document.getElementById('vworld-key');
+  if (mainInput) mainInput.value = key;
+  try { localStorage.setItem(VWORLD_KEY_STORAGE, key); } catch(e) {}
+  // 키 입력란 숨기기
+  const wrapP = document.getElementById('vworld-key-wrap-p');
+  if (wrapP) wrapP.style.display = 'none';
+  switchTilesP();
+  toast('✅ Vworld API 키가 적용되었습니다.', 'success');
 }
 
 // ── 페이지 로드 시 편입 모드 감지 ──
