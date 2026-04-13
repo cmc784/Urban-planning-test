@@ -640,7 +640,67 @@ fetch('config.js').then(r => r.ok ? r.text() : '').then(code => {
         </div>
       </div>
 
-      <!-- 레이어 편집 플로팅 패널 -->
+      <!-- 공간정보 레이어 패널 -->
+      <div class="panel" id="wms-layer-panel">
+        <div class="panel-title">🗺️ 공간정보 레이어
+          <span style="font-size:10px;color:var(--ink3);font-weight:400;margin-left:4px">(Vworld WMS)</span>
+        </div>
+        <div id="wms-no-key" style="font-size:11.5px;color:var(--ink3);padding:4px 0;display:none">
+          ⚠️ Vworld API 키가 필요합니다.
+        </div>
+        <div id="wms-layer-list">
+          <!-- 연속지적도 -->
+          <div class="lyr-row" style="justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:8px">
+              <button class="lyr-eye" id="wms-eye-jijuk" onclick="toggleWmsLayer('jijuk')" title="가시성">👁</button>
+              <span class="lyr-name">연속지적도</span>
+            </div>
+            <input type="range" min="0" max="1" step="0.1" value="0.8"
+              style="width:70px" title="투명도"
+              oninput="setWmsOpacity('jijuk', this.value)">
+          </div>
+          <!-- 용도지역 -->
+          <div class="lyr-row" style="justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:8px">
+              <button class="lyr-eye" id="wms-eye-yongdo" onclick="toggleWmsLayer('yongdo')" title="가시성">👁</button>
+              <span class="lyr-name">용도지역</span>
+            </div>
+            <input type="range" min="0" max="1" step="0.1" value="0.7"
+              style="width:70px" title="투명도"
+              oninput="setWmsOpacity('yongdo', this.value)">
+          </div>
+          <!-- 도시계획시설 -->
+          <div class="lyr-row" style="justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:8px">
+              <button class="lyr-eye" id="wms-eye-dosi" onclick="toggleWmsLayer('dosi')" title="가시성">👁</button>
+              <span class="lyr-name">도시계획시설</span>
+            </div>
+            <input type="range" min="0" max="1" step="0.1" value="0.7"
+              style="width:70px" title="투명도"
+              oninput="setWmsOpacity('dosi', this.value)">
+          </div>
+          <!-- 개발제한구역 -->
+          <div class="lyr-row" style="justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:8px">
+              <button class="lyr-eye" id="wms-eye-gb" onclick="toggleWmsLayer('gb')" title="가시성">👁</button>
+              <span class="lyr-name">개발제한구역</span>
+            </div>
+            <input type="range" min="0" max="1" step="0.1" value="0.7"
+              style="width:70px" title="투명도"
+              oninput="setWmsOpacity('gb', this.value)">
+          </div>
+          <!-- 산지구분도 -->
+          <div class="lyr-row" style="justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:8px">
+              <button class="lyr-eye" id="wms-eye-saji" onclick="toggleWmsLayer('saji')" title="가시성">👁</button>
+              <span class="lyr-name">산지구분도</span>
+            </div>
+            <input type="range" min="0" max="1" step="0.1" value="0.7"
+              style="width:70px" title="투명도"
+              oninput="setWmsOpacity('saji', this.value)">
+          </div>
+        </div>
+      </div>
       <div id="layer-edit-panel" style="display:none;position:fixed;top:50%;left:260px;transform:translateY(-50%);
         background:var(--white);border:1px solid var(--border);border-radius:12px;
         box-shadow:0 8px 32px rgba(0,0,0,0.18);padding:18px;width:240px;z-index:500">
@@ -2371,6 +2431,72 @@ function buildHatchInner(h, color, sp) {
 }
 
 // 편입 모드용 타일 전환
+// ── 공간정보 WMS 레이어 ─────────────────────────────────
+const WMS_LAYERS = {
+  jijuk: { name:'연속지적도',  layer:'lt_c_landinfobasemap', opacity:0.8, visible:false, obj:null },
+  yongdo:{ name:'용도지역',    layer:'lt_u_ugjiguboua',      opacity:0.7, visible:false, obj:null },
+  dosi:  { name:'도시계획시설',layer:'lt_u_udosiboua',       opacity:0.7, visible:false, obj:null },
+  gb:    { name:'개발제한구역',layer:'lt_u_greenbelt',       opacity:0.7, visible:false, obj:null },
+  saji:  { name:'산지구분도',  layer:'lt_l_forestarea',      opacity:0.7, visible:false, obj:null },
+};
+
+function buildWmsLayer(id) {
+  const info = WMS_LAYERS[id];
+  const key = getVworldKey();
+  if (!key) return null;
+  return L.tileLayer.wms('https://api.vworld.kr/req/wms', {
+    key: key,
+    service: 'WMS',
+    version: '1.3.0',
+    request: 'GetMap',
+    layers: info.layer,
+    styles: '',
+    format: 'image/png',
+    transparent: true,
+    opacity: info.opacity,
+    attribution: '© Vworld 국토지리정보원',
+    maxZoom: 19,
+  });
+}
+
+function toggleWmsLayer(id) {
+  const info = WMS_LAYERS[id];
+  const btn  = document.getElementById('wms-eye-' + id);
+  const key  = getVworldKey();
+  if (!key) {
+    const noKey = document.getElementById('wms-no-key');
+    if (noKey) noKey.style.display = 'block';
+    return;
+  }
+  if (info.visible) {
+    if (info.obj && map.hasLayer(info.obj)) map.removeLayer(info.obj);
+    info.obj = null; info.visible = false;
+    if (btn) btn.classList.remove('on');
+  } else {
+    info.obj = buildWmsLayer(id);
+    if (info.obj) { info.obj.addTo(map); info.visible = true; }
+    if (btn) btn.classList.add('on');
+    const noKey = document.getElementById('wms-no-key');
+    if (noKey) noKey.style.display = 'none';
+  }
+}
+
+function setWmsOpacity(id, val) {
+  WMS_LAYERS[id].opacity = parseFloat(val);
+  if (WMS_LAYERS[id].obj) WMS_LAYERS[id].obj.setOpacity(parseFloat(val));
+}
+
+function refreshWmsLayers() {
+  Object.keys(WMS_LAYERS).forEach(id => {
+    const info = WMS_LAYERS[id];
+    if (info.visible && info.obj) {
+      map.removeLayer(info.obj);
+      info.obj = buildWmsLayer(id);
+      if (info.obj) info.obj.addTo(map);
+    }
+  });
+}
+
 function switchTilesP() {
   const v = document.getElementById('map-layer-p').value;
   document.getElementById('map-layer').value = v;
