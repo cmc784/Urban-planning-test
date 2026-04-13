@@ -521,6 +521,7 @@ input[type="range"] {
 }
 .lyr-jimok-row:hover { background:var(--bg); }
 </style>
+<script src="config.js" onerror="window.APP_CONFIG=window.APP_CONFIG||{vworldKey:''}"></script>
 </head>
 <body>
 
@@ -882,16 +883,16 @@ input[type="range"] {
       <div id="vworld-key-wrap" style="display:none; margin-top:4px;">
         <label class="field-label">Vworld API 키</label>
         <div style="display:flex;gap:6px;align-items:center">
-          <input type="text" id="vworld-key" placeholder="Vworld Open API 키 입력"
+          <input type="password" id="vworld-key" placeholder="Vworld Open API 키 입력"
             style="font-family:'DM Mono',monospace;font-size:11px;flex:1"
-            onkeydown="if(event.key==='Enter') switchTiles()">
-          <button onclick="switchTiles()"
+            onkeydown="if(event.key==='Enter') applyVworldKey()">
+          <button onclick="applyVworldKey()"
             style="padding:6px 12px;background:var(--teal);color:white;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;white-space:nowrap">
             적용
           </button>
         </div>
-        <div style="font-size:11.5px;color:var(--ink3);margin-top:3px;">
-          🔗 <a href="https://www.vworld.kr/dev/v4dv_oadc012_s001.do" target="_blank" style="color:var(--teal);">Vworld 개발자센터</a>에서 무료 발급
+        <div style="font-size:10.5px;color:var(--ink3);margin-top:3px;">
+          키는 이 브라우저에만 저장되며 타인과 공유되지 않습니다.
         </div>
       </div>
       <div class="toggle-row">
@@ -1051,14 +1052,26 @@ currentTileSat = L.tileLayer(ESRI_SAT, {
 
 /* ── 배경지도 전환 ── */
 function switchTiles() {
-  const v  = document.getElementById('map-layer').value;
-  const vk = (document.getElementById('vworld-key') || {}).value || '';
+  const v = document.getElementById('map-layer').value;
+  // config.js → localStorage → 입력란 순서로 키 가져오기
+  const inputEl = document.getElementById('vworld-key');
+  const inputVal = (inputEl && inputEl.value.trim()) || '';
+  const vk = inputVal || getVworldKey();
 
-  // Vworld 키 입력창 표시 제어 (먼저 처리)
+  // Vworld 키 입력창 표시 제어
   const vkWrap = document.getElementById('vworld-key-wrap');
-  if (vkWrap) vkWrap.style.display = (v.startsWith('vworld')) ? 'block' : 'none';
+  if (vkWrap) {
+    if (v.startsWith('vworld')) {
+      vkWrap.style.display = 'block';
+      // config.js 키가 있으면 자동 적용 안내만 표시
+      if (window.APP_CONFIG && window.APP_CONFIG.vworldKey) {
+        vkWrap.innerHTML = '<div style="font-size:11px;color:var(--teal);padding:4px 0">✅ config.js에서 Vworld 키 자동 적용됨</div>';
+      }
+    } else {
+      vkWrap.style.display = 'none';
+    }
+  }
 
-  // Vworld 선택했는데 키 없으면 입력란만 보여주고 대기
   if ((v === 'vworld-sat' || v === 'vworld-hybrid') && !vk) {
     toast('아래 Vworld API 키를 입력 후 적용 버튼을 눌러주세요.', 'warn');
     return;
@@ -1079,7 +1092,61 @@ function switchTiles() {
   }
 }
 
-document.getElementById('map-layer').addEventListener('change', switchTiles);
+// ── Vworld API 키 관리 ───────────────────────────────────
+const VWORLD_KEY_STORAGE = 'vworld_api_key';
+
+function decodeVworldKey(encoded) {
+  try {
+    // 다단계 디코딩: Base64 x2 + reverse
+    const reversed = atob(atob(encoded));
+    return reversed.split('').reverse().join('');
+  } catch(e) { return ''; }
+}
+
+function getVworldKey() {
+  // 우선순위 1: config.js encodedKey
+  const cfg = window.APP_CONFIG;
+  if (cfg && cfg.encodedKey) {
+    const decoded = decodeVworldKey(cfg.encodedKey);
+    if (decoded) return decoded;
+  }
+  // 우선순위 2: config.js 평문 vworldKey (이전 방식 호환)
+  if (cfg && cfg.vworldKey) return cfg.vworldKey;
+  // 우선순위 3: localStorage
+  try { return localStorage.getItem(VWORLD_KEY_STORAGE) || ''; } catch(e) { return ''; }
+}
+
+function applyVworldKey() {
+  const input = document.getElementById('vworld-key');
+  if (!input) return;
+  const key = input.value.trim();
+  if (!key) { toast('API 키를 입력해주세요.', 'error'); return; }
+  try { localStorage.setItem(VWORLD_KEY_STORAGE, key); } catch(e) {}
+  switchTiles();
+  toast('✅ Vworld API 키가 적용되었습니다.', 'success');
+}
+
+function loadVworldKey() {
+  const key = getVworldKey();
+  if (key) {
+    const input = document.getElementById('vworld-key');
+    if (input) input.value = key;
+  }
+  return key;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  const key = loadVworldKey();
+  // config.js에 키가 있으면 안내 표시
+  if (window.APP_CONFIG && window.APP_CONFIG.vworldKey) {
+    const wrap = document.getElementById('vworld-key-wrap');
+    // 입력란 안 보여도 됨 (자동 적용)
+    if (wrap) {
+      wrap.innerHTML = '<div style="font-size:11px;color:var(--teal);padding:4px 0">✅ config.js에서 Vworld 키 자동 적용됨</div>';
+      wrap.style.display = 'none'; // vworld 선택 시에만 표시
+    }
+  }
+});
 
 // 스케일바
 scaleCtrl = L.control.scale({ position:'bottomleft', imperial:false, maxWidth:180 }).addTo(map);
