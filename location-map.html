@@ -1360,15 +1360,29 @@ function fitZone() {
 }
 
 // 줌 슬라이더 ↔ 지도 줌 동기화
-// 슬라이더 1~100 ↔ Leaflet 줌 7~19 선형 매핑
-const ZOOM_SL_MIN = 1, ZOOM_SL_MAX = 100;
-const ZOOM_MAP_MIN = 7, ZOOM_MAP_MAX = 19;
+// 100m 스케일 ≒ Leaflet 줌 17 = 슬라이더 중앙(50) 기준
+// 슬라이더 1~100, 중앙 50 = 줌 17
+// 1~50: 줌 7~17 (축소 방향), 51~100: 줌 17~19 (확대 방향)
+const ZOOM_SL_MIN = 1, ZOOM_SL_MAX = 100, ZOOM_SL_MID = 50;
+const ZOOM_MAP_MIN = 7, ZOOM_MAP_MID = 17, ZOOM_MAP_MAX = 19;
 
 function sliderToZoom(val) {
-  return ZOOM_MAP_MIN + (val - ZOOM_SL_MIN) / (ZOOM_SL_MAX - ZOOM_SL_MIN) * (ZOOM_MAP_MAX - ZOOM_MAP_MIN);
+  val = parseInt(val);
+  if (val <= ZOOM_SL_MID) {
+    // 1~50 → 줌 7~17
+    return ZOOM_MAP_MIN + (val - ZOOM_SL_MIN) / (ZOOM_SL_MID - ZOOM_SL_MIN) * (ZOOM_MAP_MID - ZOOM_MAP_MIN);
+  } else {
+    // 51~100 → 줌 17~19
+    return ZOOM_MAP_MID + (val - ZOOM_SL_MID) / (ZOOM_SL_MAX - ZOOM_SL_MID) * (ZOOM_MAP_MAX - ZOOM_MAP_MID);
+  }
 }
+
 function zoomToSlider(zoom) {
-  return Math.round(ZOOM_SL_MIN + (zoom - ZOOM_MAP_MIN) / (ZOOM_MAP_MAX - ZOOM_MAP_MIN) * (ZOOM_SL_MAX - ZOOM_SL_MIN));
+  if (zoom <= ZOOM_MAP_MID) {
+    return Math.round(ZOOM_SL_MIN + (zoom - ZOOM_MAP_MIN) / (ZOOM_MAP_MID - ZOOM_MAP_MIN) * (ZOOM_SL_MID - ZOOM_SL_MIN));
+  } else {
+    return Math.round(ZOOM_SL_MID + (zoom - ZOOM_MAP_MID) / (ZOOM_MAP_MAX - ZOOM_MAP_MID) * (ZOOM_SL_MAX - ZOOM_SL_MID));
+  }
 }
 
 function applyZoomSlider(val) {
