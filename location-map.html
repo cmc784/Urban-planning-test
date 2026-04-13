@@ -275,6 +275,56 @@ input[type="range"] {
 }
 .map-ctrl-btn:hover { border-color:var(--teal); color:var(--teal); }
 
+/* 줌 슬라이더 */
+.zoom-slider-wrap {
+  display:flex; flex-direction:column; align-items:center;
+  background:var(--white); border:1px solid var(--border);
+  border-radius:6px; box-shadow:var(--shadow);
+  padding:6px 0; gap:0; width:32px;
+}
+.zoom-slider-wrap input[type=range] {
+  -webkit-appearance: none;
+  writing-mode: vertical-lr;
+  direction: rtl;
+  width: 4px;
+  height: 80px;
+  margin: 4px 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  outline: none;
+}
+.zoom-slider-wrap input[type=range]::-webkit-slider-runnable-track {
+  width: 4px;
+  background: #ddd;
+  border-radius: 2px;
+}
+.zoom-slider-wrap input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--teal, #1a7f7a);
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  margin-left: -5px;
+  cursor: pointer;
+}
+.zoom-slider-wrap input[type=range]::-moz-range-track {
+  width: 4px;
+  background: #ddd;
+  border-radius: 2px;
+}
+.zoom-slider-wrap input[type=range]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--teal, #1a7f7a);
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  cursor: pointer;
+}
+
 /* 방위표 커스텀 */
 .north-arrow-ctrl {
   background:rgba(255,255,255,0.92) !important;
@@ -891,8 +941,12 @@ input[type="range"] {
     <div class="map-ctrl">
       <button class="map-ctrl-btn" title="구역계 맞춤" onclick="fitZone()">⬡</button>
       <button class="map-ctrl-btn" title="전체보기" onclick="fitAll()">⊡</button>
-      <button class="map-ctrl-btn" title="확대" onclick="map.zoomIn()">+</button>
-      <button class="map-ctrl-btn" title="축소" onclick="map.zoomOut()">−</button>
+      <div class="zoom-slider-wrap">
+        <button class="map-ctrl-btn" style="border:none;box-shadow:none;width:28px;height:24px;font-size:18px" title="확대" onclick="map.zoomIn()">+</button>
+        <input type="range" id="zoomSlider" min="7" max="19" step="0.5" value="14"
+          oninput="map.setZoom(parseFloat(this.value))" title="줌 레벨">
+        <button class="map-ctrl-btn" style="border:none;box-shadow:none;width:28px;height:24px;font-size:18px" title="축소" onclick="map.zoomOut()">−</button>
+      </div>
     </div>
   </div>
 
@@ -1304,6 +1358,15 @@ function fitZone() {
   // 구역계가 없으면 편입필지 전체로 대체
   fitAll();
 }
+
+// 줌 슬라이더 ↔ 지도 줌 동기화
+function syncZoomSlider() {
+  const sl = document.getElementById('zoomSlider');
+  if (sl) sl.value = map.getZoom();
+}
+
+map.on('zoomend', syncZoomSlider);
+map.on('load', syncZoomSlider);
 
 /* ── 출력 ── */
 function getPaperMM() {
