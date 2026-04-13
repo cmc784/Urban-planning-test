@@ -2612,9 +2612,12 @@ function buildWmsLayer(id) {
   const key = getVworldKey();
   if (!key) return null;
 
-  // key와 CQL_FILTER를 URL에 직접 포함 (Leaflet이 자동 처리 안 함)
-  let url = `https://api.vworld.kr/req/wms?key=${encodeURIComponent(key)}&domain=`;
+  // domain은 현재 페이지 도메인으로 자동 설정
+  const domain = encodeURIComponent(window.location.hostname || 'localhost');
+  let url = `https://api.vworld.kr/req/wms?key=${encodeURIComponent(key)}&domain=${domain}`;
   if (info.cql) url += `&CQL_FILTER=${encodeURIComponent(info.cql)}`;
+
+  console.log('[WMS] 레이어:', id, info.layer, '/ domain:', window.location.hostname);
 
   return L.tileLayer.wms(url, {
     service: 'WMS',
