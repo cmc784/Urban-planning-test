@@ -521,7 +521,21 @@ input[type="range"] {
 }
 .lyr-jimok-row:hover { background:var(--bg); }
 /* ── 공간정보 레이어 플로팅 패널 ── */
-.wms-toggle {
+/* WMS 레이어 그룹 */
+.wms-group { border-bottom:1px solid var(--border2); padding-bottom:4px; margin-bottom:2px; }
+.wms-group:last-child { border-bottom:none; }
+.wms-group-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:6px 2px; font-size:11.5px; font-weight:700; color:var(--ink);
+  cursor:pointer; user-select:none;
+}
+.wms-group-header:hover { color:var(--teal); }
+.wms-row {
+  display:flex; align-items:center; gap:7px;
+  padding:3px 4px; font-size:11px; color:var(--ink2);
+}
+.wms-row:hover { background:var(--gray); border-radius:4px; }
+/* WMS 레이어 토글 스위치 */
   width:32px; height:18px; border-radius:9px; background:#ccc;
   position:relative; cursor:pointer; flex-shrink:0; transition:background .2s;
 }
@@ -1001,54 +1015,107 @@ fetch('config.js').then(r => r.ok ? r.text() : '').then(code => {
         position:absolute; bottom:48px; right:50px; z-index:900;
         background:rgba(255,255,255,0.96); border:1px solid var(--border);
         border-radius:10px; box-shadow:0 4px 16px rgba(0,0,0,0.12);
-        width:215px; font-family:'Noto Sans KR',sans-serif;">
+        width:240px; font-family:'Noto Sans KR',sans-serif;
+        max-height:70vh; overflow-y:auto;">
       <div style="display:flex;align-items:center;justify-content:space-between;
-          padding:9px 12px 8px; border-bottom:1px solid var(--border2); cursor:pointer"
+          padding:9px 12px 8px; border-bottom:1px solid var(--border2); cursor:pointer;
+          position:sticky;top:0;background:rgba(255,255,255,0.98);z-index:1"
           onclick="toggleWmsPanel()">
         <span style="font-size:12px;font-weight:700;color:var(--ink)">🗺️ 공간정보 레이어</span>
         <span id="wms-panel-chevron" style="font-size:11px;color:var(--ink3)">▲</span>
       </div>
-      <div id="wms-panel-body" style="padding:8px 12px 10px">
-        <div id="wms-no-key" style="font-size:11px;color:var(--amber);padding:2px 0 4px;display:none">
+      <div id="wms-panel-body" style="padding:6px 10px 10px">
+        <div id="wms-no-key" style="font-size:11px;color:var(--amber);padding:4px 0;display:none">
           ⚠️ Vworld API 키가 필요합니다
         </div>
-        <div style="display:flex;flex-direction:column;gap:7px">
-          <div style="display:flex;align-items:center;gap:7px">
-            <div class="wms-toggle" id="wms-tog-jijuk" onclick="toggleWmsLayer('jijuk')"></div>
-            <span style="font-size:11.5px;flex:1">연속지적도</span>
-            <input type="range" min="0" max="1" step="0.1" value="0.8"
-              style="width:52px;accent-color:var(--teal)" title="투명도"
-              oninput="setWmsOpacity('jijuk',this.value)">
+
+        <!-- ① 용도지역 -->
+        <div class="wms-group">
+          <div class="wms-group-header" onclick="toggleWmsGroup('yongdo-area')">
+            <span>① 용도지역</span><span id="wms-grp-chev-yongdo-area">▾</span>
           </div>
-          <div style="display:flex;align-items:center;gap:7px">
-            <div class="wms-toggle" id="wms-tog-yongdo" onclick="toggleWmsLayer('yongdo')"></div>
-            <span style="font-size:11.5px;flex:1">용도지역</span>
-            <input type="range" min="0" max="1" step="0.1" value="0.7"
-              style="width:52px;accent-color:var(--teal)" title="투명도"
-              oninput="setWmsOpacity('yongdo',this.value)">
-          </div>
-          <div style="display:flex;align-items:center;gap:7px">
-            <div class="wms-toggle" id="wms-tog-dosi" onclick="toggleWmsLayer('dosi')"></div>
-            <span style="font-size:11.5px;flex:1">도시계획시설</span>
-            <input type="range" min="0" max="1" step="0.1" value="0.7"
-              style="width:52px;accent-color:var(--teal)" title="투명도"
-              oninput="setWmsOpacity('dosi',this.value)">
-          </div>
-          <div style="display:flex;align-items:center;gap:7px">
-            <div class="wms-toggle" id="wms-tog-gb" onclick="toggleWmsLayer('gb')"></div>
-            <span style="font-size:11.5px;flex:1">개발제한구역</span>
-            <input type="range" min="0" max="1" step="0.1" value="0.7"
-              style="width:52px;accent-color:var(--teal)" title="투명도"
-              oninput="setWmsOpacity('gb',this.value)">
-          </div>
-          <div style="display:flex;align-items:center;gap:7px">
-            <div class="wms-toggle" id="wms-tog-saji" onclick="toggleWmsLayer('saji')"></div>
-            <span style="font-size:11.5px;flex:1">산지구분도</span>
-            <input type="range" min="0" max="1" step="0.1" value="0.7"
-              style="width:52px;accent-color:var(--teal)" title="투명도"
-              oninput="setWmsOpacity('saji',this.value)">
+          <div id="wms-grp-yongdo-area">
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-yd_all" onclick="toggleWmsLayer('yd_all')"></div><span>용도지역 전체</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-yd_dosi" onclick="toggleWmsLayer('yd_dosi')"></div><span>도시지역</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-yd_juyeo1" onclick="toggleWmsLayer('yd_juyeo1')"></div><span>제1종전용주거</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-yd_juyeo2" onclick="toggleWmsLayer('yd_juyeo2')"></div><span>제2종전용주거</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-yd_il1" onclick="toggleWmsLayer('yd_il1')"></div><span>제1종일반주거</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-yd_il2" onclick="toggleWmsLayer('yd_il2')"></div><span>제2종일반주거</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-yd_il3" onclick="toggleWmsLayer('yd_il3')"></div><span>제3종일반주거</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-yd_jun" onclick="toggleWmsLayer('yd_jun')"></div><span>준주거지역</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-yd_jungsim" onclick="toggleWmsLayer('yd_jungsim')"></div><span>중심상업지역</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-yd_ilban" onclick="toggleWmsLayer('yd_ilban')"></div><span>일반상업지역</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-yd_geunlin" onclick="toggleWmsLayer('yd_geunlin')"></div><span>근린상업지역</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-yd_yutong" onclick="toggleWmsLayer('yd_yutong')"></div><span>유통상업지역</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-yd_jungong" onclick="toggleWmsLayer('yd_jungong')"></div><span>준공업지역</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-yd_ilgong" onclick="toggleWmsLayer('yd_ilgong')"></div><span>일반공업지역</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-yd_jeongnok" onclick="toggleWmsLayer('yd_jeongnok')"></div><span>보전녹지지역</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-yd_saengnok" onclick="toggleWmsLayer('yd_saengnok')"></div><span>생산녹지지역</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-yd_janok" onclick="toggleWmsLayer('yd_janok')"></div><span>자연녹지지역</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-yd_gwan" onclick="toggleWmsLayer('yd_gwan')"></div><span>관리지역</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-yd_nongnim" onclick="toggleWmsLayer('yd_nongnim')"></div><span>농림지역</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-yd_jabohwan" onclick="toggleWmsLayer('yd_jabohwan')"></div><span>자연환경보전지역</span></div>
           </div>
         </div>
+
+        <!-- ② 용도지구 -->
+        <div class="wms-group">
+          <div class="wms-group-header" onclick="toggleWmsGroup('yongdo-dist')">
+            <span>② 용도지구</span><span id="wms-grp-chev-yongdo-dist">▾</span>
+          </div>
+          <div id="wms-grp-yongdo-dist" style="display:none">
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-dist_all" onclick="toggleWmsLayer('dist_all')"></div><span>용도지구 전체</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-dist_gyeong" onclick="toggleWmsLayer('dist_gyeong')"></div><span>경관지구</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-dist_godo" onclick="toggleWmsLayer('dist_godo')"></div><span>고도지구</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-dist_banghwa" onclick="toggleWmsLayer('dist_banghwa')"></div><span>방화지구</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-dist_bangjae" onclick="toggleWmsLayer('dist_bangjae')"></div><span>방재지구</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-dist_bojo" onclick="toggleWmsLayer('dist_bojo')"></div><span>보존지구</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-dist_siboho" onclick="toggleWmsLayer('dist_siboho')"></div><span>시설보호지구</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-dist_chunak" onclick="toggleWmsLayer('dist_chunak')"></div><span>취락지구</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-dist_gaejin" onclick="toggleWmsLayer('dist_gaejin')"></div><span>개발진흥지구</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-dist_teukje" onclick="toggleWmsLayer('dist_teukje')"></div><span>특정용도제한지구</span></div>
+          </div>
+        </div>
+
+        <!-- ③ 용도구역 -->
+        <div class="wms-group">
+          <div class="wms-group-header" onclick="toggleWmsGroup('yongdo-zone')">
+            <span>③ 용도구역</span><span id="wms-grp-chev-yongdo-zone">▾</span>
+          </div>
+          <div id="wms-grp-yongdo-zone" style="display:none">
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-zone_gb" onclick="toggleWmsLayer('zone_gb')"></div><span>개발제한구역</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-zone_siga" onclick="toggleWmsLayer('zone_siga')"></div><span>시가화조정구역</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-zone_dogan" onclick="toggleWmsLayer('zone_dogan')"></div><span>도시자연공원구역</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-zone_sujasan" onclick="toggleWmsLayer('zone_sujasan')"></div><span>수산자원보호구역</span></div>
+          </div>
+        </div>
+
+        <!-- ④ 개별법령 지역지구 -->
+        <div class="wms-group">
+          <div class="wms-group-header" onclick="toggleWmsGroup('etc-zone')">
+            <span>④ 개별법령 지역지구</span><span id="wms-grp-chev-etc-zone">▾</span>
+          </div>
+          <div id="wms-grp-etc-zone" style="display:none">
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-etc_all" onclick="toggleWmsLayer('etc_all')"></div><span>기타 지역지구 전체</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-etc_gachuk" onclick="toggleWmsLayer('etc_gachuk')"></div><span>가축사육제한지역</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-etc_gwangwang" onclick="toggleWmsLayer('etc_gwangwang')"></div><span>관광지</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-etc_geupgyeong" onclick="toggleWmsLayer('etc_geupgyeong')"></div><span>급경사재해예방지역</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-etc_saji" onclick="toggleWmsLayer('etc_saji')"></div><span>산지구분도</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-etc_taekji" onclick="toggleWmsLayer('etc_taekji')"></div><span>택지개발지구</span></div>
+          </div>
+        </div>
+
+        <!-- ⑤ 기타 -->
+        <div class="wms-group">
+          <div class="wms-group-header" onclick="toggleWmsGroup('etc-base')">
+            <span>⑤ 기타 공간정보</span><span id="wms-grp-chev-etc-base">▾</span>
+          </div>
+          <div id="wms-grp-etc-base" style="display:none">
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-jijuk" onclick="toggleWmsLayer('jijuk')"></div><span>연속지적도</span></div>
+            <div class="wms-row"><div class="wms-toggle" id="wms-tog-dosi_si" onclick="toggleWmsLayer('dosi_si')"></div><span>도시계획시설</span></div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -2489,22 +2556,66 @@ window.addEventListener('load', function() {
 
 // ── 공간정보 WMS 레이어 ──────────────────────────────────
 const WMS_LAYERS = {
-  jijuk:  { layer:'lt_c_landinfobasemap', opacity:0.8, visible:false, obj:null },
-  yongdo: { layer:'lt_u_ugjiguboua',      opacity:0.7, visible:false, obj:null },
-  dosi:   { layer:'lt_u_udosiboua',       opacity:0.7, visible:false, obj:null },
-  gb:     { layer:'lt_u_greenbelt',       opacity:0.7, visible:false, obj:null },
-  saji:   { layer:'lt_l_forestarea',      opacity:0.7, visible:false, obj:null },
+  // ① 용도지역
+  yd_all:      { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null },
+  yd_dosi:     { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='도시지역'" },
+  yd_juyeo1:   { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='제1종전용주거지역'" },
+  yd_juyeo2:   { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='제2종전용주거지역'" },
+  yd_il1:      { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='제1종일반주거지역'" },
+  yd_il2:      { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='제2종일반주거지역'" },
+  yd_il3:      { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='제3종일반주거지역'" },
+  yd_jun:      { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='준주거지역'" },
+  yd_jungsim:  { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='중심상업지역'" },
+  yd_ilban:    { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='일반상업지역'" },
+  yd_geunlin:  { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='근린상업지역'" },
+  yd_yutong:   { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='유통상업지역'" },
+  yd_jungong:  { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='준공업지역'" },
+  yd_ilgong:   { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='일반공업지역'" },
+  yd_jeongnok: { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='보전녹지지역'" },
+  yd_saengnok: { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='생산녹지지역'" },
+  yd_janok:    { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='자연녹지지역'" },
+  yd_gwan:     { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='관리지역'" },
+  yd_nongnim:  { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='농림지역'" },
+  yd_jabohwan: { layer:'lt_u_ugjiguboua',     opacity:0.7, visible:false, obj:null, cql:"uname='자연환경보전지역'" },
+  // ② 용도지구
+  dist_all:    { layer:'lt_u_ugjigubouab',    opacity:0.7, visible:false, obj:null },
+  dist_gyeong: { layer:'lt_u_ugjigubouab',    opacity:0.7, visible:false, obj:null, cql:"uname LIKE '경관지구%'" },
+  dist_godo:   { layer:'lt_u_ugjigubouab',    opacity:0.7, visible:false, obj:null, cql:"uname='고도지구'" },
+  dist_banghwa:{ layer:'lt_u_ugjigubouab',    opacity:0.7, visible:false, obj:null, cql:"uname='방화지구'" },
+  dist_bangjae:{ layer:'lt_u_ugjigubouab',    opacity:0.7, visible:false, obj:null, cql:"uname LIKE '방재지구%'" },
+  dist_bojo:   { layer:'lt_u_ugjigubouab',    opacity:0.7, visible:false, obj:null, cql:"uname LIKE '보존지구%'" },
+  dist_siboho: { layer:'lt_u_ugjigubouab',    opacity:0.7, visible:false, obj:null, cql:"uname LIKE '시설보호지구%'" },
+  dist_chunak: { layer:'lt_u_ugjigubouab',    opacity:0.7, visible:false, obj:null, cql:"uname LIKE '취락지구%'" },
+  dist_gaejin: { layer:'lt_u_ugjigubouab',    opacity:0.7, visible:false, obj:null, cql:"uname LIKE '개발진흥지구%'" },
+  dist_teukje: { layer:'lt_u_ugjigubouab',    opacity:0.7, visible:false, obj:null, cql:"uname='특정용도제한지구'" },
+  // ③ 용도구역
+  zone_gb:     { layer:'lt_u_ugjigubouac',    opacity:0.7, visible:false, obj:null, cql:"uname='개발제한구역'" },
+  zone_siga:   { layer:'lt_u_ugjigubouac',    opacity:0.7, visible:false, obj:null, cql:"uname='시가화조정구역'" },
+  zone_dogan:  { layer:'lt_u_ugjigubouac',    opacity:0.7, visible:false, obj:null, cql:"uname='도시자연공원구역'" },
+  zone_sujasan:{ layer:'lt_u_ugjigubouac',    opacity:0.7, visible:false, obj:null, cql:"uname='수산자원보호구역'" },
+  // ④ 개별법령
+  etc_all:     { layer:'lt_u_ugjiguboue',     opacity:0.7, visible:false, obj:null },
+  etc_gachuk:  { layer:'lt_u_ugjiguboue',     opacity:0.7, visible:false, obj:null, cql:"uname='가축사육제한지역'" },
+  etc_gwangwang:{ layer:'lt_u_ugjiguboue',    opacity:0.7, visible:false, obj:null, cql:"uname='관광지'" },
+  etc_geupgyeong:{ layer:'lt_u_ugjiguboue',   opacity:0.7, visible:false, obj:null, cql:"uname='급경사재해예방지역'" },
+  etc_saji:    { layer:'lt_l_forestarea',     opacity:0.7, visible:false, obj:null },
+  etc_taekji:  { layer:'lt_u_ugjiguboue',     opacity:0.7, visible:false, obj:null, cql:"uname='택지개발지구'" },
+  // ⑤ 기타
+  jijuk:       { layer:'lt_c_landinfobasemap',opacity:0.8, visible:false, obj:null },
+  dosi_si:     { layer:'lt_u_udosiboua',      opacity:0.7, visible:false, obj:null },
 };
 
 function buildWmsLayer(id) {
+  const info = WMS_LAYERS[id];
   const key = getVworldKey();
   if (!key) return null;
-  return L.tileLayer.wms('https://api.vworld.kr/req/wms', {
+  const params = {
     key: key, service:'WMS', version:'1.3.0', request:'GetMap',
-    layers: WMS_LAYERS[id].layer, styles:'', format:'image/png',
-    transparent:true, opacity: WMS_LAYERS[id].opacity,
+    layers: info.layer, styles:'', format:'image/png',
+    transparent:true, opacity: info.opacity,
     attribution:'© Vworld 국토지리정보원', maxZoom:19,
-  });
+  };
+  return L.tileLayer.wms('https://api.vworld.kr/req/wms', params);
 }
 
 function toggleWmsLayer(id) {
@@ -2537,6 +2648,15 @@ function toggleWmsPanel() {
   const collapsed = body.style.display === 'none';
   body.style.display = collapsed ? 'block' : 'none';
   if (chev) chev.textContent = collapsed ? '▲' : '▼';
+}
+
+function toggleWmsGroup(groupId) {
+  const body = document.getElementById('wms-grp-' + groupId);
+  const chev = document.getElementById('wms-grp-chev-' + groupId);
+  if (!body) return;
+  const collapsed = body.style.display === 'none';
+  body.style.display = collapsed ? 'block' : 'none';
+  if (chev) chev.textContent = collapsed ? '▴' : '▾';
 }
 
 // 페이지 로드 시 키 없으면 안내 표시
