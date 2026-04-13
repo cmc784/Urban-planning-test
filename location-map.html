@@ -526,7 +526,20 @@ input[type="range"] {
 window.APP_CONFIG = window.APP_CONFIG || { encodedKey: '', vworldKey: '' };
 // config.js를 조용히 불러오기 (없어도 콘솔 오류 없음)
 fetch('config.js').then(r => r.ok ? r.text() : '').then(code => {
-  if (code) try { eval(code); } catch(e) {}
+  if (code) {
+    try { eval(code); } catch(e) {}
+    // 키가 있으면 배경지도 자동으로 Vworld 위성으로 전환
+    const key = (window.APP_CONFIG && window.APP_CONFIG.encodedKey)
+      ? (function(){ try { const r=atob(atob(window.APP_CONFIG.encodedKey)); return r.split('').reverse().join(''); } catch(e){ return ''; } })()
+      : (window.APP_CONFIG && window.APP_CONFIG.vworldKey) || '';
+    if (key) {
+      const sel = document.getElementById('map-layer');
+      if (sel) { sel.value = 'vworld-sat'; }
+      // switchTiles는 지도 초기화 후 실행
+      if (typeof switchTiles === 'function') switchTiles();
+      else window.addEventListener('load', () => { if(typeof switchTiles==='function') switchTiles(); });
+    }
+  }
 }).catch(() => {});
 </script>
 </head>
@@ -1145,7 +1158,15 @@ function loadVworldKey() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  loadVworldKey();
+  const key = loadVworldKey();
+  // localStorage에 키가 있으면 자동으로 Vworld 위성으로 전환
+  if (key) {
+    const sel = document.getElementById('map-layer');
+    if (sel && sel.value === 'esri-sat') {
+      sel.value = 'vworld-sat';
+      switchTiles();
+    }
+  }
 });
 
 // 스케일바
