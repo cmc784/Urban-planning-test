@@ -524,8 +524,11 @@ input[type="range"] {
 <script>
 // config.js 없어도 오류 없이 동작하도록 기본값 설정
 window.APP_CONFIG = window.APP_CONFIG || { encodedKey: '', vworldKey: '' };
+// config.js를 조용히 불러오기 (없어도 콘솔 오류 없음)
+fetch('config.js').then(r => r.ok ? r.text() : '').then(code => {
+  if (code) try { eval(code); } catch(e) {}
+}).catch(() => {});
 </script>
-<script src="config.js" onerror="window.APP_CONFIG=window.APP_CONFIG||{encodedKey:'',vworldKey:''}"></script>
 </head>
 <body>
 
@@ -875,7 +878,7 @@ window.APP_CONFIG = window.APP_CONFIG || { encodedKey: '', vworldKey: '' };
         </div>
         <div>
           <label class="field-label">배경 지도</label>
-          <select id="map-layer">
+          <select id="map-layer" onchange="switchTiles()">
             <option value="esri-sat" selected>위성 — Esri (기본, 키 불필요)</option>
             <option value="esri-topo">지형도 — Esri</option>
             <option value="osm">일반 — OpenStreetMap</option>
