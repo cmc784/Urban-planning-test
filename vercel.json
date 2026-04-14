@@ -1,8 +1,0 @@
-{
-  "functions": {
-    "api/wms.js": {
-      "memory": 128,
-      "maxDuration": 10
-    }
-  }
-}
