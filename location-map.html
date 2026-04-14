@@ -2611,15 +2611,26 @@ const WMS_LAYERS = {
 
 function buildWmsLayer(id) {
   const info = WMS_LAYERS[id];
-  const key = getVworldKey();
-  if (!key) return null;
+  const isVercel = window.location.hostname.endsWith('vercel.app') ||
+                   (window.location.protocol === 'https:' && window.location.hostname !== 'localhost');
 
-  // domain은 현재 페이지 도메인으로 자동 설정
-  const domain = encodeURIComponent(window.location.hostname || 'localhost');
-  let url = `https://api.vworld.kr/req/wms?key=${encodeURIComponent(key)}&domain=${domain}`;
-  if (info.cql) url += `&CQL_FILTER=${encodeURIComponent(info.cql)}`;
+  let url;
 
-  console.log('[WMS] 레이어:', id, info.layer, '/ domain:', window.location.hostname);
+  if (isVercel) {
+    // Vercel 환경: 키를 클라이언트에 노출하지 않고 서버 프록시 경유
+    // api/wms.js 가 서버에서 VWORLD_KEY 환경변수로 키 주입
+    url = `/api/wms`;
+  } else {
+    // 로컬 환경: 직접 요청 (file:// 에서는 CORS 없음)
+    const key = getVworldKey();
+    if (!key) return null;
+    const domain = encodeURIComponent(window.location.hostname || 'localhost');
+    url = `https://api.vworld.kr/req/wms?key=${encodeURIComponent(key)}&domain=${domain}`;
+  }
+
+  if (info.cql) url += (url.includes('?') ? '&' : '?') + `CQL_FILTER=${encodeURIComponent(info.cql)}`;
+
+  console.log('[WMS] 레이어:', id, info.layer, '/', isVercel ? '서버프록시(키숨김)' : '로컬직접');
 
   return L.tileLayer.wms(url, {
     service: 'WMS',
@@ -2632,6 +2643,7 @@ function buildWmsLayer(id) {
     opacity: info.opacity,
     attribution: '© Vworld 국토지리정보원',
     maxZoom: 19,
+    crossOrigin: 'anonymous',
   });
 }
 
