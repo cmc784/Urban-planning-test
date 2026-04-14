@@ -1191,11 +1191,11 @@ function parsePNUInfo(pnu) {
 
   // bjd_data.js (window.BJD) 활용
   let sido = '', sigungu = '', emd = '';
-  if (window.BJD && window.BJD.map && window.BJD.map[bjdCode]) {
-    const [si, sg, em] = window.BJD.map[bjdCode];
-    sido    = si >= 0 ? window.BJD.sidos[si]    : '';
-    sigungu = sg >= 0 ? window.BJD.sigungus[sg] : '';
-    emd     = em >= 0 ? window.BJD.emds[em]     : '';
+  if (window.BJD && window.BJD.m && window.BJD.m[bjdCode]) {
+    const [si, sg, em] = window.BJD.m[bjdCode];
+    sido    = si >= 0 ? window.BJD.s[si]  : '';
+    sigungu = sg >= 0 ? window.BJD.sg[sg] : '';
+    emd     = em >= 0 ? window.BJD.e[em]  : '';
   } else {
     // fallback: 시도코드만
     const SIDO_FB = {'11':'서울특별시','26':'부산광역시','27':'대구광역시','28':'인천광역시',
@@ -2420,7 +2420,7 @@ let resultRows = [];    // 최종 조서 데이터
 let currentStep = 1;
 
 // ─── 법정동 코드 데이터 ──────────────────────────────
-// bjd_data.js가 로드되면 window.BJD_DATA에 저장됨
+// bjd_data.js가 로드되면 window.BJD에 저장됨
 let BJD = null;   // { sidos:[], sigungus:[], emds:[], map:{code:[s,sg,e,ri]} }
 let bjdLoaded = false;
 let bjdLoadFailed = false;
@@ -2433,12 +2433,12 @@ function loadBJD() {
       return r.text();
     })
     .then(text => {
-      // window.BJD_DATA=... 파싱
-      const match = text.match(/window\.BJD_DATA=(.+);?$/s);
+      // window.BJD=... 파싱
+      const match = text.match(/window\.BJD=(.+);?$/s);
       if (match) {
         BJD = JSON.parse(match[1].replace(/;$/,''));
         bjdLoaded = true;
-        console.log(`✅ 법정동 코드 로드 완료: ${Object.keys(BJD.map).length}개`);
+        console.log(`✅ 법정동 코드 로드 완료: ${Object.keys(BJD.m).length}개`);
         updateBjdStatus(true);
       }
     })
@@ -2453,19 +2453,19 @@ function updateBjdStatus(ok) {
   const el = document.getElementById('bjdStatus');
   if (!el) return;
   el.innerHTML = ok
-    ? `<span style="color:var(--green);font-weight:700">✅ 법정동 코드 로드됨 (${Object.keys(BJD.map).length.toLocaleString()}개)</span>`
+    ? `<span style="color:var(--green);font-weight:700">✅ 법정동 코드 로드됨 (${Object.keys(BJD.m).length.toLocaleString()}개)</span>`
     : `<span style="color:var(--amber);font-weight:700">⚠️ bjd_data.js 파일 없음 — 시도명만 표시됩니다</span>`;
 }
 
 // PNU → 행정구역명 조회
 function lookupBJD(pnu) {
   const code = String(pnu||'').slice(0,10);
-  if (BJD && BJD.map[code]) {
-    const [si, sg, em, ri] = BJD.map[code];
+  if (BJD && BJD.m[code]) {
+    const [si, sg, em, ri] = BJD.m[code];
     return {
-      sido:     si >= 0 ? BJD.sidos[si]    : '',
-      sigungu:  sg >= 0 ? BJD.sigungus[sg] : '',
-      emd:      em >= 0 ? BJD.emds[em]     : '',
+      sido:     si >= 0 ? BJD.s[si]  : '',
+      sigungu:  sg >= 0 ? BJD.sg[sg] : '',
+      emd:      em >= 0 ? BJD.e[em]  : '',
       ri:       ri || ''
     };
   }
