@@ -571,6 +571,28 @@ tbody.result-body td:last-child { border-right:none; }
 }
 .style-reset-btn:hover { background: var(--red-light); color: var(--red); border-color: var(--red); }
 </style>
+<script>
+// 기본값 설정
+window.APP_CONFIG = window.APP_CONFIG || { encodedKey: '', vworldKey: '' };
+</script>
+<!-- config.js: 같은 폴더에 있으면 자동 로드 (file:// 환경 포함) -->
+<script src="config.js" onerror="console.log('[config] config.js 없음')"></script>
+<script>
+// config.js 로드 후 키를 localStorage에 저장 → location-map.html과 공유
+window.addEventListener('DOMContentLoaded', function() {
+  const cfg = window.APP_CONFIG;
+  let key = '';
+  if (cfg && cfg.encodedKey) {
+    try { const r = atob(atob(cfg.encodedKey)); key = r.split('').reverse().join(''); } catch(e) {}
+  } else if (cfg && cfg.vworldKey) {
+    key = cfg.vworldKey;
+  }
+  if (key) {
+    try { localStorage.setItem('vworld_api_key', key); } catch(e) {}
+    console.log('[config] API 키 자동 적용됨');
+  }
+});
+</script>
 </head>
 <body>
 
