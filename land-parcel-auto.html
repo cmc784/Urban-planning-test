@@ -1191,11 +1191,11 @@ function parsePNUInfo(pnu) {
 
   // bjd_data.js (window.BJD) 활용
   let sido = '', sigungu = '', emd = '';
-  if (window.BJD && window.BJD.m && window.BJD.m[bjdCode]) {
-    const [si, sg, em] = window.BJD.m[bjdCode];
-    sido    = si >= 0 ? window.BJD.s[si]  : '';
-    sigungu = sg >= 0 ? window.BJD.sg[sg] : '';
-    emd     = em >= 0 ? window.BJD.e[em]  : '';
+  if (BJD && BJD.m && BJD.m[bjdCode]) {
+    const [si, sg, em] = BJD.m[bjdCode];
+    sido    = si >= 0 ? BJD.s[si]  : '';
+    sigungu = sg >= 0 ? BJD.sg[sg] : '';
+    emd     = em >= 0 ? BJD.e[em]  : '';
   } else {
     // fallback: 시도코드만
     const SIDO_FB = {'11':'서울특별시','26':'부산광역시','27':'대구광역시','28':'인천광역시',
