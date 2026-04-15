@@ -549,28 +549,26 @@ input[type="range"] {
 .wms-toggle.on::after { left:16px; }
 </style>
 <script>
-// 기본값 설정 (config.js 없어도 오류 없음)
+// config.js 없어도 오류 없이 동작하도록 기본값 설정
 window.APP_CONFIG = window.APP_CONFIG || { encodedKey: '', vworldKey: '' };
-</script>
-<!-- config.js: 같은 폴더에 있으면 자동 로드 (file:// 환경 포함) -->
-<script src="config.js" onerror="console.log('[config] config.js 없음 — 키 직접 입력 필요')"></script>
-<script>
-// config.js 로드 후 키 확인 및 배경지도 자동 전환
-window.addEventListener('DOMContentLoaded', function() {
-  const cfg = window.APP_CONFIG;
-  const key = (cfg && cfg.encodedKey)
-    ? (function(){ try { const r=atob(atob(cfg.encodedKey)); return r.split('').reverse().join(''); } catch(e){ return ''; } })()
-    : (cfg && cfg.vworldKey) || '';
-  if (key) {
-    console.log('[config] API 키 자동 적용됨');
-    const sel = document.getElementById('map-layer');
-    if (sel) sel.value = 'vworld-sat';
-    const selP = document.getElementById('map-layer-p');
-    if (selP) selP.value = 'vworld-sat';
-    if (typeof switchTiles === 'function') switchTiles();
-    else window.addEventListener('load', () => { if(typeof switchTiles==='function') switchTiles(); });
+// config.js를 조용히 불러오기 (없어도 콘솔 오류 없음)
+fetch('config.js').then(r => r.ok ? r.text() : '').then(code => {
+  if (code) {
+    try { eval(code); } catch(e) {}
+    // 키가 있으면 배경지도 자동으로 Vworld 위성으로 전환
+    const key = (window.APP_CONFIG && window.APP_CONFIG.encodedKey)
+      ? (function(){ try { const r=atob(atob(window.APP_CONFIG.encodedKey)); return r.split('').reverse().join(''); } catch(e){ return ''; } })()
+      : (window.APP_CONFIG && window.APP_CONFIG.vworldKey) || '';
+    if (key) {
+      const sel = document.getElementById('map-layer');
+      if (sel) { sel.value = 'vworld-sat'; }
+      const selP = document.getElementById('map-layer-p');
+      if (selP) selP.value = 'vworld-sat';
+      if (typeof switchTiles === 'function') switchTiles();
+      else window.addEventListener('load', () => { if(typeof switchTiles==='function') switchTiles(); });
+    }
   }
-});
+}).catch(() => {});
 </script>
 </head>
 <body>
@@ -2611,26 +2609,15 @@ const WMS_LAYERS = {
 
 function buildWmsLayer(id) {
   const info = WMS_LAYERS[id];
-  const isVercel = window.location.hostname.endsWith('vercel.app') ||
-                   (window.location.protocol === 'https:' && window.location.hostname !== 'localhost');
+  const key = getVworldKey();
+  if (!key) return null;
 
-  let url;
+  // domain은 현재 페이지 도메인으로 자동 설정
+  const domain = encodeURIComponent(window.location.hostname || 'localhost');
+  let url = `https://api.vworld.kr/req/wms?key=${encodeURIComponent(key)}&domain=${domain}`;
+  if (info.cql) url += `&CQL_FILTER=${encodeURIComponent(info.cql)}`;
 
-  if (isVercel) {
-    // Vercel 환경: 키를 클라이언트에 노출하지 않고 서버 프록시 경유
-    // api/wms.js 가 서버에서 VWORLD_KEY 환경변수로 키 주입
-    url = `/api/wms`;
-  } else {
-    // 로컬 환경: 직접 요청 (file:// 에서는 CORS 없음)
-    const key = getVworldKey();
-    if (!key) return null;
-    const domain = encodeURIComponent(window.location.hostname || 'localhost');
-    url = `https://api.vworld.kr/req/wms?key=${encodeURIComponent(key)}&domain=${domain}`;
-  }
-
-  if (info.cql) url += (url.includes('?') ? '&' : '?') + `CQL_FILTER=${encodeURIComponent(info.cql)}`;
-
-  console.log('[WMS] 레이어:', id, info.layer, '/', isVercel ? '서버프록시(키숨김)' : '로컬직접');
+  console.log('[WMS] 레이어:', id, info.layer, '/ domain:', window.location.hostname);
 
   return L.tileLayer.wms(url, {
     service: 'WMS',
@@ -2643,7 +2630,6 @@ function buildWmsLayer(id) {
     opacity: info.opacity,
     attribution: '© Vworld 국토지리정보원',
     maxZoom: 19,
-    crossOrigin: 'anonymous',
   });
 }
 
