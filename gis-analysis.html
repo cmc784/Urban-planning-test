@@ -2042,6 +2042,7 @@ function calcZoneZoom(key) {
   if (!canvas || !canvas.width || !canvas.height) return { scale: 1, tx: 0, ty: 0 };
   const W = canvas.width, H = canvas.height;
 
+  if (!_elevGrid) return { scale: 1, tx: 0, ty: 0 };
   const base = getRenderBbox(W, H);
   const zone = getZoneBbox();
   if (!zone) return { scale: 1, tx: 0, ty: 0 };
@@ -2050,21 +2051,27 @@ function calcZoneZoom(key) {
   const baseH = base.ymax - base.ymin;
   const zoneW = zone.xmax - zone.xmin;
   const zoneH = zone.ymax - zone.ymin;
-  if (!zoneW || !zoneH) return { scale: 1, tx: 0, ty: 0 };
+  if (!zoneW || !zoneH || !baseW || !baseH) return { scale: 1, tx: 0, ty: 0 };
 
-  // 구역계가 캔버스의 75%를 채우도록 scale 계산
-  const scaleX = (baseW / zoneW) * 0.75;
-  const scaleY = (baseH / zoneH) * 0.75;
-  const scale  = Math.min(Math.min(scaleX, scaleY), ZOOM_MAX);
+  // 구역계가 캔버스의 80%를 채우도록 scale 계산
+  const scaleX = (baseW / zoneW) * 0.80;
+  const scaleY = (baseH / zoneH) * 0.80;
+  const scale  = Math.min(scaleX, scaleY, ZOOM_MAX);
 
-  // 구역계 중심을 캔버스 중심으로
+  // getRenderBboxWithZoom 역산:
+  // offX = (-tx / W) * baseW / scale  → tx = -offX * W * scale / baseW
+  // offY = ( ty / H) * baseH / scale  → ty =  offY * H * scale / baseH
+  // 구역계 중심이 캔버스 중심에 오려면:
+  // 렌더 bbox 의 xmin = zoneCX - (baseW/scale)/2
+  // offX = zoneCX - (baseW/scale)/2 - base.xmin
   const zoneCX = (zone.xmin + zone.xmax) / 2;
   const zoneCY = (zone.ymin + zone.ymax) / 2;
-  const baseCX = (base.xmin + base.xmax) / 2;
-  const baseCY = (base.ymin + base.ymax) / 2;
 
-  const tx =  (baseCX - zoneCX) / baseW * W * scale;
-  const ty = -(baseCY - zoneCY) / baseH * H * scale;
+  const offX = zoneCX - baseW / scale / 2 - base.xmin;
+  const offY = zoneCY - baseH / scale / 2 - base.ymin;
+
+  const tx = -offX * W * scale / baseW;
+  const ty =  offY * H * scale / baseH;
 
   return { scale, tx, ty };
 }
