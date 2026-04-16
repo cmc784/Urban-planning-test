@@ -1969,21 +1969,26 @@ function renderShpResult() {
       return `<td style="${isNum ? 'text-align:right' : 'text-align:center'};font-family:'DM Mono',monospace;border-right:1px solid var(--border);border-bottom:1px solid var(--border2);padding:8px 10px;font-size:11px">${display}</td>`;
     }).join('');
     const isOverride = bojeongOverride[pnu] !== undefined;
-    return `<tr>
-      <td class="td-mono" style="font-size:10px">${escHtml(r.pnu)}</td>
-      <td class="td-mono">${globalIdx + 1}</td>
-      <td>${escHtml(r.sido)}</td>
-      <td>${escHtml(r.sigungu)}</td>
-      <td>${escHtml(r.emd)}</td>
-      <td>${escHtml(r.daejang)}</td>
-      <td class="td-mono">${escHtml(r.jibun)}</td>
-      <td>${escHtml(r.jimok)}</td>
-      <td class="td-mono td-right">${r.jijuArea.toLocaleString()}</td>
-      <td class="td-mono td-right">${r.pyeonipArea.toLocaleString()}</td>
+    // 토지대장 연계 후 미매칭 여부 판단 (ldLinkExtra가 있는데 해당 PNU가 없으면 미매칭)
+    const hasLdLink = Object.keys(ldLinkExtra).length > 0;
+    const isUnmatched = hasLdLink && !ldLinkExtra[pnu];
+    const rowStyle = isUnmatched ? 'background:#fff5f5;' : '';
+    const textStyle = isUnmatched ? 'color:#c0392b;font-weight:600;' : '';
+    return `<tr style="${rowStyle}">
+      <td class="td-mono" style="font-size:10px;${textStyle}">${escHtml(r.pnu)}</td>
+      <td class="td-mono" style="${textStyle}">${globalIdx + 1}</td>
+      <td style="${textStyle}">${escHtml(r.sido)}</td>
+      <td style="${textStyle}">${escHtml(r.sigungu)}</td>
+      <td style="${textStyle}">${escHtml(r.emd)}</td>
+      <td style="${textStyle}">${escHtml(r.daejang)}</td>
+      <td class="td-mono" style="${textStyle}">${escHtml(r.jibun)}${isUnmatched ? ' <span title="토지대장 미매칭" style="color:#c0392b;">⚠</span>' : ''}</td>
+      <td style="${textStyle}">${escHtml(r.jimok)}</td>
+      <td class="td-mono td-right" style="${textStyle}">${r.jijuArea.toLocaleString()}</td>
+      <td class="td-mono td-right" style="${textStyle}">${r.pyeonipArea.toLocaleString()}</td>
       <td class="td-mono td-right" id="bj-${pnu}"
           onclick="editBojeong('${pnu}', ${bojeong})"
           title="클릭하여 수정"
-          style="cursor:pointer;${isOverride ? 'color:var(--teal);font-weight:700;' : ''}">
+          style="cursor:pointer;${isOverride ? 'color:var(--teal);font-weight:700;' : textStyle}">
         ${formatBojeong(bojeong)}${isOverride ? ' ✎' : ''}
       </td>
       <td>${gubunBadge}</td>
@@ -2109,6 +2114,7 @@ function editBojeong(pnu, currentVal) {
 let ldLinkHeaders = [];   // 토지대장 헤더
 let ldLinkRows    = [];   // 토지대장 데이터 rows
 let ldLinkExtra   = {};   // PNU → 병합 데이터 맵
+let ldUnmatchedPnus = []; // 미매칭 필지 PNU 목록
 
 // 기본 출력 항목 정의
 const LD_LINK_FIELDS = [
@@ -2314,6 +2320,7 @@ function ldLinkApply() {
   // shpResultRows에 병합
   let matched = 0, unmatched = 0, adminUpdated = 0;
   ldLinkExtra = {};
+  ldUnmatchedPnus = [];
 
   // 전체 shpResultRows 기준으로 순회 (복수 구역계 대응)
   const allRows = (typeof guyeokZones !== 'undefined' && guyeokZones.length > 0)
@@ -2323,7 +2330,11 @@ function ldLinkApply() {
   allRows.forEach(r => {
     const pnu = String(r.pnu || '').padStart(19, '0');
     const ld  = ldMap[pnu];
-    if (!ld) { unmatched++; return; }
+    if (!ld) {
+      unmatched++;
+      ldUnmatchedPnus.push({ pnu, jibun: r.jibun, emd: r.emd, jimok: r.jimok });
+      return;
+    }
 
     // ── 일반 항목 병합 ──────────────────────────────
     ldLinkExtra[pnu] = {};
@@ -2381,19 +2392,50 @@ function ldLinkApply() {
 
   const resultEl = document.getElementById('ldLink-result');
   resultEl.style.display = 'block';
+
+  // 미매칭 목록 HTML
+  const unmatchedHtml = ldUnmatchedPnus.length > 0 ? `
+    <details style="margin-top:8px;">
+      <summary style="cursor:pointer;font-size:11px;color:var(--red);font-weight:600;">
+        ⚠️ 미매칭 필지 ${ldUnmatchedPnus.length}건 (클릭하여 목록 보기)
+      </summary>
+      <div style="margin-top:6px;max-height:180px;overflow-y:auto;border:1px solid var(--red);border-radius:6px;padding:8px;">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;">
+          <thead>
+            <tr style="background:#fff0f0;">
+              <th style="padding:4px 8px;border-bottom:1px solid var(--border);text-align:left;">PNU</th>
+              <th style="padding:4px 8px;border-bottom:1px solid var(--border);text-align:left;">읍면동</th>
+              <th style="padding:4px 8px;border-bottom:1px solid var(--border);text-align:left;">지번</th>
+              <th style="padding:4px 8px;border-bottom:1px solid var(--border);text-align:left;">지목</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${ldUnmatchedPnus.map(p => `
+              <tr style="border-bottom:1px solid var(--border2);">
+                <td style="padding:4px 8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--red);">${escHtml(p.pnu)}</td>
+                <td style="padding:4px 8px;">${escHtml(p.emd)}</td>
+                <td style="padding:4px 8px;font-weight:600;">${escHtml(p.jibun)}</td>
+                <td style="padding:4px 8px;">${escHtml(p.jimok)}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </details>` : '';
+
   resultEl.innerHTML = `
     <div class="alert alert-green">
       <span class="alert-icon">✅</span>
-      <div>병합 완료 — 매칭 <strong>${matched}</strong>필지 / 미매칭 <strong>${unmatched}</strong>필지
+      <div>병합 완료 — 매칭 <strong>${matched}</strong>필지 / 미매칭 <strong style="color:var(--red)">${unmatched}</strong>필지
         ${adminUpdated > 0 ? `<br><span style="font-size:11px;color:var(--teal)">✔ 시도·시군구·읍면동 ${adminUpdated}필지 반영 (PNU 기반 파싱)</span>` : ''}
         <div style="font-size:11px;margin-top:3px;color:var(--ink3)">결과 테이블과 엑셀 다운로드에 반영됩니다.</div>
+        ${unmatchedHtml}
       </div>
     </div>`;
   showToast(`✅ 토지대장 병합 완료 (${matched}필지 매칭)`);
 }
 
 function ldLinkReset() {
-  ldLinkHeaders = []; ldLinkRows = []; ldLinkExtra = {};
+  ldLinkHeaders = []; ldLinkRows = []; ldLinkExtra = {}; ldUnmatchedPnus = [];
   ldLinkSelectedFields = [];
   Object.keys(bojeongOverride).forEach(k => delete bojeongOverride[k]);
   document.getElementById('ldLink-upload-area').style.display = 'block';
@@ -3143,7 +3185,7 @@ function resetAll() {
   shpStep1Rows = []; shpResultRows = [];
   if (typeof guyeokZones !== 'undefined') guyeokZones = [];
   _shpIsProjected = false;
-  ldLinkHeaders = []; ldLinkRows = []; ldLinkExtra = {};
+  ldLinkHeaders = []; ldLinkRows = []; ldLinkExtra = {}; ldUnmatchedPnus = [];
   ldLinkSelectedFields = [];
   Object.keys(bojeongOverride).forEach(k => delete bojeongOverride[k]);
   document.getElementById('jijukDropZone').classList.remove('done');
