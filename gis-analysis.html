@@ -573,7 +573,7 @@ canvas { border-radius:6px; max-width:100%; }
               <div style="display:flex;gap:6px;align-items:center">
                 <button class="btn-sm" onclick="zoomCanvas('DEM', 1.3)" title="확대">🔍+</button>
                 <button class="btn-sm" onclick="zoomCanvas('DEM', 0.77)" title="축소">🔍-</button>
-                <button class="btn-sm" onclick="resetZoom('DEM')" title="초기화">↺</button>
+                <button class="btn-sm" onclick="resetZoom('DEM')" title="구역계 맞춤">↺</button>
                 <button class="btn-sm" onclick="downloadCanvas('canvasDEM','표고분포도')">💾 PNG</button>
               </div>
             </div>
@@ -593,7 +593,7 @@ canvas { border-radius:6px; max-width:100%; }
               <div style="display:flex;gap:6px;align-items:center">
                 <button class="btn-sm" onclick="zoomCanvas('Slope', 1.3)" title="확대">🔍+</button>
                 <button class="btn-sm" onclick="zoomCanvas('Slope', 0.77)" title="축소">🔍-</button>
-                <button class="btn-sm" onclick="resetZoom('Slope')" title="초기화">↺</button>
+                <button class="btn-sm" onclick="resetZoom('Slope')" title="구역계 맞춤">↺</button>
                 <button class="btn-sm" onclick="downloadCanvas('canvasSlope','경사도분포도')">💾 PNG</button>
               </div>
             </div>
@@ -1506,19 +1506,19 @@ function showResultsFromPolygons(elevPolys, slopePolys) {
     return { ...g, area: cnt * cellArea };
   });
 
-  _analysisResult = { totalArea, minElev, maxElev, avgSlope, grades: gradeAreas };
+  // 표고 등급 계산 (분석 시점의 설정값으로 한 번만 계산 → _analysisResult에 저장)
+  const elevGradesSnap = getElevGrades(minElev, maxElev);
+  const elevCellArea   = elevPolys.length > 0
+    ? (elevPolys[0].xmax-elevPolys[0].xmin)*(elevPolys[0].ymax-elevPolys[0].ymin) : cellArea;
+  const elevGradeAreas = calcElevGradeAreas(elevPolys, elevGradesSnap, elevCellArea);
+
+  _analysisResult = { totalArea, minElev, maxElev, avgSlope, grades: gradeAreas, elevGrades: elevGradesSnap };
 
   document.getElementById('r-totalArea').textContent   = Math.round(totalArea).toLocaleString();
   document.getElementById('r-totalAreaHa').textContent = (totalArea/10000).toFixed(2) + 'ha';
   document.getElementById('r-minElev').textContent     = minElev.toFixed(1);
   document.getElementById('r-maxElev').textContent     = maxElev.toFixed(1);
   document.getElementById('r-avgSlope').textContent    = avgSlope.toFixed(1);
-
-  // 표고 등급 계산 및 렌더링
-  const elevGrades     = getElevGrades(minElev, maxElev);
-  const elevCellArea   = elevPolys.length > 0
-    ? (elevPolys[0].xmax-elevPolys[0].xmin)*(elevPolys[0].ymax-elevPolys[0].ymin) : cellArea;
-  const elevGradeAreas = calcElevGradeAreas(elevPolys, elevGrades, elevCellArea);
   renderElevLegend(elevGradeAreas, totalArea);
   renderElevTable(elevGradeAreas, totalArea);
 
@@ -1526,6 +1526,15 @@ function showResultsFromPolygons(elevPolys, slopePolys) {
   renderSlopeTable(gradeAreas, totalArea);
 
   const theme = document.getElementById('colorTheme').value;
+
+  // 분석 완료 후 구역계 기준 zoom 초기값 설정
+  ['DEM', 'Slope'].forEach(key => {
+    const fit = calcZoneZoom(key);
+    _zoomState[key].scale = fit.scale;
+    _zoomState[key].tx    = fit.tx;
+    _zoomState[key].ty    = fit.ty;
+  });
+
   renderDEMFromPolygons(theme, elevPolys, minElev, maxElev);
   renderSlopeFromPolygons(gradeAreas, totalArea, slopePolys, gradeThresh);
 
@@ -1589,17 +1598,18 @@ function renderDEMFromPolygons(theme, clippedPolys, minElev, maxElev) {
   drawZoneBoundary(ctx, toCanvasX, toCanvasY);
 
   // ④ 표고 등급 범례 + 타이틀
-  const theme2 = document.getElementById('colorTheme')?.value || 'terrain';
-  const elevGradesForLegend = getElevGrades(minElev, maxElev, theme2);
-  // 면적 정보 임시 반영 (캔버스 범례용)
-  if (_analysisResult?.grades) {
-    const elevCellArea = clippedPolys.length > 0
-      ? (clippedPolys[0].xmax-clippedPolys[0].xmin)*(clippedPolys[0].ymax-clippedPolys[0].ymin) : 100;
-    elevGradesForLegend.forEach(g => {
-      g.area = clippedPolys.filter((p, idx) => {
-        const isLast = idx === elevGradesForLegend.length - 1;
-        return isLast ? p.elev >= g.lo && p.elev <= g.hi : p.elev >= g.lo && p.elev < g.hi;
-      }).length * elevCellArea;
+  // 분석 시점에 저장된 elevGrades 사용 (직접 입력값 반영 보장)
+  const elevGradesForLegend = (_analysisResult && _analysisResult.elevGrades)
+    ? _analysisResult.elevGrades.slice()
+    : getElevGrades(minElev, maxElev, document.getElementById('colorTheme')?.value || 'terrain');
+  // 면적 정보 반영 (캔버스 범례용)
+  if (clippedPolys && clippedPolys.length > 0) {
+    const elevCellArea = (clippedPolys[0].xmax-clippedPolys[0].xmin)*(clippedPolys[0].ymax-clippedPolys[0].ymin);
+    elevGradesForLegend.forEach((g, idx) => {
+      const isLast = idx === elevGradesForLegend.length - 1;
+      g.area = clippedPolys.filter(p =>
+        isLast ? p.elev >= g.lo && p.elev <= g.hi : p.elev >= g.lo && p.elev < g.hi
+      ).length * elevCellArea;
     });
   }
   if (_legendVisible.DEM) drawElevGradeLegend(ctx, W, H, elevGradesForLegend);
@@ -2025,9 +2035,46 @@ function zoomCanvas(key, factor) {
   triggerRerender();
 }
 
+// 구역계 기준 zoom 값 계산
+function calcZoneZoom(key) {
+  const W = key === 'DEM'
+    ? document.getElementById('canvasDEM').width
+    : document.getElementById('canvasSlope').width;
+  const H = key === 'DEM'
+    ? document.getElementById('canvasDEM').height
+    : document.getElementById('canvasSlope').height;
+
+  const base = getRenderBbox(W, H);
+  const zone = getZoneBbox();
+  if (!zone) return { scale: 1, tx: 0, ty: 0 };
+
+  const baseW = base.xmax - base.xmin;
+  const baseH = base.ymax - base.ymin;
+  const zoneW = zone.xmax - zone.xmin;
+  const zoneH = zone.ymax - zone.ymin;
+
+  // 구역계가 캔버스의 80%를 채우도록 scale 계산
+  const scaleX = (baseW / zoneW) * 0.8;
+  const scaleY = (baseH / zoneH) * 0.8;
+  const scale  = Math.min(scaleX, scaleY, ZOOM_MAX);
+
+  // 구역계 중심을 캔버스 중심으로
+  const zoneCX = (zone.xmin + zone.xmax) / 2;
+  const zoneCY = (zone.ymin + zone.ymax) / 2;
+  const baseCX = (base.xmin + base.xmax) / 2;
+  const baseCY = (base.ymin + base.ymax) / 2;
+
+  const tx = (baseCX - zoneCX) / baseW * W * scale;
+  const ty = (baseCY - zoneCY) / baseH * H * scale * -1;
+
+  return { scale, tx, ty };
+}
+
 function resetZoom(key) {
+  // 구역계 기준 zoom으로 되돌아가기
   const s = _zoomState[key];
-  s.scale = 1; s.tx = 0; s.ty = 0;
+  const fit = calcZoneZoom(key);
+  s.scale = fit.scale; s.tx = fit.tx; s.ty = fit.ty;
   triggerRerender();
 }
 
