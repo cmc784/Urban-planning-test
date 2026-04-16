@@ -822,9 +822,9 @@ window.addEventListener('DOMContentLoaded', function() {
         <div class="toolbar" style="margin-bottom:12px">
           <div class="search-wrap">
             <span class="search-icon">🔍</span>
-            <input type="text" id="shpSearch" placeholder="PNU, 지번 검색..." oninput="renderShpResult()">
+            <input type="text" id="shpSearch" placeholder="PNU, 지번 검색..." oninput="shpCurrentPage=1; renderShpResult()">
           </div>
-          <select class="filter-sel" id="shpFilterGubun" onchange="renderShpResult()">
+          <select class="filter-sel" id="shpFilterGubun" onchange="shpCurrentPage=1; renderShpResult()">
             <option value="">편입구분 전체</option>
             <option value="완전편입">완전편입</option>
             <option value="부분편입">부분편입</option>
@@ -1005,6 +1005,8 @@ let shpStep1Rows  = [];    // Step1 산출: 필지면적·행정구역·지번·
 let shpResultRows = [];    // Step2 산출: 편입면적·편입구분 포함 최종
 let shpSortKey    = null;  // 현재 정렬 컬럼
 let shpSortAsc    = true;  // 오름차순 여부
+let shpCurrentPage = 1;    // 현재 페이지
+const SHP_PAGE_SIZE = 100; // 페이지당 행 수
 
 // ─── 투영좌표계 판별 ────────────────────────────────────
 // 첫 번째 좌표의 절댓값이 180 초과이면 투영좌표계(m 단위)로 판단
@@ -1878,15 +1880,15 @@ function shpSort(key) {
     shpSortKey = key;
     shpSortAsc = true;
   }
-  // 모든 화살표 초기화
   document.querySelectorAll('[id^="shp-sort-"]').forEach(el => el.textContent = '');
-  // 현재 컬럼 화살표 표시
   const arrowEl = document.getElementById('shp-sort-' + key);
   if (arrowEl) arrowEl.textContent = shpSortAsc ? ' ↑' : ' ↓';
+  shpCurrentPage = 1;
   renderShpResult();
 }
 
 function renderShpResult() {
+  // 검색/필터 변경 시 페이지 리셋 (oninput/onchange에서 직접 호출 시)
   // 토지대장 연계 컬럼 헤더 동적 추가
   const thead = document.getElementById('shpResultThead');
   if (thead) {
@@ -1936,10 +1938,19 @@ function renderShpResult() {
   const tbody = document.getElementById('shpResultBody');
   if (list.length === 0) {
     tbody.innerHTML = `<tr><td colspan="12" style="padding:40px;text-align:center;color:var(--ink3)">결과 없음</td></tr>`;
+    renderShpPagination(0, 0);
     return;
   }
 
-  tbody.innerHTML = list.map((r, i) => {
+  // 페이지네이션 적용
+  const totalCount = list.length;
+  const totalPages = Math.ceil(totalCount / SHP_PAGE_SIZE);
+  shpCurrentPage = Math.max(1, Math.min(shpCurrentPage, totalPages));
+  const startIdx = (shpCurrentPage - 1) * SHP_PAGE_SIZE;
+  const pageList = list.slice(startIdx, startIdx + SHP_PAGE_SIZE);
+
+  tbody.innerHTML = pageList.map((r, i) => {
+    const globalIdx = startIdx + i; // 전체 기준 연번
     const gubunBadge = r.gubun === '완전편입'
       ? `<span class="status-badge s-완편">완전편입</span>`
       : `<span class="status-badge s-일편">부분편입</span>`;
@@ -1960,7 +1971,7 @@ function renderShpResult() {
     const isOverride = bojeongOverride[pnu] !== undefined;
     return `<tr>
       <td class="td-mono" style="font-size:10px">${escHtml(r.pnu)}</td>
-      <td class="td-mono">${i + 1}</td>
+      <td class="td-mono">${globalIdx + 1}</td>
       <td>${escHtml(r.sido)}</td>
       <td>${escHtml(r.sigungu)}</td>
       <td>${escHtml(r.emd)}</td>
@@ -1979,6 +1990,55 @@ function renderShpResult() {
       ${extraCells}
     </tr>`;
   }).join('');
+
+  renderShpPagination(totalCount, totalPages);
+}
+
+function renderShpPagination(totalCount, totalPages) {
+  // 기존 페이지네이션 제거 후 재생성
+  let pg = document.getElementById('shpPagination');
+  if (!pg) {
+    pg = document.createElement('div');
+    pg.id = 'shpPagination';
+    pg.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px;padding:12px 0;flex-wrap:wrap;';
+    const tbody = document.getElementById('shpResultBody');
+    tbody?.parentElement?.parentElement?.after(pg);
+  }
+  if (totalPages <= 1) { pg.innerHTML = ''; return; }
+
+  const cur = shpCurrentPage;
+  let html = '';
+
+  // 총 건수 표시
+  html += `<span style="font-size:11px;color:var(--ink3);margin-right:8px">총 ${totalCount.toLocaleString()}건</span>`;
+
+  // 이전 버튼
+  html += `<button onclick="shpGoPage(${cur-1})" ${cur===1?'disabled':''} style="padding:4px 10px;border:1px solid var(--border);border-radius:5px;background:var(--white);cursor:pointer;font-size:12px">‹</button>`;
+
+  // 페이지 번호 (최대 7개 표시)
+  const delta = 3;
+  let pages = new Set([1, totalPages]);
+  for (let p = Math.max(1, cur-delta); p <= Math.min(totalPages, cur+delta); p++) pages.add(p);
+  pages = [...pages].sort((a,b) => a-b);
+
+  let prev = 0;
+  pages.forEach(p => {
+    if (prev && p - prev > 1) html += `<span style="padding:4px 6px;color:var(--ink3)">…</span>`;
+    html += `<button onclick="shpGoPage(${p})" style="padding:4px 10px;border:1px solid ${p===cur?'var(--green)':'var(--border)'};border-radius:5px;background:${p===cur?'var(--green)':'var(--white)'};color:${p===cur?'white':'var(--ink)'};cursor:pointer;font-size:12px;font-weight:${p===cur?'700':'400'}">${p}</button>`;
+    prev = p;
+  });
+
+  // 다음 버튼
+  html += `<button onclick="shpGoPage(${cur+1})" ${cur===totalPages?'disabled':''} style="padding:4px 10px;border:1px solid var(--border);border-radius:5px;background:var(--white);cursor:pointer;font-size:12px">›</button>`;
+
+  pg.innerHTML = html;
+}
+
+function shpGoPage(page) {
+  shpCurrentPage = page;
+  renderShpResult();
+  // 테이블 상단으로 스크롤
+  document.getElementById('shpResultBody')?.closest('table')?.scrollIntoView({ behavior:'smooth', block:'nearest' });
 }
 
 // ── 편입면적 보정 수동 편집값 저장 (PNU → 값) ──────────
