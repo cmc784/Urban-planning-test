@@ -548,27 +548,28 @@ input[type="range"] {
 .wms-toggle.on { background:var(--teal,#1a7f7a); }
 .wms-toggle.on::after { left:16px; }
 </style>
+<!-- config.js를 script 태그로 로드 (file:// 환경 포함 모든 환경에서 작동) -->
+<script src="config.js" onerror="console.log('[config] config.js 없음 — 키 직접 입력 필요')"></script>
 <script>
 // config.js 없어도 오류 없이 동작하도록 기본값 설정
 window.APP_CONFIG = window.APP_CONFIG || { encodedKey: '', vworldKey: '' };
-// config.js를 조용히 불러오기 (없어도 콘솔 오류 없음)
-fetch('config.js').then(r => r.ok ? r.text() : '').then(code => {
-  if (code) {
-    try { eval(code); } catch(e) {}
-    // 키가 있으면 배경지도 자동으로 Vworld 위성으로 전환
-    const key = (window.APP_CONFIG && window.APP_CONFIG.encodedKey)
-      ? (function(){ try { const r=atob(atob(window.APP_CONFIG.encodedKey)); return r.split('').reverse().join(''); } catch(e){ return ''; } })()
-      : (window.APP_CONFIG && window.APP_CONFIG.vworldKey) || '';
-    if (key) {
-      const sel = document.getElementById('map-layer');
-      if (sel) { sel.value = 'vworld-sat'; }
+
+// 키가 있으면 배경지도 자동으로 Vworld 위성으로 전환
+(function() {
+  const cfg = window.APP_CONFIG;
+  const key = (cfg && cfg.encodedKey)
+    ? (function(){ try { const r=atob(atob(cfg.encodedKey)); return r.split('').reverse().join(''); } catch(e){ return ''; } })()
+    : (cfg && cfg.vworldKey) || '';
+  if (key) {
+    window.addEventListener('load', () => {
+      const sel  = document.getElementById('map-layer');
       const selP = document.getElementById('map-layer-p');
+      if (sel)  sel.value  = 'vworld-sat';
       if (selP) selP.value = 'vworld-sat';
       if (typeof switchTiles === 'function') switchTiles();
-      else window.addEventListener('load', () => { if(typeof switchTiles==='function') switchTiles(); });
-    }
+    });
   }
-}).catch(() => {});
+})();
 </script>
 </head>
 <body>
