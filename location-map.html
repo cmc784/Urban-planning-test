@@ -1168,7 +1168,7 @@ let psCurrentTab = 'full';
 const PS_DEFAULTS = {
   full: { fillColor:'#dc2626', fillOpacity:0.35, hatch:'none', strokeColor:'#991b1b', strokeWidth:2, strokeDash:'none', labelContent:'jibun', labelSize:11, labelColor:'#000000' },
   part: { fillColor:'#ea580c', fillOpacity:0.30, hatch:'diagonal', strokeColor:'#9a3412', strokeWidth:2, strokeDash:'none', labelContent:'jibun', labelSize:11, labelColor:'#000000' },
-  zone: { fillColor:'#1a5c3a', fillOpacity:0.08, hatch:'none', strokeColor:'#1a5c3a', strokeWidth:2.5, strokeDash:'12,4,2,4', labelContent:'none', labelSize:11, labelColor:'#000000' },
+  zone: { fillColor:'#ff0000', fillOpacity:0.0, hatch:'none', strokeColor:'#ff0000', strokeWidth:2.5, strokeDash:'12,4,2,4', labelContent:'none', labelSize:11, labelColor:'#000000' },
 };
 let psStyles = JSON.parse(JSON.stringify(PS_DEFAULTS));
 
@@ -1766,6 +1766,7 @@ document.getElementById('project-name-p').addEventListener('input', function() {
 // 편입 필지 모드
 // ═══════════════════════════════════════════════════
 let pyeonipMode   = false;
+let _pyeonipFitted = false; // 최초 1회만 fitBounds 실행 플래그
 // pyeonipData, pyeonipLayers, colorMode — 전역 선언부에서 정의됨
 
 // 지목별 색상 팔레트
@@ -1843,7 +1844,8 @@ function initPyeonipMode() {
   renderPyeonipStats();
   // 지목 레이어 행 생성 (지목별 모드 전환 시 바로 보이도록)
   buildJimokLayerRows();
-  // 지도에 표시
+  // 지도에 표시 (최초 진입이므로 fitBounds 허용)
+  _pyeonipFitted = false;
   renderPyeonipLayers();
 }
 
@@ -2446,9 +2448,12 @@ function renderPyeonipLayers() {
     console.log(`[pyeonip] 구역계 렌더 완료: ${zoneRendered}/${zoneData.length}개`);
   }
 
-  if (allLL.length > 0) {
-    try { map.fitBounds(L.latLngBounds(allLL), { padding:[50,50] }); } catch(e) {}
-  } else {
+  if (allLL.length > 0 && !_pyeonipFitted) {
+    try {
+      map.fitBounds(L.latLngBounds(allLL), { padding:[50,50] });
+      _pyeonipFitted = true; // 이후 스타일 변경 시 fitBounds 실행 안 함
+    } catch(e) {}
+  } else if (allLL.length === 0) {
     console.warn('[pyeonip] 표시할 좌표가 없습니다.');
   }
 
