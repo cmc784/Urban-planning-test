@@ -554,42 +554,6 @@ tbody tr:hover .action-btns { opacity: 1; }
 .btn-act-del { background: var(--white); color: var(--ink2); }
 .btn-act-del:not(:disabled):hover { background: var(--red-light); border-color: var(--red); color: var(--red); }
 
-/* PASSWORD FIELD */
-.pw-section {
-  border-top: 1px solid var(--border2);
-  margin-top: 4px;
-  padding-top: 16px;
-}
-.pw-section-label {
-  font-size: 11px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: 0.8px;
-  color: var(--ink3); font-family: 'DM Mono', monospace;
-  margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
-}
-.pw-input-wrap { position: relative; }
-.pw-input-wrap .form-input { padding-right: 38px; }
-.pw-eye-btn {
-  position: absolute; right: 10px; top: 50%;
-  transform: translateY(-50%);
-  background: none; border: none; cursor: pointer;
-  font-size: 15px; color: var(--ink3); padding: 2px;
-  line-height: 1;
-}
-.pw-eye-btn:hover { color: var(--ink); }
-.pw-hint {
-  font-size: 11px; color: var(--ink3);
-  margin-top: 5px; line-height: 1.5;
-}
-.pw-lock-badge {
-  display: inline-flex; align-items: center; gap: 3px;
-  font-size: 10px; font-weight: 700;
-  background: var(--amber-light); color: var(--amber);
-  border: 1px solid #f5d78a;
-  border-radius: 4px; padding: 1px 6px;
-  margin-left: 6px; vertical-align: middle;
-  font-family: 'DM Mono', monospace;
-}
-
 /* RESPONSIVE */
 @media (max-width: 640px) {
   .topbar { padding: 0 16px; }
@@ -743,16 +707,6 @@ tbody tr:hover .action-btns { opacity: 1; }
           <textarea class="form-textarea" id="f-memo" placeholder="특이사항, 참고 내용 등..."></textarea>
         </div>
       </div>
-      <!-- 비밀번호 섹션 -->
-      <div class="pw-section">
-        <div class="pw-section-label">🔒 열람 비밀번호 <span style="font-weight:400;color:var(--ink3)">(선택)</span></div>
-        <div class="pw-input-wrap">
-          <input class="form-input" type="password" id="f-pw"
-                 placeholder="비밀번호 설정 시 열람 시 인증 필요">
-          <button class="pw-eye-btn" type="button" onclick="togglePwEye()" tabindex="-1">👁</button>
-        </div>
-        <div class="pw-hint" id="f-pw-hint">비워두면 비밀번호 없이 누구나 열람할 수 있습니다.</div>
-      </div>
     </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeModalDirect()">취소</button>
@@ -862,7 +816,7 @@ function renderTable() {
         <input type="checkbox" class="row-check" data-id="${p.firestoreId}" style="cursor:pointer">
       </td>
       <td style="font-size:12px;color:var(--ink3);font-family:'DM Mono',monospace;text-align:center">${String(i+1).padStart(3,'0')}</td>
-      <td class="col-name proj-link" data-id="${p.firestoreId}" style="cursor:pointer;color:var(--green);text-decoration:underline;text-underline-offset:3px">${escHtml(p.name)}${p.password ? '<span class="pw-lock-badge">🔒 잠김</span>' : ''}</td>
+      <td class="col-name proj-link" data-id="${p.firestoreId}" style="cursor:pointer;color:var(--green);text-decoration:underline;text-underline-offset:3px">${escHtml(p.name)}</td>
       <td><span class="type-badge">${escHtml(p.type||'-')}</span></td>
       <td>${statusBadge(p.status)}</td>
       <td>${escHtml(p.manager||'-')}</td>
@@ -975,9 +929,6 @@ function openAddModal() {
   document.getElementById('modalTitle').textContent = '프로젝트 추가';
   document.getElementById('editId').value = '';
   ['name','manager','memo'].forEach(f => document.getElementById('f-'+f).value = '');
-  document.getElementById('f-pw').value = '';
-  document.getElementById('f-pw').type = 'password';
-  document.getElementById('f-pw-hint').textContent = '비워두면 비밀번호 없이 누구나 열람할 수 있습니다.';
   document.getElementById('f-type-custom').style.display = 'none';
   document.getElementById('f-type').value = '도시개발사업';
   document.getElementById('f-status').value = '검토중';
@@ -993,13 +944,6 @@ function openEditModal(firestoreId) {
   document.getElementById('f-manager').value = p.manager||'';
   document.getElementById('f-memo').value = p.memo||'';
   document.getElementById('f-status').value = p.status||'검토중';
-  // 비밀번호 필드
-  const pwInput = document.getElementById('f-pw');
-  pwInput.value = p.password || '';
-  pwInput.type = 'password';
-  document.getElementById('f-pw-hint').textContent = p.password
-    ? '기존 비밀번호가 설정되어 있습니다. 변경하려면 새 값을 입력하고, 삭제하려면 비워두세요.'
-    : '비워두면 비밀번호 없이 누구나 열람할 수 있습니다.';
   // 사업유형 - 기존 옵션에 있으면 선택, 없으면 직접입력 모드
   const typeSelect = document.getElementById('f-type');
   const typeCustom = document.getElementById('f-type-custom');
@@ -1040,7 +984,6 @@ async function saveProject() {
     status: document.getElementById('f-status').value,
     manager: document.getElementById('f-manager').value.trim(),
     memo: document.getElementById('f-memo').value.trim(),
-    password: document.getElementById('f-pw').value,
   };
 
   try {
@@ -1102,10 +1045,6 @@ window.toggleCustomType = function(sel) {
     custom.style.display = 'none';
     custom.value = '';
   }
-};
-window.togglePwEye = function() {
-  const inp = document.getElementById('f-pw');
-  inp.type = inp.type === 'password' ? 'text' : 'password';
 };
 window.openAddModal = openAddModal;
 window.openEditModal = openEditModal;
