@@ -554,6 +554,63 @@ tbody tr:hover .action-btns { opacity: 1; }
 .btn-act-del { background: var(--white); color: var(--ink2); }
 .btn-act-del:not(:disabled):hover { background: var(--red-light); border-color: var(--red); color: var(--red); }
 
+/* PASSWORD FIELD */
+.pw-section {
+  border-top: 1px solid var(--border2);
+  margin-top: 4px;
+  padding-top: 16px;
+}
+.pw-section-label {
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.8px;
+  color: var(--ink3); font-family: 'DM Mono', monospace;
+  margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+}
+.pw-input-wrap { position: relative; }
+.pw-input-wrap .form-input { padding-right: 38px; }
+.pw-eye-btn {
+  position: absolute; right: 10px; top: 50%;
+  transform: translateY(-50%);
+  background: none; border: none; cursor: pointer;
+  font-size: 15px; color: var(--ink3); padding: 2px;
+  line-height: 1;
+}
+.pw-eye-btn:hover { color: var(--ink); }
+.pw-hint {
+  font-size: 11px; color: var(--ink3);
+  margin-top: 5px; line-height: 1.5;
+}
+.pw-lock-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 10px; font-weight: 700;
+  background: var(--amber-light); color: var(--amber);
+  border: 1px solid #f5d78a;
+  border-radius: 4px; padding: 1px 6px;
+  margin-left: 6px; vertical-align: middle;
+  font-family: 'DM Mono', monospace;
+}
+
+/* SETTINGS MODAL */
+.settings-btn {
+  background: rgba(255,255,255,0.15); border: none; color: white;
+  padding: 6px 14px; border-radius: 7px; font-size: 12px; font-weight: 700;
+  cursor: pointer; font-family: 'Noto Sans KR', sans-serif;
+  display: flex; align-items: center; gap: 5px; transition: background 0.15s;
+}
+.settings-btn:hover { background: rgba(255,255,255,0.28); }
+.master-key-status {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; padding: 4px 10px; border-radius: 5px;
+  font-family: 'DM Mono', monospace; margin-bottom: 10px;
+}
+.master-key-status.set   { background: var(--green-light); color: var(--green); }
+.master-key-status.unset { background: var(--gray-light);  color: var(--ink3);  }
+.master-key-desc {
+  font-size: 12px; color: var(--ink3); line-height: 1.6;
+  margin-bottom: 16px; padding: 12px; background: var(--gray-light);
+  border-radius: 7px; border-left: 3px solid var(--border);
+}
+
 /* RESPONSIVE */
 @media (max-width: 640px) {
   .topbar { padding: 0 16px; }
@@ -579,6 +636,7 @@ tbody tr:hover .action-btns { opacity: 1; }
     </div>
   </div>
   <div class="topbar-right">
+    <button class="settings-btn" onclick="openSettingsModal()">⚙️ 마스터 키</button>
   </div>
 </div>
 
@@ -707,6 +765,16 @@ tbody tr:hover .action-btns { opacity: 1; }
           <textarea class="form-textarea" id="f-memo" placeholder="특이사항, 참고 내용 등..."></textarea>
         </div>
       </div>
+      <!-- 비밀번호 섹션 -->
+      <div class="pw-section">
+        <div class="pw-section-label">🔒 열람 비밀번호 <span style="font-weight:400;color:var(--ink3)">(선택)</span></div>
+        <div class="pw-input-wrap">
+          <input class="form-input" type="password" id="f-pw"
+                 placeholder="비밀번호 설정 시 열람 시 인증 필요">
+          <button class="pw-eye-btn" type="button" onclick="togglePwEye()" tabindex="-1">👁</button>
+        </div>
+        <div class="pw-hint" id="f-pw-hint">비워두면 비밀번호 없이 누구나 열람할 수 있습니다.</div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeModalDirect()">취소</button>
@@ -728,13 +796,43 @@ tbody tr:hover .action-btns { opacity: 1; }
   </div>
 </div>
 
+<!-- SETTINGS MODAL (마스터 키) -->
+<div class="confirm-overlay" id="settingsOverlay" onclick="if(event.target===this)closeSettings()">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <div class="modal-title">⚙️ 마스터 키 설정</div>
+      <button class="modal-close" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="master-key-desc">
+        마스터 키는 모든 사업의 비밀번호를 대신할 수 있는 만능 열쇠입니다.<br>
+        비밀번호를 잊었을 때 마스터 키로 열람할 수 있습니다.
+      </div>
+      <div id="masterKeyStatus" class="master-key-status unset">● 마스터 키 미설정</div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label class="form-label">마스터 키</label>
+        <div class="pw-input-wrap">
+          <input class="form-input" type="password" id="f-master-key"
+                 placeholder="마스터 키 입력 (비우면 삭제)">
+          <button class="pw-eye-btn" type="button" onclick="toggleMasterEye()" tabindex="-1">👁</button>
+        </div>
+      </div>
+      <div class="pw-hint">비워두고 저장하면 마스터 키가 삭제됩니다.</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeSettings()">취소</button>
+      <button class="btn-save" onclick="saveMasterKey()">저장</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
 <script type="module">
 // ── FIREBASE SETUP ──
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc, setDoc, query, orderBy, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 // ✅ 아래 firebaseConfig 값을 본인의 Firebase 프로젝트 설정으로 교체하세요
 const firebaseConfig = {
@@ -816,7 +914,7 @@ function renderTable() {
         <input type="checkbox" class="row-check" data-id="${p.firestoreId}" style="cursor:pointer">
       </td>
       <td style="font-size:12px;color:var(--ink3);font-family:'DM Mono',monospace;text-align:center">${String(i+1).padStart(3,'0')}</td>
-      <td class="col-name proj-link" data-id="${p.firestoreId}" style="cursor:pointer;color:var(--green);text-decoration:underline;text-underline-offset:3px">${escHtml(p.name)}</td>
+      <td class="col-name proj-link" data-id="${p.firestoreId}" style="cursor:pointer;color:var(--green);text-decoration:underline;text-underline-offset:3px">${escHtml(p.name)}${p.password ? '<span class="pw-lock-badge">🔒 잠김</span>' : ''}</td>
       <td><span class="type-badge">${escHtml(p.type||'-')}</span></td>
       <td>${statusBadge(p.status)}</td>
       <td>${escHtml(p.manager||'-')}</td>
@@ -929,6 +1027,9 @@ function openAddModal() {
   document.getElementById('modalTitle').textContent = '프로젝트 추가';
   document.getElementById('editId').value = '';
   ['name','manager','memo'].forEach(f => document.getElementById('f-'+f).value = '');
+  document.getElementById('f-pw').value = '';
+  document.getElementById('f-pw').type = 'password';
+  document.getElementById('f-pw-hint').textContent = '비워두면 비밀번호 없이 누구나 열람할 수 있습니다.';
   document.getElementById('f-type-custom').style.display = 'none';
   document.getElementById('f-type').value = '도시개발사업';
   document.getElementById('f-status').value = '검토중';
@@ -944,6 +1045,13 @@ function openEditModal(firestoreId) {
   document.getElementById('f-manager').value = p.manager||'';
   document.getElementById('f-memo').value = p.memo||'';
   document.getElementById('f-status').value = p.status||'검토중';
+  // 비밀번호 필드
+  const pwInput = document.getElementById('f-pw');
+  pwInput.value = p.password || '';
+  pwInput.type = 'password';
+  document.getElementById('f-pw-hint').textContent = p.password
+    ? '기존 비밀번호가 설정되어 있습니다. 변경하려면 새 값을 입력하고, 삭제하려면 비워두세요.'
+    : '비워두면 비밀번호 없이 누구나 열람할 수 있습니다.';
   // 사업유형 - 기존 옵션에 있으면 선택, 없으면 직접입력 모드
   const typeSelect = document.getElementById('f-type');
   const typeCustom = document.getElementById('f-type-custom');
@@ -984,6 +1092,7 @@ async function saveProject() {
     status: document.getElementById('f-status').value,
     manager: document.getElementById('f-manager').value.trim(),
     memo: document.getElementById('f-memo').value.trim(),
+    password: document.getElementById('f-pw').value,
   };
 
   try {
@@ -1032,6 +1141,55 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2200);
 }
 
+// ── MASTER KEY ──
+const configRef = doc(db, 'config', 'settings');
+
+async function loadMasterKeyStatus() {
+  try {
+    const snap = await getDoc(configRef);
+    const key = snap.exists() ? (snap.data().masterKey || '') : '';
+    updateMasterKeyUI(key);
+  } catch(e) {}
+}
+
+function updateMasterKeyUI(key) {
+  const el = document.getElementById('masterKeyStatus');
+  if (key) {
+    el.className = 'master-key-status set';
+    el.textContent = '● 마스터 키 설정됨';
+  } else {
+    el.className = 'master-key-status unset';
+    el.textContent = '● 마스터 키 미설정';
+  }
+}
+
+async function openSettingsModal() {
+  document.getElementById('settingsOverlay').classList.add('open');
+  document.getElementById('f-master-key').type = 'password';
+  try {
+    const snap = await getDoc(configRef);
+    const key = snap.exists() ? (snap.data().masterKey || '') : '';
+    document.getElementById('f-master-key').value = key;
+    updateMasterKeyUI(key);
+  } catch(e) {}
+}
+
+function closeSettings() {
+  document.getElementById('settingsOverlay').classList.remove('open');
+}
+
+async function saveMasterKey() {
+  const key = document.getElementById('f-master-key').value;
+  try {
+    await setDoc(configRef, { masterKey: key }, { merge: true });
+    updateMasterKeyUI(key);
+    closeSettings();
+    showToast(key ? '🔑 마스터 키가 저장되었습니다' : '🔓 마스터 키가 삭제되었습니다');
+  } catch(e) {
+    showToast('⚠️ 저장 실패: ' + e.message);
+  }
+}
+
 // ── INIT ──
 loadData();
 
@@ -1046,6 +1204,17 @@ window.toggleCustomType = function(sel) {
     custom.value = '';
   }
 };
+window.togglePwEye = function() {
+  const inp = document.getElementById('f-pw');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+};
+window.toggleMasterEye = function() {
+  const inp = document.getElementById('f-master-key');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+};
+window.openSettingsModal = openSettingsModal;
+window.closeSettings = closeSettings;
+window.saveMasterKey = saveMasterKey;
 window.openAddModal = openAddModal;
 window.openEditModal = openEditModal;
 window.openDeleteConfirm = openDeleteConfirm;
