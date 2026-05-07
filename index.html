@@ -1227,10 +1227,6 @@ async function saveProject() {
 }
 
 // ── DELETE ──
-function openDeleteConfirm(firestoreId) {
-  deleteTargetId = firestoreId;
-  document.getElementById('confirmOverlay').classList.add('open');
-}
 function closeConfirm() {
   deleteTargetId = null;
   document.getElementById('confirmOverlay').classList.remove('open');
