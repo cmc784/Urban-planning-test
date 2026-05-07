@@ -554,63 +554,6 @@ tbody tr:hover .action-btns { opacity: 1; }
 .btn-act-del { background: var(--white); color: var(--ink2); }
 .btn-act-del:not(:disabled):hover { background: var(--red-light); border-color: var(--red); color: var(--red); }
 
-/* PASSWORD FIELD */
-.pw-section {
-  border-top: 1px solid var(--border2);
-  margin-top: 4px;
-  padding-top: 16px;
-}
-.pw-section-label {
-  font-size: 11px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: 0.8px;
-  color: var(--ink3); font-family: 'DM Mono', monospace;
-  margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
-}
-.pw-input-wrap { position: relative; }
-.pw-input-wrap .form-input { padding-right: 38px; }
-.pw-eye-btn {
-  position: absolute; right: 10px; top: 50%;
-  transform: translateY(-50%);
-  background: none; border: none; cursor: pointer;
-  font-size: 15px; color: var(--ink3); padding: 2px;
-  line-height: 1;
-}
-.pw-eye-btn:hover { color: var(--ink); }
-.pw-hint {
-  font-size: 11px; color: var(--ink3);
-  margin-top: 5px; line-height: 1.5;
-}
-.pw-lock-badge {
-  display: inline-flex; align-items: center; gap: 3px;
-  font-size: 10px; font-weight: 700;
-  background: var(--amber-light); color: var(--amber);
-  border: 1px solid #f5d78a;
-  border-radius: 4px; padding: 1px 6px;
-  margin-left: 6px; vertical-align: middle;
-  font-family: 'DM Mono', monospace;
-}
-
-/* SETTINGS MODAL */
-.settings-btn {
-  background: rgba(255,255,255,0.15); border: none; color: white;
-  padding: 6px 14px; border-radius: 7px; font-size: 12px; font-weight: 700;
-  cursor: pointer; font-family: 'Noto Sans KR', sans-serif;
-  display: flex; align-items: center; gap: 5px; transition: background 0.15s;
-}
-.settings-btn:hover { background: rgba(255,255,255,0.28); }
-.master-key-status {
-  display: inline-flex; align-items: center; gap: 5px;
-  font-size: 11px; padding: 4px 10px; border-radius: 5px;
-  font-family: 'DM Mono', monospace; margin-bottom: 10px;
-}
-.master-key-status.set   { background: var(--green-light); color: var(--green); }
-.master-key-status.unset { background: var(--gray-light);  color: var(--ink3);  }
-.master-key-desc {
-  font-size: 12px; color: var(--ink3); line-height: 1.6;
-  margin-bottom: 16px; padding: 12px; background: var(--gray-light);
-  border-radius: 7px; border-left: 3px solid var(--border);
-}
-
 /* RESPONSIVE */
 @media (max-width: 640px) {
   .topbar { padding: 0 16px; }
@@ -636,7 +579,6 @@ tbody tr:hover .action-btns { opacity: 1; }
     </div>
   </div>
   <div class="topbar-right">
-    <button class="settings-btn" onclick="openSettingsModal()">⚙️ 마스터 키</button>
   </div>
 </div>
 
@@ -765,20 +707,6 @@ tbody tr:hover .action-btns { opacity: 1; }
           <textarea class="form-textarea" id="f-memo" placeholder="특이사항, 참고 내용 등..."></textarea>
         </div>
       </div>
-      <!-- 비밀번호 섹션 -->
-      <div class="pw-section">
-        <div class="pw-section-label">🔒 열람 비밀번호 <span style="font-weight:400;color:var(--ink3)">(선택)</span></div>
-        <div class="pw-input-wrap">
-          <input class="form-input" type="password" id="f-pw"
-                 placeholder="비밀번호 설정 시 열람 시 인증 필요">
-          <button class="pw-eye-btn" type="button" onclick="togglePwEye()" tabindex="-1">👁</button>
-        </div>
-        <div class="pw-hint" id="f-pw-hint">비워두면 비밀번호 없이 누구나 열람할 수 있습니다.</div>
-        <div id="f-pw-delete-wrap" style="display:none;align-items:center;gap:6px;margin-top:8px">
-          <input type="checkbox" id="f-pw-delete" style="cursor:pointer;accent-color:var(--red)">
-          <label for="f-pw-delete" style="font-size:12px;color:var(--red);cursor:pointer">🔓 이 사업의 비밀번호 삭제</label>
-        </div>
-      </div>
     </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeModalDirect()">취소</button>
@@ -800,63 +728,13 @@ tbody tr:hover .action-btns { opacity: 1; }
   </div>
 </div>
 
-<!-- 잠긴 사업 수정/삭제 시 비밀번호 확인 -->
-<div class="confirm-overlay" id="lockVerifyOverlay">
-  <div class="confirm-box" style="max-width:380px;text-align:left">
-    <div style="font-size:28px;margin-bottom:10px">🔒</div>
-    <div class="confirm-title" id="lockVerifyTitle" style="text-align:left">비밀번호 확인</div>
-    <div class="confirm-desc" id="lockVerifyDesc" style="text-align:left;margin-bottom:14px">수정/삭제하려면 먼저 비밀번호를 입력하세요.</div>
-    <div style="position:relative;margin-bottom:6px">
-      <input class="form-input" type="password" id="lockVerifyInput"
-             placeholder="비밀번호 입력" style="width:100%;padding-right:38px"
-             onkeydown="if(event.key==='Enter')submitLockVerify()">
-      <button class="pw-eye-btn" type="button" onclick="toggleLockVerifyEye()" tabindex="-1">👁</button>
-    </div>
-    <div style="font-size:12px;color:var(--red);min-height:18px;margin-bottom:16px" id="lockVerifyError"></div>
-    <div class="confirm-btns">
-      <button class="btn-cancel" onclick="closeLockVerify()">취소</button>
-      <button class="btn-save" onclick="submitLockVerify()">확인</button>
-    </div>
-  </div>
-</div>
-
-<!-- SETTINGS MODAL (마스터 키) -->
-<div class="confirm-overlay" id="settingsOverlay" onclick="if(event.target===this)closeSettings()">
-  <div class="modal" style="max-width:420px">
-    <div class="modal-header">
-      <div class="modal-title">⚙️ 마스터 키 설정</div>
-      <button class="modal-close" onclick="closeSettings()">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="master-key-desc">
-        마스터 키는 모든 사업의 비밀번호를 대신할 수 있는 만능 열쇠입니다.<br>
-        비밀번호를 잊었을 때 마스터 키로 열람할 수 있습니다.
-      </div>
-      <div id="masterKeyStatus" class="master-key-status unset">● 마스터 키 미설정</div>
-      <div class="form-group" style="margin-bottom:10px">
-        <label class="form-label">마스터 키</label>
-        <div class="pw-input-wrap">
-          <input class="form-input" type="password" id="f-master-key"
-                 placeholder="마스터 키 입력 (비우면 삭제)">
-          <button class="pw-eye-btn" type="button" onclick="toggleMasterEye()" tabindex="-1">👁</button>
-        </div>
-      </div>
-      <div class="pw-hint">비워두고 저장하면 마스터 키가 삭제됩니다.</div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn-cancel" onclick="closeSettings()">취소</button>
-      <button class="btn-save" onclick="saveMasterKey()">저장</button>
-    </div>
-  </div>
-</div>
-
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
 <script type="module">
 // ── FIREBASE SETUP ──
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc, setDoc, query, orderBy, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 // ✅ 아래 firebaseConfig 값을 본인의 Firebase 프로젝트 설정으로 교체하세요
 const firebaseConfig = {
@@ -881,9 +759,8 @@ let deleteTargetId = null;
 // ── 실시간 리스너 (Firestore → 화면 자동 동기화) ──
 function loadData() {
   showLoadingState();
-  // orderBy 제거 → createdAt 없는 기존 문서도 모두 포함
-  // 정렬은 renderTable() 내 JS에서 처리
-  onSnapshot(colRef, (snapshot) => {
+  const q = query(colRef, orderBy('createdAt', 'desc'));
+  onSnapshot(q, (snapshot) => {
     projects = snapshot.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
     renderTable();
   }, (err) => {
@@ -920,9 +797,9 @@ function renderTable() {
     if (sort === 'name') return a.name.localeCompare(b.name);
     if (sort === 'area') return (b.area||0) - (a.area||0);
     if (sort === 'status') return a.status.localeCompare(b.status);
-    // 최근 추가순: createdAt 없는 문서는 date 문자열로 fallback, 그것도 없으면 맨 뒤
-    const aTime = a.createdAt?.seconds ?? (a.date ? new Date(a.date).getTime()/1000 : 0);
-    const bTime = b.createdAt?.seconds ?? (b.date ? new Date(b.date).getTime()/1000 : 0);
+    // newest: createdAt timestamp 또는 date 문자열 기준
+    const aTime = a.createdAt?.seconds || 0;
+    const bTime = b.createdAt?.seconds || 0;
     return bTime - aTime;
   });
 
@@ -939,7 +816,7 @@ function renderTable() {
         <input type="checkbox" class="row-check" data-id="${p.firestoreId}" style="cursor:pointer">
       </td>
       <td style="font-size:12px;color:var(--ink3);font-family:'DM Mono',monospace;text-align:center">${String(i+1).padStart(3,'0')}</td>
-      <td class="col-name proj-link" data-id="${p.firestoreId}" style="cursor:pointer;color:var(--green);text-decoration:underline;text-underline-offset:3px">${escHtml(p.name)}${p.password ? '<span class="pw-lock-badge">🔒 잠김</span>' : ''}</td>
+      <td class="col-name proj-link" data-id="${p.firestoreId}" style="cursor:pointer;color:var(--green);text-decoration:underline;text-underline-offset:3px">${escHtml(p.name)}</td>
       <td><span class="type-badge">${escHtml(p.type||'-')}</span></td>
       <td>${statusBadge(p.status)}</td>
       <td>${escHtml(p.manager||'-')}</td>
@@ -987,17 +864,10 @@ async function deleteSelectedRow() {
   const checked = document.querySelectorAll('.row-check:checked');
   if (checked.length === 0) return;
   if (checked.length === 1) {
+    // 단건 삭제는 기존 confirm 모달 사용
     openDeleteConfirm(checked[0].dataset.id);
   } else {
-    // 다건 삭제 — 잠긴 항목이 하나라도 있으면 차단
-    const lockedItems = Array.from(checked).filter(c => {
-      const p = projects.find(x => x.firestoreId === c.dataset.id);
-      return p?.password && sessionStorage.getItem(`unlocked_${c.dataset.id}`) !== '1';
-    });
-    if (lockedItems.length > 0) {
-      showToast('⚠️ 잠긴 사업이 포함되어 있습니다. 개별 삭제해 주세요.');
-      return;
-    }
+    // 다건 삭제
     if (!confirm(`선택한 ${checked.length}개 프로젝트를 삭제할까요?`)) return;
     try {
       await Promise.all(Array.from(checked).map(c => deleteDoc(doc(db, 'projects', c.dataset.id))));
@@ -1054,76 +924,18 @@ function toggleAll(chk) {
   updateActionButtons();
 }
 
-// ── LOCK VERIFY (잠긴 사업 수정/삭제 전 비밀번호 확인) ──
-let lockVerifyCb = null;
-let lockVerifyId = null;
-
-async function requireLockVerify(firestoreId, callback) {
-  const p = projects.find(x => x.firestoreId === firestoreId);
-  if (!p || !p.password) { callback(); return; }          // 비번 없음 → 바로 진행
-  const key = `unlocked_${firestoreId}`;
-  if (sessionStorage.getItem(key) === '1') { callback(); return; }  // 이미 인증됨
-  // 비밀번호 입력 요구
-  lockVerifyCb = callback;
-  lockVerifyId = firestoreId;
-  document.getElementById('lockVerifyTitle').textContent = `🔒 ${p.name}`;
-  document.getElementById('lockVerifyDesc').textContent = '수정/삭제하려면 먼저 비밀번호를 입력하세요.';
-  document.getElementById('lockVerifyInput').value = '';
-  document.getElementById('lockVerifyInput').type = 'password';
-  document.getElementById('lockVerifyError').textContent = '';
-  document.getElementById('lockVerifyOverlay').classList.add('open');
-  setTimeout(() => document.getElementById('lockVerifyInput').focus(), 80);
-}
-
-async function submitLockVerify() {
-  const p = projects.find(x => x.firestoreId === lockVerifyId);
-  if (!p) return;
-  const inputHash = await sha256(document.getElementById('lockVerifyInput').value);
-  const isMaster  = masterKey && inputHash === masterKey;
-  if (inputHash === p.password || isMaster) {
-    sessionStorage.setItem(`unlocked_${lockVerifyId}`, '1');
-    closeLockVerify();
-    lockVerifyCb?.();
-  } else {
-    document.getElementById('lockVerifyError').textContent = '⚠️ 비밀번호가 올바르지 않습니다.';
-    document.getElementById('lockVerifyInput').value = '';
-    document.getElementById('lockVerifyInput').focus();
-    setTimeout(() => document.getElementById('lockVerifyError').textContent = '', 2500);
-  }
-}
-
-function closeLockVerify() {
-  document.getElementById('lockVerifyOverlay').classList.remove('open');
-  lockVerifyCb = null; lockVerifyId = null;
-}
-
-function toggleLockVerifyEye() {
-  const inp = document.getElementById('lockVerifyInput');
-  inp.type = inp.type === 'password' ? 'text' : 'password';
-}
-
 // ── MODAL ──
 function openAddModal() {
   document.getElementById('modalTitle').textContent = '프로젝트 추가';
   document.getElementById('editId').value = '';
   ['name','manager','memo'].forEach(f => document.getElementById('f-'+f).value = '');
-  document.getElementById('f-pw').value = '';
-  document.getElementById('f-pw').type = 'password';
-  document.getElementById('f-pw-hint').textContent = '비워두면 비밀번호 없이 누구나 열람할 수 있습니다.';
-  document.getElementById('f-pw-delete-wrap').style.display = 'none';
-  document.getElementById('f-pw-delete').checked = false;
   document.getElementById('f-type-custom').style.display = 'none';
   document.getElementById('f-type').value = '도시개발사업';
   document.getElementById('f-status').value = '검토중';
   document.getElementById('modalOverlay').classList.add('open');
 }
 
-// 잠금 검증 후 실제 수정 모달 열기
 function openEditModal(firestoreId) {
-  requireLockVerify(firestoreId, () => openEditModalDirect(firestoreId));
-}
-
-function openEditModalDirect(firestoreId) {
   const p = projects.find(x => x.firestoreId === firestoreId);
   if (!p) return;
   document.getElementById('modalTitle').textContent = '프로젝트 수정';
@@ -1132,39 +944,20 @@ function openEditModalDirect(firestoreId) {
   document.getElementById('f-manager').value = p.manager||'';
   document.getElementById('f-memo').value = p.memo||'';
   document.getElementById('f-status').value = p.status||'검토중';
-  const pwInput = document.getElementById('f-pw');
-  pwInput.value = '';
-  pwInput.type = 'password';
-  const delWrap = document.getElementById('f-pw-delete-wrap');
-  const delChk  = document.getElementById('f-pw-delete');
-  if (p.password) {
-    delWrap.style.display = 'flex';
-    delChk.checked = false;
-    document.getElementById('f-pw-hint').textContent = '비워두면 기존 비밀번호가 유지됩니다. 새 값 입력 시 변경됩니다.';
-  } else {
-    delWrap.style.display = 'none';
-    delChk.checked = false;
-    document.getElementById('f-pw-hint').textContent = '비워두면 비밀번호 없이 누구나 열람할 수 있습니다.';
-  }
+  // 사업유형 - 기존 옵션에 있으면 선택, 없으면 직접입력 모드
   const typeSelect = document.getElementById('f-type');
   const typeCustom = document.getElementById('f-type-custom');
   const options = Array.from(typeSelect.options).map(o => o.value);
   if (p.type && !options.includes(p.type)) {
-    typeSelect.value = '__custom__'; typeCustom.style.display = 'block'; typeCustom.value = p.type;
+    typeSelect.value = '__custom__';
+    typeCustom.style.display = 'block';
+    typeCustom.value = p.type;
   } else {
-    typeSelect.value = p.type||'도시개발사업'; typeCustom.style.display = 'none'; typeCustom.value = '';
+    typeSelect.value = p.type||'도시개발사업';
+    typeCustom.style.display = 'none';
+    typeCustom.value = '';
   }
   document.getElementById('modalOverlay').classList.add('open');
-}
-
-// 잠금 검증 후 삭제 확인
-function openDeleteConfirm(firestoreId) {
-  requireLockVerify(firestoreId, () => openDeleteConfirmDirect(firestoreId));
-}
-
-function openDeleteConfirmDirect(firestoreId) {
-  deleteTargetId = firestoreId;
-  document.getElementById('confirmOverlay').classList.add('open');
 }
 
 function closeModal(e) {
@@ -1185,35 +978,21 @@ async function saveProject() {
     : typeSelect.value;
   if (!typeVal) { showToast('⚠️ 사업 유형을 입력해주세요'); return; }
 
-  // 비밀번호 처리
-  const pwRaw = document.getElementById('f-pw').value;
-  const deletePw = document.getElementById('f-pw-delete').checked;
-  let passwordHash;
-  if (deletePw) {
-    passwordHash = '';                          // 명시적 삭제
-  } else if (pwRaw) {
-    passwordHash = await sha256(pwRaw);         // 새 값 → 해시
-  } else if (editFirestoreId) {
-    const existing = projects.find(x => x.firestoreId === editFirestoreId);
-    passwordHash = existing?.password || '';    // 수정 시 빈 값 → 기존 유지
-  } else {
-    passwordHash = '';                          // 신규 + 빈 값 → 비번 없음
-  }
-
   const data = {
     name,
     type: typeVal,
     status: document.getElementById('f-status').value,
     manager: document.getElementById('f-manager').value.trim(),
     memo: document.getElementById('f-memo').value.trim(),
-    password: passwordHash,
   };
 
   try {
     if (editFirestoreId) {
+      // 수정
       await updateDoc(doc(db, 'projects', editFirestoreId), data);
       showToast('✅ 수정되었습니다');
     } else {
+      // 신규 추가
       data.date = new Date().toISOString().slice(0,10);
       data.createdAt = serverTimestamp();
       await addDoc(colRef, data);
@@ -1227,6 +1006,10 @@ async function saveProject() {
 }
 
 // ── DELETE ──
+function openDeleteConfirm(firestoreId) {
+  deleteTargetId = firestoreId;
+  document.getElementById('confirmOverlay').classList.add('open');
+}
 function closeConfirm() {
   deleteTargetId = null;
   document.getElementById('confirmOverlay').classList.remove('open');
@@ -1249,63 +1032,6 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2200);
 }
 
-// ── SHA-256 해시 유틸 ──
-async function sha256(text) {
-  if (!text) return '';
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
-}
-
-// ── MASTER KEY ──
-const configRef = doc(db, 'config', 'settings');
-
-async function loadMasterKeyStatus() {
-  try {
-    const snap = await getDoc(configRef);
-    const hasKey = snap.exists() && !!snap.data().masterKey;
-    updateMasterKeyUI(hasKey);
-  } catch(e) {}
-}
-
-function updateMasterKeyUI(hasKey) {
-  const el = document.getElementById('masterKeyStatus');
-  if (hasKey) {
-    el.className = 'master-key-status set';
-    el.textContent = '● 마스터 키 설정됨';
-  } else {
-    el.className = 'master-key-status unset';
-    el.textContent = '● 마스터 키 미설정';
-  }
-}
-
-async function openSettingsModal() {
-  // 기존 키는 절대 불러오지 않음 — 입력란은 항상 비어있음
-  document.getElementById('settingsOverlay').classList.add('open');
-  document.getElementById('f-master-key').value = '';
-  document.getElementById('f-master-key').type = 'password';
-  try {
-    const snap = await getDoc(configRef);
-    updateMasterKeyUI(snap.exists() && !!snap.data().masterKey);
-  } catch(e) {}
-}
-
-function closeSettings() {
-  document.getElementById('settingsOverlay').classList.remove('open');
-}
-
-async function saveMasterKey() {
-  const raw = document.getElementById('f-master-key').value;
-  try {
-    const hashed = await sha256(raw);  // 빈 값이면 ''
-    await setDoc(configRef, { masterKey: hashed }, { merge: true });
-    updateMasterKeyUI(!!hashed);
-    closeSettings();
-    showToast(raw ? '🔑 마스터 키가 저장되었습니다' : '🔓 마스터 키가 삭제되었습니다');
-  } catch(e) {
-    showToast('⚠️ 저장 실패: ' + e.message);
-  }
-}
-
 // ── INIT ──
 loadData();
 
@@ -1320,20 +1046,6 @@ window.toggleCustomType = function(sel) {
     custom.value = '';
   }
 };
-window.togglePwEye = function() {
-  const inp = document.getElementById('f-pw');
-  inp.type = inp.type === 'password' ? 'text' : 'password';
-};
-window.toggleMasterEye = function() {
-  const inp = document.getElementById('f-master-key');
-  inp.type = inp.type === 'password' ? 'text' : 'password';
-};
-window.submitLockVerify = submitLockVerify;
-window.closeLockVerify  = closeLockVerify;
-window.toggleLockVerifyEye = toggleLockVerifyEye;
-window.openSettingsModal = openSettingsModal;
-window.closeSettings = closeSettings;
-window.saveMasterKey = saveMasterKey;
 window.openAddModal = openAddModal;
 window.openEditModal = openEditModal;
 window.openDeleteConfirm = openDeleteConfirm;
