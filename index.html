@@ -800,6 +800,26 @@ tbody tr:hover .action-btns { opacity: 1; }
   </div>
 </div>
 
+<!-- 잠긴 사업 수정/삭제 시 비밀번호 확인 -->
+<div class="confirm-overlay" id="lockVerifyOverlay">
+  <div class="confirm-box" style="max-width:380px;text-align:left">
+    <div style="font-size:28px;margin-bottom:10px">🔒</div>
+    <div class="confirm-title" id="lockVerifyTitle" style="text-align:left">비밀번호 확인</div>
+    <div class="confirm-desc" id="lockVerifyDesc" style="text-align:left;margin-bottom:14px">수정/삭제하려면 먼저 비밀번호를 입력하세요.</div>
+    <div style="position:relative;margin-bottom:6px">
+      <input class="form-input" type="password" id="lockVerifyInput"
+             placeholder="비밀번호 입력" style="width:100%;padding-right:38px"
+             onkeydown="if(event.key==='Enter')submitLockVerify()">
+      <button class="pw-eye-btn" type="button" onclick="toggleLockVerifyEye()" tabindex="-1">👁</button>
+    </div>
+    <div style="font-size:12px;color:var(--red);min-height:18px;margin-bottom:16px" id="lockVerifyError"></div>
+    <div class="confirm-btns">
+      <button class="btn-cancel" onclick="closeLockVerify()">취소</button>
+      <button class="btn-save" onclick="submitLockVerify()">확인</button>
+    </div>
+  </div>
+</div>
+
 <!-- SETTINGS MODAL (마스터 키) -->
 <div class="confirm-overlay" id="settingsOverlay" onclick="if(event.target===this)closeSettings()">
   <div class="modal" style="max-width:420px">
@@ -966,10 +986,17 @@ async function deleteSelectedRow() {
   const checked = document.querySelectorAll('.row-check:checked');
   if (checked.length === 0) return;
   if (checked.length === 1) {
-    // 단건 삭제는 기존 confirm 모달 사용
     openDeleteConfirm(checked[0].dataset.id);
   } else {
-    // 다건 삭제
+    // 다건 삭제 — 잠긴 항목이 하나라도 있으면 차단
+    const lockedItems = Array.from(checked).filter(c => {
+      const p = projects.find(x => x.firestoreId === c.dataset.id);
+      return p?.password && sessionStorage.getItem(`unlocked_${c.dataset.id}`) !== '1';
+    });
+    if (lockedItems.length > 0) {
+      showToast('⚠️ 잠긴 사업이 포함되어 있습니다. 개별 삭제해 주세요.');
+      return;
+    }
     if (!confirm(`선택한 ${checked.length}개 프로젝트를 삭제할까요?`)) return;
     try {
       await Promise.all(Array.from(checked).map(c => deleteDoc(doc(db, 'projects', c.dataset.id))));
@@ -1026,6 +1053,54 @@ function toggleAll(chk) {
   updateActionButtons();
 }
 
+// ── LOCK VERIFY (잠긴 사업 수정/삭제 전 비밀번호 확인) ──
+let lockVerifyCb = null;
+let lockVerifyId = null;
+
+async function requireLockVerify(firestoreId, callback) {
+  const p = projects.find(x => x.firestoreId === firestoreId);
+  if (!p || !p.password) { callback(); return; }          // 비번 없음 → 바로 진행
+  const key = `unlocked_${firestoreId}`;
+  if (sessionStorage.getItem(key) === '1') { callback(); return; }  // 이미 인증됨
+  // 비밀번호 입력 요구
+  lockVerifyCb = callback;
+  lockVerifyId = firestoreId;
+  document.getElementById('lockVerifyTitle').textContent = `🔒 ${p.name}`;
+  document.getElementById('lockVerifyDesc').textContent = '수정/삭제하려면 먼저 비밀번호를 입력하세요.';
+  document.getElementById('lockVerifyInput').value = '';
+  document.getElementById('lockVerifyInput').type = 'password';
+  document.getElementById('lockVerifyError').textContent = '';
+  document.getElementById('lockVerifyOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('lockVerifyInput').focus(), 80);
+}
+
+async function submitLockVerify() {
+  const p = projects.find(x => x.firestoreId === lockVerifyId);
+  if (!p) return;
+  const inputHash = await sha256(document.getElementById('lockVerifyInput').value);
+  const isMaster  = masterKey && inputHash === masterKey;
+  if (inputHash === p.password || isMaster) {
+    sessionStorage.setItem(`unlocked_${lockVerifyId}`, '1');
+    closeLockVerify();
+    lockVerifyCb?.();
+  } else {
+    document.getElementById('lockVerifyError').textContent = '⚠️ 비밀번호가 올바르지 않습니다.';
+    document.getElementById('lockVerifyInput').value = '';
+    document.getElementById('lockVerifyInput').focus();
+    setTimeout(() => document.getElementById('lockVerifyError').textContent = '', 2500);
+  }
+}
+
+function closeLockVerify() {
+  document.getElementById('lockVerifyOverlay').classList.remove('open');
+  lockVerifyCb = null; lockVerifyId = null;
+}
+
+function toggleLockVerifyEye() {
+  const inp = document.getElementById('lockVerifyInput');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
 // ── MODAL ──
 function openAddModal() {
   document.getElementById('modalTitle').textContent = '프로젝트 추가';
@@ -1034,13 +1109,20 @@ function openAddModal() {
   document.getElementById('f-pw').value = '';
   document.getElementById('f-pw').type = 'password';
   document.getElementById('f-pw-hint').textContent = '비워두면 비밀번호 없이 누구나 열람할 수 있습니다.';
+  document.getElementById('f-pw-delete-wrap').style.display = 'none';
+  document.getElementById('f-pw-delete').checked = false;
   document.getElementById('f-type-custom').style.display = 'none';
   document.getElementById('f-type').value = '도시개발사업';
   document.getElementById('f-status').value = '검토중';
   document.getElementById('modalOverlay').classList.add('open');
 }
 
+// 잠금 검증 후 실제 수정 모달 열기
 function openEditModal(firestoreId) {
+  requireLockVerify(firestoreId, () => openEditModalDirect(firestoreId));
+}
+
+function openEditModalDirect(firestoreId) {
   const p = projects.find(x => x.firestoreId === firestoreId);
   if (!p) return;
   document.getElementById('modalTitle').textContent = '프로젝트 수정';
@@ -1049,36 +1131,39 @@ function openEditModal(firestoreId) {
   document.getElementById('f-manager').value = p.manager||'';
   document.getElementById('f-memo').value = p.memo||'';
   document.getElementById('f-status').value = p.status||'검토중';
-  // 비밀번호 필드 — 기존 값 절대 표시 안 함
   const pwInput = document.getElementById('f-pw');
   pwInput.value = '';
   pwInput.type = 'password';
-  // 비밀번호 삭제 체크박스 표시 여부
   const delWrap = document.getElementById('f-pw-delete-wrap');
   const delChk  = document.getElementById('f-pw-delete');
   if (p.password) {
     delWrap.style.display = 'flex';
     delChk.checked = false;
-    document.getElementById('f-pw-hint').textContent = '비워두면 기존 비밀번호가 유지됩니다. 새 비밀번호 입력 시 변경됩니다.';
+    document.getElementById('f-pw-hint').textContent = '비워두면 기존 비밀번호가 유지됩니다. 새 값 입력 시 변경됩니다.';
   } else {
     delWrap.style.display = 'none';
     delChk.checked = false;
     document.getElementById('f-pw-hint').textContent = '비워두면 비밀번호 없이 누구나 열람할 수 있습니다.';
   }
-  // 사업유형
   const typeSelect = document.getElementById('f-type');
   const typeCustom = document.getElementById('f-type-custom');
   const options = Array.from(typeSelect.options).map(o => o.value);
   if (p.type && !options.includes(p.type)) {
-    typeSelect.value = '__custom__';
-    typeCustom.style.display = 'block';
-    typeCustom.value = p.type;
+    typeSelect.value = '__custom__'; typeCustom.style.display = 'block'; typeCustom.value = p.type;
   } else {
-    typeSelect.value = p.type||'도시개발사업';
-    typeCustom.style.display = 'none';
-    typeCustom.value = '';
+    typeSelect.value = p.type||'도시개발사업'; typeCustom.style.display = 'none'; typeCustom.value = '';
   }
   document.getElementById('modalOverlay').classList.add('open');
+}
+
+// 잠금 검증 후 삭제 확인
+function openDeleteConfirm(firestoreId) {
+  requireLockVerify(firestoreId, () => openDeleteConfirmDirect(firestoreId));
+}
+
+function openDeleteConfirmDirect(firestoreId) {
+  deleteTargetId = firestoreId;
+  document.getElementById('confirmOverlay').classList.add('open');
 }
 
 function closeModal(e) {
@@ -1246,6 +1331,9 @@ window.toggleMasterEye = function() {
   const inp = document.getElementById('f-master-key');
   inp.type = inp.type === 'password' ? 'text' : 'password';
 };
+window.submitLockVerify = submitLockVerify;
+window.closeLockVerify  = closeLockVerify;
+window.toggleLockVerifyEye = toggleLockVerifyEye;
 window.openSettingsModal = openSettingsModal;
 window.closeSettings = closeSettings;
 window.saveMasterKey = saveMasterKey;

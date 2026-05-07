@@ -566,37 +566,44 @@ function unlockContent() {
 
 // ─── 프로젝트 정보 로드 ───────────────────────────────
 async function loadProject() {
-  // 마스터 키 병렬 로드
-  try {
-    const cfgSnap = await getDoc(doc(db, 'config', 'settings'));
-    if (cfgSnap.exists()) masterKey = cfgSnap.data().masterKey || '';
-  } catch(e) {}
+  // 마스터 키 + 프로젝트 데이터 동시 로드
+  const params = new URLSearchParams(window.location.search);
+  const firestoreId = params.get('id');
+
+  const [cfgSnap, projSnap] = await Promise.allSettled([
+    getDoc(doc(db, 'config', 'settings')),
+    firestoreId ? getDoc(doc(db, 'projects', firestoreId)) : Promise.resolve(null)
+  ]);
+
+  // 마스터 키
+  if (cfgSnap.status === 'fulfilled' && cfgSnap.value?.exists()) {
+    masterKey = cfgSnap.value.data().masterKey || '';
+  }
 
   let project = null;
 
-  // 1. sessionStorage 캐시 (대시보드에서 클릭해 온 경우)
-  try {
-    const raw = sessionStorage.getItem('currentProject');
-    if (raw) project = JSON.parse(raw);
-  } catch(e) {}
-
-  // 2. URL 파라미터로 Firestore 최신 데이터 로드
-  const params = new URLSearchParams(window.location.search);
-  const firestoreId = params.get('id');
-  if (firestoreId) {
-    try {
-      const snap = await getDoc(doc(db, 'projects', firestoreId));
-      if (snap.exists()) {
-        project = { firestoreId: snap.id, ...snap.data() };
-        sessionStorage.setItem('currentProject', JSON.stringify(project));
-      }
-    } catch(e) {
-      console.error('Firestore 로드 오류:', e);
-      showToast('⚠️ Firebase 설정을 확인하세요.');
-    }
+  // ① Firestore가 단독 신뢰 소스 — sessionStorage는 UI 캐시용으로만 사용
+  if (projSnap.status === 'fulfilled' && projSnap.value?.exists()) {
+    project = { firestoreId: projSnap.value.id, ...projSnap.value.data() };
+    // 비밀번호 해시는 sessionStorage에 저장하지 않음 (조작 방지)
+    const { password, ...safeCache } = project;
+    try { sessionStorage.setItem('currentProject', JSON.stringify(safeCache)); } catch(e) {}
+  } else if (firestoreId) {
+    // Firestore 실패 → 접근 차단
+    document.getElementById('pwGateTitle').textContent = '⚠️ 로드 실패';
+    document.getElementById('pwGateDesc').textContent = 'Firebase 연결에 실패했습니다.\n네트워크 상태를 확인하고 새로고침해 주세요.';
+    return;
   }
 
-  // 3. fallback 샘플
+  // ② URL에 id 없을 때만 sessionStorage 캐시 사용 (fallback)
+  if (!project) {
+    try {
+      const raw = sessionStorage.getItem('currentProject');
+      if (raw) project = { ...JSON.parse(raw), password: undefined }; // 비번은 신뢰 안 함
+    } catch(e) {}
+  }
+
+  // ③ 최종 fallback — 샘플
   if (!project) {
     project = {
       name: '샘플 프로젝트', location: '서울특별시 강남구',
@@ -609,26 +616,20 @@ async function loadProject() {
 
   currentProject = project;
 
-  // ─── 비밀번호 게이트 처리 ─────────────────────────
-  const hasPw = project.password && project.password.trim() !== '';
+  // ─── 비밀번호 게이트 ────────────────────────────────
+  const hasPw = !!(project.password && project.password.trim());
   if (hasPw) {
-    const unlockKey = `unlocked_${project.firestoreId || project.name}`;
-    const alreadyUnlocked = sessionStorage.getItem(unlockKey) === '1';
-
+    const alreadyUnlocked = sessionStorage.getItem(`unlocked_${project.firestoreId}`) === '1';
     if (alreadyUnlocked) {
-      // 세션 내 이미 인증됨 → 바로 표시
       renderProject(project);
       unlockContent();
     } else {
-      // 잠금 화면 표시, 사업명 반영
       document.getElementById('pwGateTitle').textContent = `🔒 ${project.name}`;
-      document.getElementById('pwGateDesc').textContent =
-        `이 사업은 열람 비밀번호가 설정되어 있습니다.\n비밀번호를 입력해 주세요.`;
-      // 프로젝트 렌더는 잠금 해제 후에 하되, 미리 준비
+      document.getElementById('pwGateDesc').textContent = '이 사업은 열람 비밀번호가 설정되어 있습니다.\n비밀번호를 입력해 주세요.';
       renderProject(project);
+      // unlockContent() 호출 안 함 → 잠금 유지
     }
   } else {
-    // 비밀번호 없음 → 바로 공개
     renderProject(project);
     unlockContent();
   }
