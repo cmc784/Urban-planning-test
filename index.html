@@ -881,8 +881,9 @@ let deleteTargetId = null;
 // ── 실시간 리스너 (Firestore → 화면 자동 동기화) ──
 function loadData() {
   showLoadingState();
-  const q = query(colRef, orderBy('createdAt', 'desc'));
-  onSnapshot(q, (snapshot) => {
+  // orderBy 제거 → createdAt 없는 기존 문서도 모두 포함
+  // 정렬은 renderTable() 내 JS에서 처리
+  onSnapshot(colRef, (snapshot) => {
     projects = snapshot.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
     renderTable();
   }, (err) => {
@@ -919,9 +920,9 @@ function renderTable() {
     if (sort === 'name') return a.name.localeCompare(b.name);
     if (sort === 'area') return (b.area||0) - (a.area||0);
     if (sort === 'status') return a.status.localeCompare(b.status);
-    // newest: createdAt timestamp 또는 date 문자열 기준
-    const aTime = a.createdAt?.seconds || 0;
-    const bTime = b.createdAt?.seconds || 0;
+    // 최근 추가순: createdAt 없는 문서는 date 문자열로 fallback, 그것도 없으면 맨 뒤
+    const aTime = a.createdAt?.seconds ?? (a.date ? new Date(a.date).getTime()/1000 : 0);
+    const bTime = b.createdAt?.seconds ?? (b.date ? new Date(b.date).getTime()/1000 : 0);
     return bTime - aTime;
   });
 
