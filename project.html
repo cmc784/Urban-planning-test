@@ -259,6 +259,147 @@ body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--
 .main-content { display:none; }
 .main-content.visible { display:block; }
 
+/* ===== FAR/BCR 계산 모달 ===== */
+.far-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,0.5);
+  z-index:600; display:flex; align-items:center; justify-content:center;
+  padding:20px; opacity:0; pointer-events:none; transition:opacity 0.2s;
+}
+.far-overlay.open { opacity:1; pointer-events:auto; }
+.far-modal {
+  background:var(--white); border:1px solid var(--border);
+  border-radius:18px; width:100%; max-width:620px;
+  box-shadow:var(--shadow-lg); overflow:hidden;
+  transform:translateY(16px); transition:transform 0.25s;
+  max-height:90vh; overflow-y:auto;
+}
+.far-overlay.open .far-modal { transform:translateY(0); }
+
+.far-mhead {
+  padding:20px 24px 16px; border-bottom:1px solid var(--border2);
+  display:flex; align-items:center; justify-content:space-between;
+  position:sticky; top:0; background:var(--white); z-index:1;
+}
+.far-mhead-left { display:flex; align-items:center; gap:10px; }
+.far-mhead-icon {
+  width:38px; height:38px; background:var(--amber-light); border-radius:10px;
+  display:flex; align-items:center; justify-content:center; font-size:20px;
+}
+.far-mhead h3 { font-size:15px; font-weight:800; color:var(--ink); }
+.far-mhead p  { font-size:11px; color:var(--ink3); margin-top:2px; }
+.far-close-btn {
+  background:none; border:none; cursor:pointer; color:var(--ink3);
+  font-size:20px; width:32px; height:32px; border-radius:8px;
+  display:flex; align-items:center; justify-content:center; transition:background 0.15s;
+}
+.far-close-btn:hover { background:var(--border2); }
+
+.far-mbody { padding:20px 24px; }
+.far-sec-label {
+  font-size:10px; font-weight:800; text-transform:uppercase;
+  letter-spacing:0.8px; color:var(--ink3); font-family:'DM Mono',monospace;
+  margin-bottom:10px;
+}
+.far-zone-grid {
+  display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:20px;
+}
+.far-zone-btn {
+  padding:9px 12px; border:1.5px solid var(--border);
+  border-radius:10px; background:var(--white); font-family:'Noto Sans KR',sans-serif;
+  font-size:12px; color:var(--ink3); cursor:pointer; text-align:left; transition:all 0.15s;
+}
+.far-zone-btn:hover { background:var(--amber-light); border-color:var(--amber); color:var(--amber); }
+.far-zone-btn.active { border-color:var(--green); background:var(--green-light); color:var(--green); }
+.far-zone-btn .zn { font-weight:700; display:block; font-size:12px; }
+.far-zone-btn .zl { font-size:11px; margin-top:2px; opacity:0.85; font-family:'DM Mono',monospace; }
+
+.far-limit-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px; }
+.far-limit-box {
+  background:var(--border2); border-radius:10px; padding:10px 14px;
+}
+.far-limit-box label { font-size:11px; color:var(--ink3); display:block; margin-bottom:4px; }
+.far-limit-box input {
+  width:100%; border:none; background:transparent; font-size:15px; font-weight:700;
+  color:var(--ink); font-family:'DM Mono',monospace; outline:none;
+}
+
+.far-divider { height:1px; background:var(--border2); margin:20px 0; }
+
+.far-input-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px; }
+.far-field { display:flex; flex-direction:column; gap:5px; }
+.far-field label { font-size:12px; color:var(--ink3); }
+.far-field input {
+  padding:9px 12px; border:1.5px solid var(--border); border-radius:9px;
+  font-size:14px; font-family:'Noto Sans KR',sans-serif; color:var(--ink);
+  outline:none; transition:border 0.15s; background:var(--white);
+}
+.far-field input:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(26,92,58,0.08); }
+.far-field .fu { font-size:11px; color:var(--ink3); }
+
+.far-result-section { display:none; }
+.far-result-section.show { display:block; }
+
+.far-summary {
+  border-radius:10px; padding:12px 16px;
+  display:flex; align-items:center; gap:10px; margin-bottom:16px;
+  border:1.5px solid var(--border);
+}
+.far-summary.ok   { border-color:var(--green); background:var(--green-light); }
+.far-summary.warn { border-color:var(--amber); background:var(--amber-light); }
+.far-summary.over { border-color:var(--red);   background:var(--red-light);   }
+.far-summary-icon { font-size:20px; }
+.far-summary-text { font-size:13px; font-weight:700; }
+.far-summary.ok   .far-summary-text { color:var(--green); }
+.far-summary.warn .far-summary-text { color:var(--amber); }
+.far-summary.over .far-summary-text { color:var(--red);   }
+
+.far-cards { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.far-rcard {
+  border:1px solid var(--border); border-radius:12px; padding:14px 16px;
+}
+.far-rcard-label { font-size:10px; font-weight:800; text-transform:uppercase;
+  letter-spacing:0.6px; color:var(--ink3); font-family:'DM Mono',monospace; margin-bottom:10px; }
+.far-row { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px; }
+.far-row .fk { font-size:12px; color:var(--ink3); }
+.far-row .fv { font-size:13px; font-weight:700; font-family:'DM Mono',monospace; color:var(--ink); }
+.far-badge {
+  display:inline-flex; align-items:center; gap:3px;
+  padding:3px 9px; border-radius:20px; font-size:11px; font-weight:700;
+  font-family:'DM Mono',monospace; margin-top:8px;
+}
+.far-badge.ok   { background:var(--green-light); color:var(--green); }
+.far-badge.warn { background:var(--amber-light); color:var(--amber); }
+.far-badge.over { background:var(--red-light);   color:var(--red);   }
+.far-bar-wrap { margin-top:8px; }
+.far-bar-bg {
+  height:6px; border-radius:3px; background:var(--border2); position:relative; overflow:hidden;
+}
+.far-bar-fill {
+  height:6px; border-radius:3px; transition:width 0.45s ease;
+}
+.far-bar-fill.ok   { background:var(--green); }
+.far-bar-fill.warn { background:var(--amber); }
+.far-bar-fill.over { background:var(--red);   }
+
+.far-mfoot {
+  padding:16px 24px; border-top:1px solid var(--border2);
+  display:flex; gap:8px; justify-content:flex-end;
+  position:sticky; bottom:0; background:var(--white);
+}
+.far-btn-cancel {
+  padding:9px 18px; border:1.5px solid var(--border); border-radius:9px;
+  background:var(--white); font-size:13px; font-weight:600;
+  font-family:'Noto Sans KR',sans-serif; color:var(--ink2); cursor:pointer; transition:background 0.15s;
+}
+.far-btn-cancel:hover { background:var(--border2); }
+.far-btn-save {
+  padding:9px 18px; border:none; border-radius:9px;
+  background:var(--green); font-size:13px; font-weight:700;
+  font-family:'Noto Sans KR',sans-serif; color:white; cursor:pointer; transition:background 0.15s;
+}
+.far-btn-save:hover { background:var(--green-mid); }
+.far-btn-save:disabled { background:var(--border); cursor:default; color:var(--ink3); }
+
 /* TOAST */
 .toast {
   position:fixed; bottom:24px; left:50%;
@@ -398,10 +539,10 @@ body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--
     </div>
 
     <!-- 용적률/건폐율 계산 -->
-    <div class="work-card wc-amber coming-soon">
+    <div class="work-card wc-amber" onclick="openFarModal()">
       <div class="wc-top">
         <div class="wc-icon">📐</div>
-        <span class="wc-badge badge-soon">준비 중</span>
+        <span class="wc-badge badge-ready">사용 가능</span>
       </div>
       <div class="wc-title">용적률 · 건폐율 계산</div>
       <div class="wc-desc">용도지역별 용적률·건폐율 기준을<br>자동으로 계산하고 검토합니다.</div>
@@ -498,6 +639,138 @@ body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--
 
 </div>
 <!-- / main-content -->
+
+<!-- ===== 용적률·건폐율 계산 모달 ===== -->
+<div class="far-overlay" id="farOverlay" onclick="if(event.target===this)closeFarModal()">
+  <div class="far-modal" role="dialog" aria-modal="true" aria-label="용적률·건폐율 계산">
+
+    <div class="far-mhead">
+      <div class="far-mhead-left">
+        <div class="far-mhead-icon">📐</div>
+        <div>
+          <h3>용적률 · 건폐율 계산</h3>
+          <p>법정기준 대비 계획 수치 검토</p>
+        </div>
+      </div>
+      <button class="far-close-btn" onclick="closeFarModal()" aria-label="닫기">✕</button>
+    </div>
+
+    <div class="far-mbody">
+
+      <!-- 용도지역 -->
+      <div class="far-sec-label">용도지역 선택</div>
+      <div class="far-zone-grid" id="farZoneGrid">
+        <button class="far-zone-btn" data-far="100" data-bcr="50" onclick="farSelectZone(this)">
+          <span class="zn">제1종 전용주거지역</span><span class="zl">용적률 100% · 건폐율 50%</span>
+        </button>
+        <button class="far-zone-btn" data-far="150" data-bcr="50" onclick="farSelectZone(this)">
+          <span class="zn">제2종 전용주거지역</span><span class="zl">용적률 150% · 건폐율 50%</span>
+        </button>
+        <button class="far-zone-btn" data-far="200" data-bcr="60" onclick="farSelectZone(this)">
+          <span class="zn">제1종 일반주거지역</span><span class="zl">용적률 200% · 건폐율 60%</span>
+        </button>
+        <button class="far-zone-btn active" data-far="250" data-bcr="60" onclick="farSelectZone(this)">
+          <span class="zn">제2종 일반주거지역</span><span class="zl">용적률 250% · 건폐율 60%</span>
+        </button>
+        <button class="far-zone-btn" data-far="300" data-bcr="50" onclick="farSelectZone(this)">
+          <span class="zn">제3종 일반주거지역</span><span class="zl">용적률 300% · 건폐율 50%</span>
+        </button>
+        <button class="far-zone-btn" data-far="500" data-bcr="70" onclick="farSelectZone(this)">
+          <span class="zn">준주거지역</span><span class="zl">용적률 500% · 건폐율 70%</span>
+        </button>
+        <button class="far-zone-btn" data-far="900" data-bcr="80" onclick="farSelectZone(this)">
+          <span class="zn">근린상업지역</span><span class="zl">용적률 900% · 건폐율 80%</span>
+        </button>
+        <button class="far-zone-btn" data-far="1300" data-bcr="80" onclick="farSelectZone(this)">
+          <span class="zn">일반상업지역</span><span class="zl">용적률 1300% · 건폐율 80%</span>
+        </button>
+        <button class="far-zone-btn" data-far="200" data-bcr="60" onclick="farSelectZone(this)">
+          <span class="zn">일반공업지역</span><span class="zl">용적률 200% · 건폐율 60%</span>
+        </button>
+        <button class="far-zone-btn" data-far="400" data-bcr="70" onclick="farSelectZone(this)">
+          <span class="zn">준공업지역</span><span class="zl">용적률 400% · 건폐율 70%</span>
+        </button>
+      </div>
+
+      <!-- 법정 기준값 (수동 조정 가능) -->
+      <div class="far-sec-label" style="margin-top:4px">법정 기준값 <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;font-family:'Noto Sans KR',sans-serif">(수동 조정 가능)</span></div>
+      <div class="far-limit-row">
+        <div class="far-limit-box">
+          <label>용적률 상한 (%)</label>
+          <input type="number" id="farLimitFar" value="250" min="0" max="2000" oninput="farCalc()">
+        </div>
+        <div class="far-limit-box">
+          <label>건폐율 상한 (%)</label>
+          <input type="number" id="farLimitBcr" value="60" min="0" max="100" oninput="farCalc()">
+        </div>
+      </div>
+
+      <div class="far-divider"></div>
+
+      <!-- 계획 수치 입력 -->
+      <div class="far-sec-label">계획 수치 입력</div>
+      <div class="far-input-grid">
+        <div class="far-field">
+          <label>대지면적 <span class="fu">㎡</span></label>
+          <input type="number" id="farSite" placeholder="예: 10000" oninput="farCalc()">
+        </div>
+        <div class="far-field">
+          <label>건축면적 <span class="fu">㎡</span></label>
+          <input type="number" id="farBuild" placeholder="예: 4500" oninput="farCalc()">
+        </div>
+        <div class="far-field">
+          <label>연면적 합계 <span class="fu">㎡</span></label>
+          <input type="number" id="farTotal" placeholder="예: 20000" oninput="farCalc()">
+        </div>
+        <div class="far-field">
+          <label>지상 층수 <span class="fu">층</span></label>
+          <input type="number" id="farFloors" placeholder="예: 15" oninput="farCalc()">
+        </div>
+      </div>
+
+      <!-- 결과 -->
+      <div class="far-result-section" id="farResultSection">
+        <div class="far-divider" style="margin-top:4px"></div>
+        <div class="far-sec-label">검토 결과</div>
+
+        <div class="far-summary ok" id="farSummary">
+          <span class="far-summary-icon" id="farSummaryIcon">✅</span>
+          <span class="far-summary-text" id="farSummaryText">계획 수치가 법정 기준을 충족합니다.</span>
+        </div>
+
+        <div class="far-cards">
+          <div class="far-rcard">
+            <div class="far-rcard-label">용적률 (FAR)</div>
+            <div class="far-row"><span class="fk">계획</span><span class="fv" id="fcFarPlan">—</span></div>
+            <div class="far-row"><span class="fk">법정 상한</span><span class="fv" id="fcFarLimit">—</span></div>
+            <div class="far-row"><span class="fk">여유</span><span class="fv" id="fcFarMargin">—</span></div>
+            <div><span class="far-badge ok" id="fcFarBadge">✓ 적합</span></div>
+            <div class="far-bar-wrap">
+              <div class="far-bar-bg"><div class="far-bar-fill ok" id="fcFarBar" style="width:0%"></div></div>
+            </div>
+          </div>
+          <div class="far-rcard">
+            <div class="far-rcard-label">건폐율 (BCR)</div>
+            <div class="far-row"><span class="fk">계획</span><span class="fv" id="fcBcrPlan">—</span></div>
+            <div class="far-row"><span class="fk">법정 상한</span><span class="fv" id="fcBcrLimit">—</span></div>
+            <div class="far-row"><span class="fk">여유</span><span class="fv" id="fcBcrMargin">—</span></div>
+            <div><span class="far-badge ok" id="fcBcrBadge">✓ 적합</span></div>
+            <div class="far-bar-wrap">
+              <div class="far-bar-bg"><div class="far-bar-fill ok" id="fcBcrBar" style="width:0%"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="far-mfoot">
+      <button class="far-btn-cancel" onclick="closeFarModal()">닫기</button>
+      <button class="far-btn-save" id="farSaveBtn" onclick="farSaveResult()" disabled>결과 저장</button>
+    </div>
+
+  </div>
+</div>
 
 <div class="toast" id="toast"></div>
 
@@ -669,6 +942,103 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2400);
 }
 window.showToast = showToast;
+
+// ─── 용적률·건폐율 계산 모달 ─────────────────────────
+
+window.openFarModal = function() {
+  document.getElementById('farOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+};
+
+window.closeFarModal = function() {
+  document.getElementById('farOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+};
+
+window.farSelectZone = function(btn) {
+  document.querySelectorAll('.far-zone-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('farLimitFar').value = btn.dataset.far;
+  document.getElementById('farLimitBcr').value = btn.dataset.bcr;
+  farCalc();
+};
+
+function farGetStatus(plan, limit) {
+  const r = plan / limit;
+  if (r > 1)    return 'over';
+  if (r > 0.95) return 'warn';
+  return 'ok';
+}
+
+function farSetCard(prefix, plan, limit) {
+  const margin = limit - plan;
+  const status = farGetStatus(plan, limit);
+  const pct    = Math.min((plan / limit) * 100, 100);
+
+  document.getElementById(`fc${prefix}Plan`).textContent   = plan.toFixed(1) + '%';
+  document.getElementById(`fc${prefix}Limit`).textContent  = limit.toFixed(1) + '%';
+  document.getElementById(`fc${prefix}Margin`).textContent = (margin >= 0 ? '+' : '') + margin.toFixed(1) + '%';
+
+  const badge = document.getElementById(`fc${prefix}Badge`);
+  const bar   = document.getElementById(`fc${prefix}Bar`);
+  badge.className = `far-badge ${status}`;
+  bar.className   = `far-bar-fill ${status}`;
+  bar.style.width = pct.toFixed(1) + '%';
+
+  const icons  = { ok:'✓', warn:'⚠', over:'✕' };
+  const labels = { ok:'적합', warn:'기준 근접', over:'기준 초과' };
+  badge.textContent = `${icons[status]} ${labels[status]}`;
+  return status;
+}
+
+window.farCalc = function() {
+  const site  = parseFloat(document.getElementById('farSite').value);
+  const build = parseFloat(document.getElementById('farBuild').value);
+  const total = parseFloat(document.getElementById('farTotal').value);
+  const lFar  = parseFloat(document.getElementById('farLimitFar').value);
+  const lBcr  = parseFloat(document.getElementById('farLimitBcr').value);
+  const sec   = document.getElementById('farResultSection');
+
+  if (!site || (!build && !total)) { sec.classList.remove('show'); document.getElementById('farSaveBtn').disabled = true; return; }
+  sec.classList.add('show');
+
+  let farSt = 'ok', bcrSt = 'ok';
+  if (total && site && lFar)  farSt = farSetCard('Far', (total / site) * 100, lFar);
+  if (build && site && lBcr)  bcrSt = farSetCard('Bcr', (build / site) * 100, lBcr);
+
+  const worst = [farSt, bcrSt].includes('over') ? 'over' : [farSt, bcrSt].includes('warn') ? 'warn' : 'ok';
+  const summaryEl   = document.getElementById('farSummary');
+  const summaryIcon = document.getElementById('farSummaryIcon');
+  const summaryText = document.getElementById('farSummaryText');
+  const msgs = {
+    ok:   { cls:'ok',   icon:'✅', text:'계획 수치가 법정 기준을 충족합니다.' },
+    warn: { cls:'warn', icon:'⚠️', text:'기준에 근접한 항목이 있습니다. 확인이 필요합니다.' },
+    over: { cls:'over', icon:'🚫', text:'법정 기준을 초과하는 항목이 있습니다.' }
+  };
+  const m = msgs[worst];
+  summaryEl.className     = `far-summary ${m.cls}`;
+  summaryIcon.textContent = m.icon;
+  summaryText.textContent = m.text;
+  document.getElementById('farSaveBtn').disabled = false;
+};
+
+window.farSaveResult = function() {
+  const site   = parseFloat(document.getElementById('farSite').value);
+  const build  = parseFloat(document.getElementById('farBuild').value);
+  const total  = parseFloat(document.getElementById('farTotal').value);
+  const lFar   = parseFloat(document.getElementById('farLimitFar').value);
+  const lBcr   = parseFloat(document.getElementById('farLimitBcr').value);
+  const far    = total && site ? ((total / site) * 100).toFixed(1) : null;
+  const bcr    = build && site ? ((build / site) * 100).toFixed(1) : null;
+  const line   = [`[용적률·건폐율 검토]`];
+  if (far) line.push(`용적률 ${far}% / 기준 ${lFar}% → ${parseFloat(far) > lFar ? '초과' : '적합'}`);
+  if (bcr) line.push(`건폐율 ${bcr}% / 기준 ${lBcr}% → ${parseFloat(bcr) > lBcr ? '초과' : '적합'}`);
+  const memo = document.getElementById('projMemo');
+  const prev = memo.textContent === '등록된 메모가 없습니다.' ? '' : memo.textContent + '\n';
+  memo.textContent = prev + line.join('\n');
+  closeFarModal();
+  showToast('📐 계산 결과가 메모에 저장되었습니다');
+};
 
 // ─── 초기화 ──────────────────────────────────────────
 loadProject();
