@@ -774,6 +774,10 @@ tbody tr:hover .action-btns { opacity: 1; }
           <button class="pw-eye-btn" type="button" onclick="togglePwEye()" tabindex="-1">👁</button>
         </div>
         <div class="pw-hint" id="f-pw-hint">비워두면 비밀번호 없이 누구나 열람할 수 있습니다.</div>
+        <div id="f-pw-delete-wrap" style="display:none;align-items:center;gap:6px;margin-top:8px">
+          <input type="checkbox" id="f-pw-delete" style="cursor:pointer;accent-color:var(--red)">
+          <label for="f-pw-delete" style="font-size:12px;color:var(--red);cursor:pointer">🔓 이 사업의 비밀번호 삭제</label>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -1045,14 +1049,23 @@ function openEditModal(firestoreId) {
   document.getElementById('f-manager').value = p.manager||'';
   document.getElementById('f-memo').value = p.memo||'';
   document.getElementById('f-status').value = p.status||'검토중';
-  // 비밀번호 필드
+  // 비밀번호 필드 — 기존 값 절대 표시 안 함
   const pwInput = document.getElementById('f-pw');
-  pwInput.value = p.password || '';
+  pwInput.value = '';
   pwInput.type = 'password';
-  document.getElementById('f-pw-hint').textContent = p.password
-    ? '기존 비밀번호가 설정되어 있습니다. 변경하려면 새 값을 입력하고, 삭제하려면 비워두세요.'
-    : '비워두면 비밀번호 없이 누구나 열람할 수 있습니다.';
-  // 사업유형 - 기존 옵션에 있으면 선택, 없으면 직접입력 모드
+  // 비밀번호 삭제 체크박스 표시 여부
+  const delWrap = document.getElementById('f-pw-delete-wrap');
+  const delChk  = document.getElementById('f-pw-delete');
+  if (p.password) {
+    delWrap.style.display = 'flex';
+    delChk.checked = false;
+    document.getElementById('f-pw-hint').textContent = '비워두면 기존 비밀번호가 유지됩니다. 새 비밀번호 입력 시 변경됩니다.';
+  } else {
+    delWrap.style.display = 'none';
+    delChk.checked = false;
+    document.getElementById('f-pw-hint').textContent = '비워두면 비밀번호 없이 누구나 열람할 수 있습니다.';
+  }
+  // 사업유형
   const typeSelect = document.getElementById('f-type');
   const typeCustom = document.getElementById('f-type-custom');
   const options = Array.from(typeSelect.options).map(o => o.value);
@@ -1086,22 +1099,35 @@ async function saveProject() {
     : typeSelect.value;
   if (!typeVal) { showToast('⚠️ 사업 유형을 입력해주세요'); return; }
 
+  // 비밀번호 처리
+  const pwRaw = document.getElementById('f-pw').value;
+  const deletePw = document.getElementById('f-pw-delete').checked;
+  let passwordHash;
+  if (deletePw) {
+    passwordHash = '';                          // 명시적 삭제
+  } else if (pwRaw) {
+    passwordHash = await sha256(pwRaw);         // 새 값 → 해시
+  } else if (editFirestoreId) {
+    const existing = projects.find(x => x.firestoreId === editFirestoreId);
+    passwordHash = existing?.password || '';    // 수정 시 빈 값 → 기존 유지
+  } else {
+    passwordHash = '';                          // 신규 + 빈 값 → 비번 없음
+  }
+
   const data = {
     name,
     type: typeVal,
     status: document.getElementById('f-status').value,
     manager: document.getElementById('f-manager').value.trim(),
     memo: document.getElementById('f-memo').value.trim(),
-    password: document.getElementById('f-pw').value,
+    password: passwordHash,
   };
 
   try {
     if (editFirestoreId) {
-      // 수정
       await updateDoc(doc(db, 'projects', editFirestoreId), data);
       showToast('✅ 수정되었습니다');
     } else {
-      // 신규 추가
       data.date = new Date().toISOString().slice(0,10);
       data.createdAt = serverTimestamp();
       await addDoc(colRef, data);
@@ -1141,20 +1167,27 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2200);
 }
 
+// ── SHA-256 해시 유틸 ──
+async function sha256(text) {
+  if (!text) return '';
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
 // ── MASTER KEY ──
 const configRef = doc(db, 'config', 'settings');
 
 async function loadMasterKeyStatus() {
   try {
     const snap = await getDoc(configRef);
-    const key = snap.exists() ? (snap.data().masterKey || '') : '';
-    updateMasterKeyUI(key);
+    const hasKey = snap.exists() && !!snap.data().masterKey;
+    updateMasterKeyUI(hasKey);
   } catch(e) {}
 }
 
-function updateMasterKeyUI(key) {
+function updateMasterKeyUI(hasKey) {
   const el = document.getElementById('masterKeyStatus');
-  if (key) {
+  if (hasKey) {
     el.className = 'master-key-status set';
     el.textContent = '● 마스터 키 설정됨';
   } else {
@@ -1164,13 +1197,13 @@ function updateMasterKeyUI(key) {
 }
 
 async function openSettingsModal() {
+  // 기존 키는 절대 불러오지 않음 — 입력란은 항상 비어있음
   document.getElementById('settingsOverlay').classList.add('open');
+  document.getElementById('f-master-key').value = '';
   document.getElementById('f-master-key').type = 'password';
   try {
     const snap = await getDoc(configRef);
-    const key = snap.exists() ? (snap.data().masterKey || '') : '';
-    document.getElementById('f-master-key').value = key;
-    updateMasterKeyUI(key);
+    updateMasterKeyUI(snap.exists() && !!snap.data().masterKey);
   } catch(e) {}
 }
 
@@ -1179,12 +1212,13 @@ function closeSettings() {
 }
 
 async function saveMasterKey() {
-  const key = document.getElementById('f-master-key').value;
+  const raw = document.getElementById('f-master-key').value;
   try {
-    await setDoc(configRef, { masterKey: key }, { merge: true });
-    updateMasterKeyUI(key);
+    const hashed = await sha256(raw);  // 빈 값이면 ''
+    await setDoc(configRef, { masterKey: hashed }, { merge: true });
+    updateMasterKeyUI(!!hashed);
     closeSettings();
-    showToast(key ? '🔑 마스터 키가 저장되었습니다' : '🔓 마스터 키가 삭제되었습니다');
+    showToast(raw ? '🔑 마스터 키가 저장되었습니다' : '🔓 마스터 키가 삭제되었습니다');
   } catch(e) {
     showToast('⚠️ 저장 실패: ' + e.message);
   }

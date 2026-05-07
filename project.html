@@ -519,7 +519,14 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 let currentProject = null;
-let masterKey = '';  // Firestore config/settings 에서 로드
+let masterKey = '';
+
+// ─── SHA-256 해시 유틸 ────────────────────────────────
+async function sha256(text) {
+  if (!text) return '';
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
 
 // ─── 비밀번호 토글 ────────────────────────────────────
 window.togglePwVisibility = function() {
@@ -527,22 +534,21 @@ window.togglePwVisibility = function() {
   inp.type = inp.type === 'password' ? 'text' : 'password';
 };
 
-// ─── 비밀번호 확인 (프로젝트 비번 또는 마스터 키 허용) ──
-window.checkPassword = function() {
+// ─── 비밀번호 확인 (해시 비교) ────────────────────────
+window.checkPassword = async function() {
   if (!currentProject) return;
-  const input = document.getElementById('pwInput').value;
-  const stored = currentProject.password || '';
-  const isMaster = masterKey && input === masterKey;
+  const inputHash  = await sha256(document.getElementById('pwInput').value);
+  const storedHash = currentProject.password || '';
+  const isMaster   = masterKey && inputHash === masterKey;
 
-  if (input === stored || isMaster) {
+  if (inputHash === storedHash || isMaster) {
     try {
-      const key = `unlocked_${currentProject.firestoreId || currentProject.name}`;
-      sessionStorage.setItem(key, '1');
+      sessionStorage.setItem(`unlocked_${currentProject.firestoreId || currentProject.name}`, '1');
     } catch(e) {}
     if (isMaster) showToast('🔑 마스터 키로 열람합니다');
     unlockContent();
   } else {
-    const errEl = document.getElementById('pwErrorMsg');
+    const errEl   = document.getElementById('pwErrorMsg');
     const inputEl = document.getElementById('pwInput');
     errEl.classList.add('show');
     inputEl.classList.add('error');
