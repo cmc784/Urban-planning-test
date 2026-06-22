@@ -570,6 +570,111 @@ tbody.result-body td:last-child { border-right:none; }
   transition: all 0.15s;
 }
 .style-reset-btn:hover { background: var(--red-light); color: var(--red); border-color: var(--red); }
+
+/* ── 농지 분류 패널 스타일 ─────────────────────────────── */
+.farm-step-header {
+  display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px;
+}
+.farm-step-num {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--green); color: white; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800; font-family: 'DM Mono', monospace;
+}
+.farm-step-title { font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 2px; }
+.farm-step-sub   { font-size: 11px; color: var(--ink3); line-height: 1.5; }
+.farm-confirmed-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.farm-confirmed-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; background: var(--green-light);
+  border: 1px solid #b8dfc6; border-radius: 8px;
+}
+.farm-infra-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.farm-infra-label {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; background: var(--white);
+  border: 1.5px solid var(--border); border-radius: 8px;
+  cursor: pointer; transition: all 0.15s; user-select: none;
+}
+.farm-infra-label:hover { border-color: var(--blue); background: var(--blue-light); }
+.farm-infra-label input[type=checkbox] { width: 15px; height: 15px; accent-color: var(--blue); cursor: pointer; }
+.farm-jimok-badge {
+  display: inline-block; padding: 3px 9px; border-radius: 5px;
+  font-size: 11px; font-weight: 700;
+}
+.farm-jimok-badge.conf  { background: var(--green-light); color: var(--green-mid); }
+.farm-jimok-badge.infra { background: var(--blue-light);  color: var(--blue); }
+.farm-stat-num  { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 800; color: var(--ink); }
+.farm-stat-area { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--ink3); }
+.farm-parcel-check {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 9px; background: var(--white);
+  border: 1px solid var(--border); border-radius: 6px;
+  cursor: pointer; font-size: 11px; transition: all 0.15s;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+.farm-parcel-check:hover { border-color: var(--blue); }
+.farm-parcel-check.excluded {
+  background: var(--red-light); border-color: #fca5a5;
+  text-decoration: line-through; opacity: 0.7;
+}
+.farm-parcel-check input[type=checkbox] { width: 13px; height: 13px; accent-color: var(--blue); }
+.farm-search-box {
+  width: 100%; padding: 9px 12px;
+  border: 1.5px solid var(--border); border-radius: 8px;
+  font-size: 13px; font-family: 'Noto Sans KR', sans-serif;
+  outline: none; background: var(--white); transition: border-color 0.2s;
+}
+.farm-search-box:focus { border-color: var(--blue); }
+.farm-search-results-wrap {
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--white); overflow: hidden;
+  max-height: 220px; overflow-y: auto; margin-top: 4px;
+}
+.farm-search-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; cursor: pointer;
+  border-bottom: 1px solid var(--border2); transition: background 0.1s;
+  font-size: 12px;
+}
+.farm-search-item:hover { background: var(--blue-light); }
+.farm-search-item:last-child { border-bottom: none; }
+.farm-manual-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 12px; background: var(--bg);
+  border: 1px solid var(--border); border-radius: 7px; margin-bottom: 5px;
+  font-size: 12px;
+}
+.farm-radio-group {
+  display: flex; gap: 16px; align-items: center;
+  padding: 8px 12px; background: var(--bg);
+  border: 1px solid var(--border); border-radius: 8px;
+  font-size: 12px; flex-wrap: wrap;
+}
+.farm-radio-group label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+.farm-radio-group input[type=radio] { accent-color: var(--blue); }
+.farm-stat-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.farm-stat-table th {
+  background: var(--ink); color: white;
+  padding: 8px 14px; text-align: center;
+  font-size: 11px; font-weight: 700; font-family: 'DM Mono', monospace;
+  border-right: 1px solid rgba(255,255,255,0.1);
+}
+.farm-stat-table th:last-child { border-right: none; }
+.farm-stat-table td {
+  padding: 8px 14px; border-bottom: 1px solid var(--border2);
+  border-right: 1px solid var(--border2); text-align: center;
+  color: var(--ink2); font-family: 'DM Mono', monospace;
+}
+.farm-stat-table td:last-child { border-right: none; }
+.farm-stat-table tr.farm-total td {
+  background: var(--green-light); font-weight: 800;
+  color: var(--green-mid); border-top: 2px solid var(--green);
+}
+.farm-class-badge {
+  display: inline-block; padding: 3px 8px; border-radius: 4px;
+  font-size: 10px; font-weight: 700; white-space: nowrap;
+}
 </style>
 <script>
 // 기본값 설정
@@ -615,17 +720,22 @@ window.addEventListener('DOMContentLoaded', function() {
     <div class="step-progress">
       <div class="sp-item active" id="shp-sp1">
         <div class="sp-circle">1</div>
-        <div class="sp-label">연속지적도 업로드</div>
+        <div class="sp-label">연속지적도</div>
       </div>
       <div class="sp-line" id="shp-spl1"></div>
       <div class="sp-item" id="shp-sp2">
         <div class="sp-circle">2</div>
-        <div class="sp-label">구역계 업로드 · 편입면적 산출</div>
+        <div class="sp-label">구역계 · 편입산출</div>
       </div>
       <div class="sp-line" id="shp-spl2"></div>
       <div class="sp-item" id="shp-sp3">
         <div class="sp-circle">3</div>
-        <div class="sp-label">결과 확인 · 엑셀 다운로드</div>
+        <div class="sp-label">결과 확인</div>
+      </div>
+      <div class="sp-line" id="shp-spl3"></div>
+      <div class="sp-item" id="shp-sp4">
+        <div class="sp-circle">4</div>
+        <div class="sp-label">🌾 농지 분류</div>
       </div>
     </div>
 
@@ -830,6 +940,8 @@ window.addEventListener('DOMContentLoaded', function() {
             <option value="부분편입">부분편입</option>
           </select>
           <button class="btn-sm" onclick="sendToLocationMap()" style="background:var(--teal,#0f766e);color:white;border-color:var(--teal,#0f766e)">🗺️ 위치도에서 보기</button>
+          <button class="btn-sm" onclick="exportShpExcel()" style="background:var(--ink);color:white;border-color:var(--ink)">📥 엑셀 저장</button>
+          <button class="btn-sm" onclick="goFarmAnalysis()" style="background:var(--green);color:white;border-color:var(--green)">🌾 농지 분류</button>
         </div>
         <div class="style-panel-wrap" id="stylePanelWrap" style="display:none;margin-bottom:12px">
           <button class="style-panel-header" onclick="toggleStyleBody()">
@@ -971,11 +1083,152 @@ window.addEventListener('DOMContentLoaded', function() {
 
       <div class="nav-btns">
         <button class="btn-prev" onclick="shpGoStep(2)">← 이전</button>
-        <button class="btn-next" onclick="exportShpExcel()">📥 엑셀 저장</button>
       </div>
     </div>
 
   </div><!-- /shpMode -->
+
+  <!-- ══════════════════════════════════════════════════════
+       SHP STEP 4 — 농지 분류
+       ══════════════════════════════════════════════════════ -->
+  <div class="step-panel" id="shp-panel4">
+
+    <!-- ── 서브스텝 A: 분류 기준 설정 ── -->
+    <div id="farm-sub-A">
+
+      <!-- 1단계: 확정 농지 -->
+      <div class="sec-card">
+        <div class="farm-step-header">
+          <div class="farm-step-num">1</div>
+          <div style="flex:1">
+            <div class="farm-step-title">확정 농지 — 자동 분류</div>
+            <div class="farm-step-sub">전·답·과수원은 지목 자체가 농지이므로 자동 포함됩니다</div>
+          </div>
+          <span style="font-size:10px;color:var(--ink3);background:var(--bg);padding:3px 8px;border-radius:5px;border:1px solid var(--border);font-family:'DM Mono',monospace;flex-shrink:0">🔒 자동</span>
+        </div>
+        <div class="farm-confirmed-row" id="farm-step1-content">
+          <span style="color:var(--ink3);font-size:12px">— 데이터 로딩 중 —</span>
+        </div>
+      </div>
+
+      <!-- 2단계: 농업생산기반시설 후보 -->
+      <div class="sec-card">
+        <div class="farm-step-header">
+          <div class="farm-step-num" style="background:var(--blue)">2</div>
+          <div style="flex:1">
+            <div class="farm-step-title">농업생산기반시설 후보 — 지목별 일괄 선택</div>
+            <div class="farm-step-sub">현재 데이터에 존재하는 지목 중 전·답·과·임 이외 지목입니다. 체크하면 해당 지목 전체 필지가 농업생산기반시설로 포함됩니다</div>
+          </div>
+        </div>
+        <div class="farm-infra-grid" id="farm-step2-content">
+          <span style="color:var(--ink3);font-size:12px">— 데이터 로딩 중 —</span>
+        </div>
+      </div>
+
+      <!-- 3단계: 필지별 검토 (2단계 체크 시 표시) -->
+      <div id="farm-step3-wrap" style="display:none">
+        <div class="sec-card">
+          <div class="farm-step-header">
+            <div class="farm-step-num" style="background:var(--amber)">3</div>
+            <div style="flex:1">
+              <div class="farm-step-title">선택된 필지 검토 — 개별 제외 가능</div>
+              <div class="farm-step-sub">체크를 해제하면 해당 필지는 농업생산기반시설에서 제외됩니다 (예: 도시 하수도, 일반 도로)</div>
+            </div>
+          </div>
+          <div id="farm-step3-content"></div>
+        </div>
+      </div>
+
+      <!-- 4단계: 수동 직접 추가 -->
+      <div class="sec-card">
+        <div class="farm-step-header">
+          <div class="farm-step-num" style="background:var(--red)">4</div>
+          <div style="flex:1">
+            <div class="farm-step-title">수동 직접 추가</div>
+            <div class="farm-step-sub">농어촌공사 관리 시설, 사실상농지 등 위 분류 외 필지를 직접 지정합니다 · 분류유형 선택 후 검색</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="farm-radio-group">
+            <span style="font-size:11px;font-weight:700;color:var(--ink2);margin-right:4px;font-family:'DM Mono',monospace">분류유형</span>
+            <label><input type="radio" name="farmManualClass" value="농업생산기반시설" checked> 농업생산기반시설</label>
+            <label><input type="radio" name="farmManualClass" value="사실상농지"> 사실상농지</label>
+          </div>
+          <input type="text" class="farm-search-box" id="farm-search-input"
+            placeholder="🔍 PNU 또는 지번 검색 (전·답·과 제외됨)..."
+            oninput="farmSearch()">
+          <div id="farm-search-results" style="display:none" class="farm-search-results-wrap"></div>
+          <div id="farm-manual-list">
+            <div style="color:var(--ink3);font-size:12px;padding:6px 0">추가된 필지 없음</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="nav-btns">
+        <button class="btn-prev" onclick="shpGoStep(3)">← Step 3으로</button>
+        <button class="btn-next" onclick="applyFarmClass()">🌾 분류 적용 →</button>
+      </div>
+    </div><!-- /farm-sub-A -->
+
+    <!-- ── 서브스텝 B: 결과 확인 ── -->
+    <div id="farm-sub-B" style="display:none">
+
+      <!-- ① 농지 현황 요약 테이블 -->
+      <div class="sec-card">
+        <div class="sec-card-title">
+          <div class="dot" style="background:var(--green)"></div>
+          ① 농지 현황 요약
+        </div>
+        <div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border)" id="farm-table1"></div>
+      </div>
+
+      <!-- ② 기타농지 세부 테이블 -->
+      <div class="sec-card" id="farm-table2-wrap" style="display:none">
+        <div class="sec-card-title">
+          <div class="dot" style="background:var(--blue)"></div>
+          ② 기타농지 세부
+          <span style="font-size:11px;font-weight:400;color:var(--ink3);text-transform:none;letter-spacing:0;margin-left:4px">(농업생산기반시설 · 사실상농지 내역)</span>
+        </div>
+        <div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border)" id="farm-table2"></div>
+      </div>
+
+      <!-- 전체 필지 결과 테이블 -->
+      <div class="sec-card" style="padding:16px 20px">
+        <div class="sec-card-title"><div class="dot"></div>전체 농지 필지 목록</div>
+        <div class="table-wrap">
+          <table class="result" style="min-width:1150px">
+            <thead>
+              <tr class="th-main">
+                <th>PNU</th>
+                <th>연번</th>
+                <th>시도</th>
+                <th>시군구</th>
+                <th>읍면동</th>
+                <th>대장구분</th>
+                <th>지번</th>
+                <th>지목</th>
+                <th>필지구적면적(㎡)</th>
+                <th>편입구적면적(㎡)</th>
+                <th style="background:#1a3a6e;color:white;border-right:1px solid rgba(255,255,255,0.15)">편입면적 보정(㎡)</th>
+                <th>편입구분</th>
+                <th style="background:#14532d;color:white">농지분류근거</th>
+              </tr>
+            </thead>
+            <tbody id="farm-result-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="nav-btns">
+        <button class="btn-prev" onclick="showFarmSubA()">← 기준 수정</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn-next" style="background:var(--ink);border-color:var(--ink)" onclick="shpGoStep(3)">← Step 3</button>
+          <button class="btn-next" onclick="exportFarmExcel()">📥 농지조서 엑셀</button>
+        </div>
+      </div>
+    </div><!-- /farm-sub-B -->
+
+  </div><!-- /shp-panel4 -->
 
 
 <div class="toast" id="toast"></div>
@@ -1142,14 +1395,23 @@ function switchMode(mode) {} // xlsx 모드 제거됨
 
 // ─── SHP 스텝 이동 ─────────────────────────────────────
 function shpGoStep(n) {
-  for (let i = 1; i <= 3; i++) {
+  for (let i = 1; i <= 4; i++) {
     const panel = document.getElementById(`shp-panel${i}`);
     const sp    = document.getElementById(`shp-sp${i}`);
-    panel.classList.toggle('active', i === n);
-    sp.className = 'sp-item' + (i === n ? ' active' : i < n ? ' done' : '');
-    if (i < 3) {
-      document.getElementById(`shp-spl${i}`).className = 'sp-line' + (i < n ? ' done' : '');
+    if (panel) panel.classList.toggle('active', i === n);
+    if (sp)    sp.className = 'sp-item' + (i === n ? ' active' : i < n ? ' done' : '');
+    if (i < 4) {
+      const line = document.getElementById(`shp-spl${i}`);
+      if (line) line.className = 'sp-line' + (i < n ? ' done' : '');
     }
+  }
+  // Step 4 진입 시 Sub A 표시 + 렌더
+  if (n === 4) {
+    const subA = document.getElementById('farm-sub-A');
+    const subB = document.getElementById('farm-sub-B');
+    if (subA) subA.style.display = 'block';
+    if (subB) subB.style.display = 'none';
+    if (typeof renderFarmSubA === 'function') renderFarmSubA();
   }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -2394,15 +2656,28 @@ function ldLinkApply() {
   resultEl.style.display = 'block';
 
   // 미매칭 목록 HTML
+  // 각 미매칭 PNU의 전체 결과에서의 위치(연번·페이지) 계산
+  function getUnmatchedPosition(pnu) {
+    const normPnu = String(pnu || '').padStart(19, '0');
+    const idx = shpResultRows.findIndex(r => String(r.pnu || '').padStart(19, '0') === normPnu);
+    if (idx < 0) return null;
+    const pageNum  = Math.ceil((idx + 1) / SHP_PAGE_SIZE);
+    const serialNo = idx + 1;
+    return { idx, pageNum, serialNo };
+  }
+
   const unmatchedHtml = ldUnmatchedPnus.length > 0 ? `
     <details style="margin-top:8px;">
       <summary style="cursor:pointer;font-size:11px;color:var(--red);font-weight:600;">
         ⚠️ 미매칭 필지 ${ldUnmatchedPnus.length}건 (클릭하여 목록 보기)
       </summary>
-      <div style="margin-top:6px;max-height:180px;overflow-y:auto;border:1px solid var(--red);border-radius:6px;padding:8px;">
+      <div style="margin-top:6px;max-height:200px;overflow-y:auto;border:1px solid var(--red);border-radius:6px;padding:8px;">
+        <div style="font-size:10px;color:var(--ink3);margin-bottom:6px;padding:0 2px">PNU를 클릭하면 해당 필지 위치로 이동합니다</div>
         <table style="width:100%;border-collapse:collapse;font-size:11px;">
           <thead>
             <tr style="background:#fff0f0;">
+              <th style="padding:4px 8px;border-bottom:1px solid var(--border);text-align:center;white-space:nowrap">연번</th>
+              <th style="padding:4px 8px;border-bottom:1px solid var(--border);text-align:center;white-space:nowrap">페이지</th>
               <th style="padding:4px 8px;border-bottom:1px solid var(--border);text-align:left;">PNU</th>
               <th style="padding:4px 8px;border-bottom:1px solid var(--border);text-align:left;">읍면동</th>
               <th style="padding:4px 8px;border-bottom:1px solid var(--border);text-align:left;">지번</th>
@@ -2410,13 +2685,28 @@ function ldLinkApply() {
             </tr>
           </thead>
           <tbody>
-            ${ldUnmatchedPnus.map(p => `
-              <tr style="border-bottom:1px solid var(--border2);">
-                <td style="padding:4px 8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--red);">${escHtml(p.pnu)}</td>
+            ${ldUnmatchedPnus.map(p => {
+              const pos = getUnmatchedPosition(p.pnu);
+              const serialTd = pos
+                ? `<td style="padding:4px 8px;text-align:center;font-family:'DM Mono',monospace;font-weight:700;color:var(--ink)">${pos.serialNo}</td>
+                   <td style="padding:4px 8px;text-align:center;font-family:'DM Mono',monospace;color:var(--ink3)">${pos.pageNum}p</td>`
+                : `<td style="padding:4px 8px;text-align:center;color:var(--ink3)">—</td>
+                   <td style="padding:4px 8px;text-align:center;color:var(--ink3)">—</td>`;
+              const pnuClickable = pos
+                ? `<td style="padding:4px 8px;font-family:'DM Mono',monospace;font-size:10px;">
+                     <span onclick="jumpToUnmatched('${p.pnu}')"
+                       style="color:var(--red);cursor:pointer;text-decoration:underline;text-underline-offset:2px"
+                       title="${pos.pageNum}페이지 · 연번 ${pos.serialNo}로 이동">${escHtml(p.pnu)}</span>
+                   </td>`
+                : `<td style="padding:4px 8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--red);">${escHtml(p.pnu)}</td>`;
+              return `<tr style="border-bottom:1px solid var(--border2);">
+                ${serialTd}
+                ${pnuClickable}
                 <td style="padding:4px 8px;">${escHtml(p.emd)}</td>
                 <td style="padding:4px 8px;font-weight:600;">${escHtml(p.jibun)}</td>
                 <td style="padding:4px 8px;">${escHtml(p.jimok)}</td>
-              </tr>`).join('')}
+              </tr>`;
+            }).join('')}
           </tbody>
         </table>
       </div>
@@ -2443,6 +2733,42 @@ function ldLinkReset() {
   document.getElementById('ldLink-result').style.display      = 'none';
   document.getElementById('ldLinkFile').value = '';
   renderShpResult();
+}
+
+// ─── 미매칭 필지 클릭 → 해당 페이지·행으로 이동 ──────
+function jumpToUnmatched(pnu) {
+  const normPnu = String(pnu || '').padStart(19, '0');
+  // 현재 필터 초기화 후 전체 기준으로 인덱스 탐색
+  const searchEl  = document.getElementById('shpSearch');
+  const filterEl  = document.getElementById('shpFilterGubun');
+  if (searchEl)  searchEl.value  = '';
+  if (filterEl)  filterEl.value  = '';
+
+  // 전체 목록(정렬 없음)에서 위치 계산
+  const idx = shpResultRows.findIndex(r => String(r.pnu || '').padStart(19, '0') === normPnu);
+  if (idx < 0) { showToast('⚠️ 해당 필지를 찾을 수 없습니다'); return; }
+
+  // 페이지 이동
+  shpCurrentPage = Math.ceil((idx + 1) / SHP_PAGE_SIZE);
+  shpSortKey = null; // 정렬 초기화
+  renderShpResult();
+
+  // 해당 행 하이라이트
+  setTimeout(() => {
+    const tbody = document.getElementById('shpResultBody');
+    if (!tbody) return;
+    const rows  = tbody.querySelectorAll('tr');
+    const localIdx = idx % SHP_PAGE_SIZE;
+    const targetRow = rows[localIdx];
+    if (targetRow) {
+      targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      targetRow.style.transition = 'background 0.2s';
+      targetRow.style.background = '#fef9c3';
+      setTimeout(() => { targetRow.style.background = ''; }, 2000);
+    }
+  }, 120);
+
+  showToast(`📍 ${idx + 1}번 필지 (${Math.ceil((idx + 1) / SHP_PAGE_SIZE)}페이지)로 이동`);
 }
 
 let ldLinkSelectedFields = []; // 현재 반영 중인 필드 목록
@@ -2476,16 +2802,24 @@ function exportShpExcel() {
     ...ldLinkSelectedFields.map(() => 16)];
   ws['!cols'] = colWidths.map(w => ({ wch: w }));
 
+  // AutoFilter
+  ws['!autofilter'] = { ref: `A1:${XLSX.utils.encode_col(header.length - 1)}1` };
+
+  // 헤더 스타일
   const range = XLSX.utils.decode_range(ws['!ref']);
   for (let c = range.s.c; c <= range.e.c; c++) {
     const cell = ws[XLSX.utils.encode_cell({ r: 0, c })];
-    if (cell) cell.s = { font: { bold: true }, alignment: { horizontal: 'center' } };
+    if (cell) cell.s = {
+      font:      { bold: true, color: { rgb: 'FFFFFF' } },
+      fill:      { fgColor: { rgb: '1A1A1A' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+    };
   }
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, '편입토지조서');
   const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  XLSX.writeFile(wb, `편입토지조서_${today}.xlsx`);
+  XLSX.writeFile(wb, `편입토지조서_${today}.xlsx`, { cellStyles: true });
   showToast('📥 엑셀 다운로드 완료!');
 }
 
@@ -3188,6 +3522,11 @@ function resetAll() {
   ldLinkHeaders = []; ldLinkRows = []; ldLinkExtra = {}; ldUnmatchedPnus = [];
   ldLinkSelectedFields = [];
   Object.keys(bojeongOverride).forEach(k => delete bojeongOverride[k]);
+  // 농지 분류 초기화
+  if (typeof farmInfraChecked  !== 'undefined') farmInfraChecked.clear();
+  if (typeof farmInfraExcluded !== 'undefined') farmInfraExcluded.clear();
+  if (typeof farmManualList    !== 'undefined') farmManualList = [];
+  if (typeof farmResultRows    !== 'undefined') farmResultRows = [];
   document.getElementById('jijukDropZone').classList.remove('done');
   document.getElementById('jijukIcon').textContent = '🗺️';
   document.getElementById('jijukTitle').textContent = '연속지적도 ZIP 업로드';
@@ -3232,6 +3571,581 @@ function showToast(msg) {
 // ─── 초기화 ───────────────────────────────────────────
 // 페이지 로드 시 법정동 코드 DB 자동 로드
 loadBJD();
+</script>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// STEP 4 — 농지 분류
+// ═══════════════════════════════════════════════════════
+
+// ─── 상수 ──────────────────────────────────────────────
+const FARM_CONFIRMED_SET = new Set(['전','답','과']);
+const FOREST_JIMOK_SET   = new Set(['임']);
+
+const JIMOK_FULL_NAME = {
+  '전':'전','답':'답','과':'과수원','목':'목장용지','임':'임야',
+  '광':'광천지','염':'염전','대':'대','장':'공장용지','학':'학교용지',
+  '차':'주차장','주':'주유소용지','창':'창고용지','도':'도로',
+  '철':'철도용지','제':'제방','천':'하천','구':'구거','유':'유지',
+  '양':'양어장','수':'수도용지','공':'공원','체':'체육용지','원':'유원지',
+  '종':'종교용지','사':'사적지','묘':'묘지','잡':'잡종지'
+};
+function getJimokName(code) { return JIMOK_FULL_NAME[code] || code; }
+
+// ─── 상태 ──────────────────────────────────────────────
+let farmInfraChecked  = new Set();  // 2단계: 체크된 지목
+let farmInfraExcluded = new Set();  // 3단계: 개별 제외된 PNU
+let farmManualList    = [];          // 4단계: 수동 추가 [{pnu,jibun,jimok,emd,farmClass}]
+let farmResultRows    = [];          // 최종 농지 분류 결과
+
+// ─── 보정 면적 헬퍼 ─────────────────────────────────
+function getFarmBojeong(r) {
+  const pnu    = String(r.pnu || '').padStart(19, '0');
+  const extra  = (typeof ldLinkExtra !== 'undefined' ? ldLinkExtra[pnu] : null) || {};
+  const linked = extra['area'] ? parseFloat(String(extra['area']).replace(/,/g, '')) : null;
+  const val = calcBojeong(r, linked);
+  return (val != null && !isNaN(val)) ? val : (r.pyeonipArea || 0);
+}
+
+// ─── 농지 분석 진입 ──────────────────────────────────
+function goFarmAnalysis() {
+  if (!shpResultRows || shpResultRows.length === 0) {
+    showToast('⚠️ 먼저 편입 분석을 완료해주세요');
+    return;
+  }
+  shpGoStep(4);
+}
+
+// ─── 서브스텝 전환 ────────────────────────────────────
+function showFarmSubA() {
+  document.getElementById('farm-sub-A').style.display = 'block';
+  document.getElementById('farm-sub-B').style.display = 'none';
+  renderFarmSubA();
+}
+function showFarmSubB() {
+  document.getElementById('farm-sub-A').style.display = 'none';
+  document.getElementById('farm-sub-B').style.display = 'block';
+  renderFarmResult();
+}
+
+// ─── 통계 헬퍼 ───────────────────────────────────────
+function getFarmConfirmedStats() {
+  const stats = {};
+  shpResultRows.forEach(r => {
+    if (!FARM_CONFIRMED_SET.has(r.jimok)) return;
+    if (!stats[r.jimok]) stats[r.jimok] = { count: 0, area: 0 };
+    stats[r.jimok].count++;
+    stats[r.jimok].area += getFarmBojeong(r);
+  });
+  return stats;
+}
+
+function getFarmInfraCandidates() {
+  const stats = {};
+  shpResultRows.forEach(r => {
+    if (FARM_CONFIRMED_SET.has(r.jimok)) return;
+    if (FOREST_JIMOK_SET.has(r.jimok))  return;
+    if (!r.jimok) return;
+    if (!stats[r.jimok]) stats[r.jimok] = { count: 0, area: 0, rows: [] };
+    stats[r.jimok].count++;
+    stats[r.jimok].area += getFarmBojeong(r);
+    stats[r.jimok].rows.push(r);
+  });
+  return stats;
+}
+
+// ─── Sub A 전체 렌더 ─────────────────────────────────
+function renderFarmSubA() {
+  renderFarmStep1();
+  renderFarmStep2();
+  renderFarmStep3();
+  renderFarmStep4();
+}
+
+function renderFarmStep1() {
+  const stats  = getFarmConfirmedStats();
+  const LABELS = { '전':'전', '답':'답', '과':'과수원' };
+  const el     = document.getElementById('farm-step1-content');
+  if (!el) return;
+  if (Object.keys(stats).length === 0) {
+    el.innerHTML = '<span style="color:var(--ink3);font-size:12px">전·답·과수원 해당 편입 필지 없음</span>';
+    return;
+  }
+  el.innerHTML = Object.entries(stats).map(([k, v]) => `
+    <div class="farm-confirmed-item">
+      <span class="farm-jimok-badge conf">${LABELS[k] || k}</span>
+      <span class="farm-stat-num">${v.count}필지</span>
+      <span class="farm-stat-area">&nbsp;${(Math.round(v.area * 10) / 10).toLocaleString()} ㎡</span>
+    </div>`).join('');
+}
+
+function renderFarmStep2() {
+  const candidates = getFarmInfraCandidates();
+  const el = document.getElementById('farm-step2-content');
+  if (!el) return;
+  if (Object.keys(candidates).length === 0) {
+    el.innerHTML = '<span style="color:var(--ink3);font-size:12px">후보 지목 없음 — 전·답·과·임 이외 편입 필지가 없습니다</span>';
+    return;
+  }
+  el.innerHTML = Object.entries(candidates)
+    .sort((a, b) => b[1].count - a[1].count)
+    .map(([jimok, stat]) => `
+    <label class="farm-infra-label">
+      <input type="checkbox" id="farm-infra-chk-${jimok}"
+        ${farmInfraChecked.has(jimok) ? 'checked' : ''}
+        onchange="toggleFarmInfra('${jimok}')">
+      <span class="farm-jimok-badge infra">${getJimokName(jimok)}</span>
+      <span class="farm-stat-num">${stat.count}필지</span>
+      <span class="farm-stat-area">&nbsp;${(Math.round(stat.area * 10) / 10).toLocaleString()} ㎡</span>
+    </label>`).join('');
+}
+
+function toggleFarmInfra(jimok) {
+  const chk = document.getElementById(`farm-infra-chk-${jimok}`);
+  if (chk && chk.checked) {
+    farmInfraChecked.add(jimok);
+  } else {
+    farmInfraChecked.delete(jimok);
+    // 해당 지목 개별 제외 초기화
+    const candidates = getFarmInfraCandidates();
+    (candidates[jimok]?.rows || []).forEach(r => {
+      farmInfraExcluded.delete(String(r.pnu || '').padStart(19, '0'));
+    });
+  }
+  renderFarmStep3();
+}
+
+function renderFarmStep3() {
+  const wrap    = document.getElementById('farm-step3-wrap');
+  const content = document.getElementById('farm-step3-content');
+  if (!wrap || !content) return;
+  if (farmInfraChecked.size === 0) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+
+  const candidates = getFarmInfraCandidates();
+  let html = '';
+  farmInfraChecked.forEach(jimok => {
+    const rows = candidates[jimok]?.rows || [];
+    if (!rows.length) return;
+    html += `<div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:6px">
+        ${getJimokName(jimok)} (${rows.length}필지) — 전체 포함, 제외할 필지 체크 해제
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        ${rows.map(r => {
+          const pnu  = String(r.pnu || '').padStart(19, '0');
+          const excl = farmInfraExcluded.has(pnu);
+          const bj   = Math.round(getFarmBojeong(r) * 10) / 10;
+          return `<label class="farm-parcel-check${excl ? ' excluded' : ''}">
+            <input type="checkbox" ${excl ? '' : 'checked'}
+              onchange="toggleFarmExclude('${pnu}', this)">
+            <span>${escHtml(r.jibun)}</span>
+            <span style="font-size:10px;color:var(--ink3)">${bj.toLocaleString()}㎡</span>
+          </label>`;
+        }).join('')}
+      </div>
+    </div>`;
+  });
+  content.innerHTML = html || '<span style="font-size:12px;color:var(--ink3)">필지 없음</span>';
+}
+
+function toggleFarmExclude(pnu, chkEl) {
+  if (chkEl.checked) farmInfraExcluded.delete(pnu);
+  else farmInfraExcluded.add(pnu);
+  const lbl = chkEl.closest('label');
+  if (lbl) lbl.classList.toggle('excluded', !chkEl.checked);
+}
+
+function renderFarmStep4() {
+  const el = document.getElementById('farm-manual-list');
+  if (!el) return;
+  if (farmManualList.length === 0) {
+    el.innerHTML = '<div style="color:var(--ink3);font-size:12px;padding:4px 0">추가된 필지 없음</div>';
+    return;
+  }
+  el.innerHTML = farmManualList.map((m, i) => {
+    const isInfra = m.farmClass === '농업생산기반시설';
+    const bg    = isInfra ? 'var(--blue-light)'  : 'var(--amber-light)';
+    const color = isInfra ? 'var(--blue)'         : 'var(--amber)';
+    const label = isInfra ? '농업생산기반시설 ✎'   : '사실상농지 ✎';
+    return `<div class="farm-manual-item">
+      <span class="farm-jimok-badge" style="background:var(--gray);color:var(--ink2);flex-shrink:0">${getJimokName(m.jimok)}</span>
+      <span style="font-weight:600">${escHtml(m.jibun)}</span>
+      <span style="font-size:11px;color:var(--ink3)">${escHtml(m.emd)}</span>
+      <span style="margin-left:auto;display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;background:${bg};color:${color};flex-shrink:0">${label}</span>
+      <button onclick="farmManualRemove(${i})"
+        style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;line-height:1;padding:0 2px;flex-shrink:0">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function farmManualRemove(idx) {
+  farmManualList.splice(idx, 1);
+  renderFarmStep4();
+  showToast('🗑️ 필지가 제거되었습니다');
+}
+
+// ─── 4단계 검색 ──────────────────────────────────────
+function farmSearch() {
+  const q   = (document.getElementById('farm-search-input')?.value || '').trim().toLowerCase();
+  const res = document.getElementById('farm-search-results');
+  if (!res) return;
+  if (!q) { res.style.display = 'none'; res.innerHTML = ''; return; }
+
+  const addedPnus = new Set(farmManualList.map(m => m.pnu));
+  const results = shpResultRows.filter(r => {
+    if (FARM_CONFIRMED_SET.has(r.jimok)) return false; // 확정농지 제외
+    const pnu = String(r.pnu || '').padStart(19, '0');
+    if (addedPnus.has(pnu)) return false;
+    return (r.jibun || '').toLowerCase().includes(q)
+      || pnu.includes(q)
+      || (r.emd || '').toLowerCase().includes(q);
+  }).slice(0, 8);
+
+  if (results.length === 0) {
+    res.style.display = 'block';
+    res.innerHTML = '<div style="color:var(--ink3);font-size:12px;padding:10px 12px">검색 결과 없음</div>';
+    return;
+  }
+  res.style.display = 'block';
+  res.innerHTML = results.map(r => {
+    const pnu = String(r.pnu || '').padStart(19, '0');
+    const bj  = Math.round(getFarmBojeong(r) * 10) / 10;
+    return `<div class="farm-search-item" onclick="farmSearchSelect('${pnu}')">
+      <span class="farm-jimok-badge" style="background:var(--gray);color:var(--ink2);flex-shrink:0">${getJimokName(r.jimok)}</span>
+      <span style="font-weight:600">${escHtml(r.jibun)}</span>
+      <span style="font-size:11px;color:var(--ink3)">${escHtml(r.emd)}</span>
+      <span style="font-size:11px;font-family:'DM Mono',monospace;color:var(--ink3);margin-left:auto">${bj.toLocaleString()} ㎡</span>
+    </div>`;
+  }).join('');
+}
+
+function farmSearchSelect(pnu) {
+  const r = shpResultRows.find(row => String(row.pnu || '').padStart(19, '0') === pnu);
+  if (!r) return;
+  const farmClass = document.querySelector('input[name="farmManualClass"]:checked')?.value || '농업생산기반시설';
+  farmManualList.push({ pnu, jibun: r.jibun, jimok: r.jimok, emd: r.emd, farmClass });
+  // 검색창 초기화
+  const inp = document.getElementById('farm-search-input');
+  const res = document.getElementById('farm-search-results');
+  if (inp) inp.value = '';
+  if (res) { res.style.display = 'none'; res.innerHTML = ''; }
+  renderFarmStep4();
+  showToast(`✅ ${r.jibun} (${getJimokName(r.jimok)}) 추가됨`);
+}
+
+// ─── 분류 적용 ────────────────────────────────────────
+function applyFarmClass() {
+  farmResultRows = [];
+  const addedPnus = new Set();
+
+  // 1단계: 확정농지
+  shpResultRows.forEach(r => {
+    if (!FARM_CONFIRMED_SET.has(r.jimok)) return;
+    const pnu = String(r.pnu || '').padStart(19, '0');
+    if (addedPnus.has(pnu)) return;
+    farmResultRows.push({ ...r, farmClass: '확정농지', isManual: false });
+    addedPnus.add(pnu);
+  });
+
+  // 2+3단계: 농업생산기반시설 (지목별 일괄, 개별 제외 적용)
+  if (farmInfraChecked.size > 0) {
+    shpResultRows.forEach(r => {
+      if (FARM_CONFIRMED_SET.has(r.jimok)) return;
+      if (!farmInfraChecked.has(r.jimok)) return;
+      const pnu = String(r.pnu || '').padStart(19, '0');
+      if (farmInfraExcluded.has(pnu)) return;
+      if (addedPnus.has(pnu)) return;
+      farmResultRows.push({ ...r, farmClass: '농업생산기반시설', isManual: false });
+      addedPnus.add(pnu);
+    });
+  }
+
+  // 4단계: 수동 추가
+  farmManualList.forEach(m => {
+    if (addedPnus.has(m.pnu)) return;
+    const found = shpResultRows.find(r => String(r.pnu || '').padStart(19, '0') === m.pnu);
+    if (!found) return;
+    farmResultRows.push({ ...found, farmClass: m.farmClass + '(수동)', isManual: true });
+    addedPnus.add(m.pnu);
+  });
+
+  showToast(`✅ 농지 분류 완료: ${farmResultRows.length}필지`);
+  showFarmSubB();
+}
+
+// ─── Sub B 결과 렌더 ─────────────────────────────────
+function renderFarmResult() {
+  renderFarmTable1();
+  renderFarmTable2();
+  renderFarmResultTable();
+}
+
+function renderFarmTable1() {
+  const el = document.getElementById('farm-table1');
+  if (!el) return;
+  const groups = {
+    '전':  { label:'전',     count:0, area:0 },
+    '답':  { label:'답',     count:0, area:0 },
+    '과':  { label:'과수원', count:0, area:0 },
+    'etc': { label:'기타농지', count:0, area:0 },
+  };
+  let totalCount = 0, totalArea = 0;
+  farmResultRows.forEach(r => {
+    const area = getFarmBojeong(r);
+    totalCount++;
+    totalArea += area;
+    if (groups[r.jimok]) { groups[r.jimok].count++; groups[r.jimok].area += area; }
+    else { groups.etc.count++; groups.etc.area += area; }
+  });
+
+  const rows = Object.values(groups).filter(g => g.count > 0);
+  el.innerHTML = `<table class="farm-stat-table">
+    <thead><tr><th>지목</th><th>필지 수</th><th>편입면적(㎡)</th><th>비율</th></tr></thead>
+    <tbody>
+      ${rows.map(g => `<tr>
+        <td style="text-align:left;padding-left:18px">${g.label}</td>
+        <td>${g.count.toLocaleString()}필지</td>
+        <td>${(Math.round(g.area * 10) / 10).toLocaleString()}</td>
+        <td>${totalArea > 0 ? (g.area / totalArea * 100).toFixed(1) : '0.0'}%</td>
+      </tr>`).join('')}
+      <tr class="farm-total">
+        <td style="text-align:left;padding-left:18px">합계</td>
+        <td>${totalCount.toLocaleString()}필지</td>
+        <td>${(Math.round(totalArea * 10) / 10).toLocaleString()}</td>
+        <td>100%</td>
+      </tr>
+    </tbody>
+  </table>`;
+}
+
+function renderFarmTable2() {
+  const wrap = document.getElementById('farm-table2-wrap');
+  const el   = document.getElementById('farm-table2');
+  if (!wrap || !el) return;
+  const others = farmResultRows.filter(r => !FARM_CONFIRMED_SET.has(r.jimok));
+  if (others.length === 0) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+
+  // 그룹화: jimok × classType × isManual
+  const groups = {};
+  let totalCount = 0, totalArea = 0;
+  others.forEach(r => {
+    const area      = getFarmBojeong(r);
+    const classType = r.farmClass.replace('(수동)', '');
+    const key       = `${r.jimok}__${classType}__${r.isManual}`;
+    if (!groups[key]) groups[key] = { jimok: r.jimok, classType, isManual: r.isManual, count: 0, area: 0 };
+    groups[key].count++;
+    groups[key].area += area;
+    totalCount++;
+    totalArea += area;
+  });
+
+  el.innerHTML = `<table class="farm-stat-table">
+    <thead><tr><th>지목</th><th>분류유형</th><th>분류방식</th><th>필지 수</th><th>편입면적(㎡)</th><th>비율</th></tr></thead>
+    <tbody>
+      ${Object.values(groups).map(g => `<tr>
+        <td style="text-align:left;padding-left:18px">${getJimokName(g.jimok)}</td>
+        <td>${g.classType}</td>
+        <td>${g.isManual ? '수동추가 ✎' : '2단계 일괄'}</td>
+        <td>${g.count.toLocaleString()}필지</td>
+        <td>${(Math.round(g.area * 10) / 10).toLocaleString()}</td>
+        <td>${totalArea > 0 ? (g.area / totalArea * 100).toFixed(1) : '0.0'}%</td>
+      </tr>`).join('')}
+      <tr class="farm-total">
+        <td colspan="3" style="text-align:left;padding-left:18px">합계</td>
+        <td>${totalCount.toLocaleString()}필지</td>
+        <td>${(Math.round(totalArea * 10) / 10).toLocaleString()}</td>
+        <td>100%</td>
+      </tr>
+    </tbody>
+  </table>`;
+}
+
+const FARM_BADGE_MAP = {
+  '확정농지':              { bg:'var(--green-light)', color:'var(--green-mid)', label:'확정농지' },
+  '농업생산기반시설':       { bg:'var(--blue-light)',  color:'var(--blue)',      label:'농업생산기반시설' },
+  '농업생산기반시설(수동)': { bg:'var(--blue-light)',  color:'var(--blue)',      label:'농업생산기반시설 ✎' },
+  '사실상농지(수동)':      { bg:'var(--amber-light)', color:'var(--amber)',     label:'사실상농지 ✎' },
+};
+
+function renderFarmResultTable() {
+  const tbody = document.getElementById('farm-result-body');
+  if (!tbody) return;
+  if (farmResultRows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="13" style="padding:40px;text-align:center;color:var(--ink3)">분류된 농지 없음</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = farmResultRows.map((r, i) => {
+    const badge  = FARM_BADGE_MAP[r.farmClass] || { bg:'var(--gray)', color:'var(--ink)', label: r.farmClass };
+    const bj     = getFarmBojeong(r);
+    const bjStr  = (Math.round(bj * 10) / 10).toLocaleString();
+    const gubunBadge = r.gubun === '완전편입'
+      ? `<span class="status-badge s-완편">완전편입</span>`
+      : `<span class="status-badge s-일편">부분편입</span>`;
+    return `<tr>
+      <td class="td-mono" style="font-size:10px">${escHtml(r.pnu)}</td>
+      <td class="td-mono">${i + 1}</td>
+      <td>${escHtml(r.sido)}</td>
+      <td>${escHtml(r.sigungu)}</td>
+      <td>${escHtml(r.emd)}</td>
+      <td>${escHtml(r.daejang)}</td>
+      <td class="td-mono">${escHtml(r.jibun)}</td>
+      <td>${escHtml(r.jimok)}</td>
+      <td class="td-mono td-right">${r.jijuArea.toLocaleString()}</td>
+      <td class="td-mono td-right">${r.pyeonipArea.toLocaleString()}</td>
+      <td class="td-mono td-right">${bjStr}</td>
+      <td>${gubunBadge}</td>
+      <td>
+        <span class="farm-class-badge" style="background:${badge.bg};color:${badge.color}">${badge.label}</span>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── 농지 엑셀 다운로드 ───────────────────────────────
+// 시트 구성 : ① 전체 농지편입조서  ② 농업생산기반시설  ③ 사실상농지
+// 컬럼 구성 : 편입토지조서 동일 + 주재배작물명 + 농지분류 + 분류방식
+// 기능      : AutoFilter · 헤더 스타일 · 숫자 서식
+function exportFarmExcel() {
+  if (!farmResultRows || farmResultRows.length === 0) {
+    showToast('⚠️ 데이터가 없습니다'); return;
+  }
+
+  // ── 주재배작물명 헬퍼 ────────────────────────────────
+  const CROP_MAP = { '전': '채소', '답': '벼', '과': '과일' };
+  function getCropName(jimok) { return CROP_MAP[jimok] || '-'; }
+
+  // ── 농지분류 레이블 헬퍼 ─────────────────────────────
+  function getFarmClassLabel(farmClass) {
+    return farmClass.replace('(수동)', '').trim();
+  }
+  function getFarmMethodLabel(farmClass, isManual) {
+    if (isManual)                  return '수동추가';
+    if (farmClass === '확정농지')  return '자동(지목)';
+    return '2단계 일괄';
+  }
+
+  // ── 컬럼 정의 ────────────────────────────────────────
+  // 기본 컬럼 (편입토지조서 동일)
+  const BASE_HEADS  = ['PNU','연번','시도','시군구','읍면동','대장구분',
+                       '지번','지목','주재배작물명',
+                       '필지구적면적(㎡)','편입구적면적(㎡)','편입면적 보정(㎡)','편입구분'];
+  const BASE_WIDTHS = [22, 6, 12, 14, 14, 8, 12, 6, 14, 14, 14, 14, 10];
+
+  // 토지대장 연계 컬럼 (메인 조서와 동일 — 없으면 빈 배열)
+  const LD_FIELDS = (typeof ldLinkSelectedFields !== 'undefined') ? ldLinkSelectedFields : [];
+  const LD_HEADS  = LD_FIELDS.map(f => f.label);
+  const LD_WIDTHS = LD_FIELDS.map(() => 16);
+
+  // 농지 분류 컬럼 (마지막)
+  const FARM_HEADS  = ['농지분류', '분류방식'];
+  const FARM_WIDTHS = [20, 14];
+
+  const ALL_HEADS  = [...BASE_HEADS,  ...LD_HEADS,  ...FARM_HEADS];
+  const ALL_WIDTHS = [...BASE_WIDTHS, ...LD_WIDTHS, ...FARM_WIDTHS];
+
+  const NUM_KEYS = new Set(['area', 'price', 'pyeonip']);
+  const NUM_COLS = new Set(['필지구적면적(㎡)','편입구적면적(㎡)','편입면적 보정(㎡)',
+                            '공부상면적(㎡)','공시지가(원/㎡)']);
+
+  // ── 행 데이터 생성 ───────────────────────────────────
+  function buildRow(r, serialNo) {
+    const pnu      = String(r.pnu || '').padStart(19, '0');
+    const extra    = (typeof ldLinkExtra !== 'undefined' ? ldLinkExtra[pnu] : null) || {};
+    const linked   = extra['area'] ? parseFloat(String(extra['area']).replace(/,/g,'')) : null;
+    const bj       = calcBojeong(r, linked);
+    const bjVal    = (bj != null && !isNaN(bj)) ? Math.round(bj * 10) / 10 : r.pyeonipArea;
+
+    const ldVals = LD_FIELDS.map(f => {
+      const v = extra[f.key] ?? '';
+      return NUM_KEYS.has(f.key) && v !== '' ? Number(String(v).replace(/,/g,'')) : v;
+    });
+
+    return [
+      pnu, serialNo,
+      r.sido, r.sigungu, r.emd, r.daejang,
+      r.jibun, r.jimok, getCropName(r.jimok),
+      r.jijuArea, r.pyeonipArea, bjVal, r.gubun,
+      ...ldVals,
+      getFarmClassLabel(r.farmClass),
+      getFarmMethodLabel(r.farmClass, r.isManual),
+    ];
+  }
+
+  // ── 워크시트 생성 헬퍼 ───────────────────────────────
+  function makeSheet(dataRows) {
+    if (dataRows.length === 0) {
+      // 데이터 없을 때도 헤더만 있는 시트 반환
+      dataRows = [];
+    }
+    const ws = XLSX.utils.aoa_to_sheet([ALL_HEADS, ...dataRows]);
+
+    // 열 너비
+    ws['!cols'] = ALL_WIDTHS.map(w => ({ wch: w }));
+
+    // AutoFilter
+    const lastCol = XLSX.utils.encode_col(ALL_HEADS.length - 1);
+    ws['!autofilter'] = { ref: `A1:${lastCol}1` };
+
+    // 틀 고정 (헤더 행)
+    ws['!freeze'] = { xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft' };
+
+    // 헤더 스타일: 초록 배경 + 흰 글씨 + 굵게 + 가운데
+    for (let c = 0; c < ALL_HEADS.length; c++) {
+      const addr = XLSX.utils.encode_cell({ r: 0, c });
+      if (!ws[addr]) continue;
+      ws[addr].s = {
+        font:      { bold: true, color: { rgb: 'FFFFFF' }, sz: 10 },
+        fill:      { patternType: 'solid', fgColor: { rgb: '1A5C3A' } },
+        alignment: { horizontal: 'center', vertical: 'center', wrapText: false },
+        border: {
+          top:    { style: 'thin', color: { rgb: '888888' } },
+          bottom: { style: 'thin', color: { rgb: '888888' } },
+          left:   { style: 'thin', color: { rgb: '888888' } },
+          right:  { style: 'thin', color: { rgb: '888888' } },
+        },
+      };
+    }
+
+    // 데이터 행 스타일: 숫자 열 오른쪽 정렬 + 서식
+    ALL_HEADS.forEach((h, c) => {
+      if (!NUM_COLS.has(h)) return;
+      for (let row = 1; row <= dataRows.length; row++) {
+        const addr = XLSX.utils.encode_cell({ r: row, c });
+        if (!ws[addr]) continue;
+        ws[addr].s = {
+          alignment: { horizontal: 'right' },
+          numFmt: '#,##0.0',
+        };
+      }
+    });
+
+    return ws;
+  }
+
+  // ── 시트 데이터 분류 ─────────────────────────────────
+  // ① 전체 농지편입조서 — farmResultRows 전체
+  const allRows = farmResultRows.map((r, i) => buildRow(r, i + 1));
+
+  // ② 농업생산기반시설 — farmClass가 '농업생산기반시설'로 시작하는 것
+  const infraSrc  = farmResultRows.filter(r => r.farmClass.startsWith('농업생산기반시설'));
+  const infraRows = infraSrc.map((r, i) => buildRow(r, i + 1));
+
+  // ③ 사실상농지 — farmClass가 '사실상농지'로 시작하는 것
+  const realSrc  = farmResultRows.filter(r => r.farmClass.startsWith('사실상농지'));
+  const realRows = realSrc.map((r, i) => buildRow(r, i + 1));
+
+  // ── 워크북 구성 (항상 3개 시트) ─────────────────────
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, makeSheet(allRows),   '전체 농지편입조서');
+  XLSX.utils.book_append_sheet(wb, makeSheet(infraRows), '농업생산기반시설');
+  XLSX.utils.book_append_sheet(wb, makeSheet(realRows),  '사실상농지');
+
+  const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  XLSX.writeFile(wb, `농지편입조서_${today}.xlsx`, { cellStyles: true });
+  showToast(`📥 농지조서 다운로드 완료! 전체 ${farmResultRows.length}필지 · 농업생산기반시설 ${infraSrc.length}필지 · 사실상농지 ${realSrc.length}필지`);
+}
 </script>
 </body>
 </html>
