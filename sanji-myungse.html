@@ -3632,11 +3632,13 @@ function apportionGubun(B, raw) {
   const CATS = FOREST_GUBUN_CATS;
   const hasDecimal = String(B).includes('.');
   if (hasDecimal) {
+    const dp = Math.min((String(B).split('.')[1] || '').length, 3);   // 보정값 소수 자릿수 그대로
+    const f  = Math.pow(10, dp);
     const out = {}; let s = 0;
-    CATS.forEach(c => { out[c] = Math.round((raw[c] || 0) * 10) / 10; s += out[c]; });
-    let diff = Math.round((B - s) * 10) / 10;
+    CATS.forEach(c => { out[c] = Math.round((raw[c] || 0) * f) / f; s += out[c]; });
+    let diff = Math.round((B - s) * f) / f;
     let mx = CATS[0]; CATS.forEach(c => { if (out[c] > out[mx]) mx = c; });
-    out[mx] = Math.round((out[mx] + diff) * 10) / 10;
+    out[mx] = Math.round((out[mx] + diff) * f) / f;
     return out;
   }
   // 정수 모드
@@ -3776,7 +3778,7 @@ function forestSearch() {
   res.style.display = 'block';
   res.innerHTML = results.map(r => {
     const pnu = String(r.pnu || '').padStart(19, '0');
-    const bj  = Math.round(getFarmBojeong(r) * 10) / 10;
+    const bj  = getFarmBojeong(r);
     return `<div class="farm-search-item" onclick="forestSearchSelect('${pnu}')">
       <span class="farm-jimok-badge" style="background:var(--gray);color:var(--ink2);flex-shrink:0">${getJimokName(r.jimok)}</span>
       <span style="font-weight:600">${escHtml(r.jibun)}</span>
@@ -3845,6 +3847,15 @@ function applyForestClass() {
 
 // ─── Sub B 결과 렌더 ─────────────────────────────────
 // 행의 토지대장 정보 조회 (live ldLinkExtra 우선, 없으면 분류 시점 스냅샷)
+// 소유구분 → 산지 소유별 분류 (국유지→국유림 / 공유지→공유림 / 그 외(사유·법인·개인 등)→사유림)
+function forestOwnerBucket(t) {
+  const s = String(t || '').replace(/\s/g, '');
+  if (!s) return '';                                   // 소유구분 미연계 → 분류 안함
+  if (/국유|국가|^국$|^국/.test(s)) return '국유림';
+  if (/공유|시유|도유|군유|구유|도립|시립|군립|공공|지자체/.test(s)) return '공유림';
+  return '사유림';                                      // 사유·법인·개인·종중 등
+}
+const FOREST_OWNER_CATS = ['국유림', '공유림', '사유림'];
 function forestLd(r) {
   const pnu  = String(r.pnu || '').padStart(19, '0');
   const live = (typeof ldLinkExtra !== 'undefined' ? ldLinkExtra[pnu] : null) || {};
@@ -3896,13 +3907,13 @@ function renderForestTable1() {
         ${rows.map(([label,g]) => `<tr>
           <td style="text-align:left;padding-left:18px">${label}</td>
           <td>${g.count.toLocaleString()}필지</td>
-          <td>${(Math.round(g.area*10)/10).toLocaleString()}</td>
+          <td>${(Math.round(g.area*100)/100).toLocaleString(undefined,{maximumFractionDigits:2})}</td>
           <td>${sumArea>0?(g.area/sumArea*100).toFixed(1):'0.0'}%</td>
         </tr>`).join('')}
         <tr class="farm-total">
           <td style="text-align:left;padding-left:18px">합계</td>
           <td>${totalCount.toLocaleString()}필지</td>
-          <td>${(Math.round(sumArea*10)/10).toLocaleString()}</td>
+          <td>${(Math.round(sumArea*100)/100).toLocaleString(undefined,{maximumFractionDigits:2})}</td>
           <td>100%</td>
         </tr>
       </tbody>
@@ -3944,6 +3955,9 @@ function renderForestResultTable() {
       h += `<th style="background:#0f766e;color:white">공부상면적(㎡)</th>`
          + `<th style="background:#0f766e;color:white">공시지가(원/㎡)</th>`
          + `<th style="background:#0f766e;color:white">소유구분</th>`
+         + `<th style="background:#155e3a;color:white">국유림(㎡)</th>`
+         + `<th style="background:#155e3a;color:white">공유림(㎡)</th>`
+         + `<th style="background:#155e3a;color:white">사유림(㎡)</th>`
          + `<th style="background:#0f766e;color:white">소유자명</th>`
          + `<th style="background:#0f766e;color:white">소유자주소</th>`;
     }
@@ -3954,19 +3968,19 @@ function renderForestResultTable() {
     }
     thead.innerHTML = h;
   }
-  const colCount = 12 + (includeOwner ? 5 : 0) + (hasGubun ? 3 : 0);
+  const colCount = 12 + (includeOwner ? 8 : 0) + (hasGubun ? 3 : 0);
 
   if (forestResultRows.length === 0) {
     tbody.innerHTML = `<tr><td colspan="${colCount}" style="padding:30px;text-align:center;color:var(--ink3)">분류된 산지 필지가 없습니다</td></tr>`;
     return;
   }
-  const fmt = v => (Number.isInteger(v) ? v : Math.round((v||0)*10)/10).toLocaleString();
+  const fmt = v => (v==null || isNaN(v)) ? '-' : Number(v).toLocaleString(undefined, { maximumFractionDigits: 3 });
   tbody.innerHTML = forestResultRows.map((r, i) => {
     const pnu   = String(r.pnu || '').padStart(19, '0');
     const extra = (typeof ldLinkExtra !== 'undefined' ? ldLinkExtra[pnu] : null) || {};
     const linked= extra['area'] ? parseFloat(String(extra['area']).replace(/,/g,'')) : null;
     const bj    = calcBojeong(r, linked);
-    const bjVal = (bj!=null && !isNaN(bj)) ? Math.round(bj*10)/10 : r.pyeonipArea;
+    const bjVal = (bj!=null && !isNaN(bj)) ? bj : r.pyeonipArea;   // 대장 면적 소수 자릿수 그대로
     const gubunBadge = r.gubun === '완전편입'
       ? `<span class="status-badge s-완편">완전편입</span>`
       : `<span class="status-badge s-일편">부분편입</span>`;
@@ -3974,10 +3988,14 @@ function renderForestResultTable() {
     if (includeOwner) {
       const ld = forestLd(r);
       const gn = ldNum(ld.gongbu), pr = ldNum(ld.price);
+      const bk = forestOwnerBucket(ld.ownerType);
+      const ownerAreaCells = FOREST_OWNER_CATS.map(b =>
+        `<td class="td-mono td-right" style="background:#eefaf1">${b===bk ? fmt(bjVal) : '-'}</td>`).join('');
       ownerCells =
           `<td class="td-mono td-right" style="background:#f0fdfa">${gn!=null?gn.toLocaleString():'-'}</td>`
         + `<td class="td-mono td-right" style="background:#f0fdfa">${pr!=null?pr.toLocaleString():(ld.price||'-')}</td>`
         + `<td style="background:#f0fdfa">${escHtml(ld.ownerType||'-')}</td>`
+        + ownerAreaCells
         + `<td style="background:#f0fdfa">${escHtml(ld.ownerName||'-')}</td>`
         + `<td style="background:#f0fdfa;font-size:11px">${escHtml(ld.ownerAddr||'-')}</td>`;
     }
@@ -4240,14 +4258,14 @@ function exportForestExcel() {
 
   const BASE_HEADS  = ['PNU','연번','시도','시군구','읍면동','대장구분',
                        '지번','지목','필지구적면적(㎡)','편입구적면적(㎡)','편입면적 보정(㎡)','편입구분'];
-  const OWNER_HEADS = includeOwner ? ['공부상면적(㎡)','공시지가(원/㎡)','소유구분','소유자명','소유자주소'] : [];
+  const OWNER_HEADS = includeOwner ? ['공부상면적(㎡)','공시지가(원/㎡)','소유구분','국유림(㎡)','공유림(㎡)','사유림(㎡)','소유자명','소유자주소'] : [];
   // 산지내역서 양식 O~S: 산지구분별 합계 / 보전산지(임업용·공익용) / 준보전산지
   const GUBUN_HEADS = hasGubun
     ? ['산지구분 합계(㎡)','보전산지-임업용(㎡)','보전산지-공익용(㎡)','준보전산지(㎡)']
     : (includeGubun ? ['산지구분'] : []);
   const ALL_HEADS = [...BASE_HEADS, ...OWNER_HEADS, ...GUBUN_HEADS];
 
-  const r1 = v => (Number.isInteger(v) ? v : Math.round((v||0)*10)/10);
+  const r1 = v => (v==null || isNaN(v)) ? v : Math.round(v * 10000) / 10000;   // 소수 자릿수 보존 (부동소수 잡음만 제거)
   const data = forestResultRows.map((r, i) => {
     const pnu   = String(r.pnu || '').padStart(19, '0');
     const extra = (typeof ldLinkExtra !== 'undefined' ? ldLinkExtra[pnu] : null) || {};
@@ -4262,8 +4280,10 @@ function exportForestExcel() {
     if (includeOwner) {
       const ld = forestLd(r);
       const gn = ldNum(ld.gongbu), pr = ldNum(ld.price);
-      row.push(gn!=null?gn:(ld.gongbu||'-'), pr!=null?pr:(ld.price||'-'),
-               ld.ownerType||'-', ld.ownerName||'-', ld.ownerAddr||'-');
+      const bk = forestOwnerBucket(ld.ownerType);
+      row.push(gn!=null?gn:(ld.gongbu||'-'), pr!=null?pr:(ld.price||'-'), ld.ownerType||'-',
+               bk==='국유림'?bjVal:'', bk==='공유림'?bjVal:'', bk==='사유림'?bjVal:'',
+               ld.ownerName||'-', ld.ownerAddr||'-');
     }
     if (hasGubun) {
       const a = forestGubunMap[pnu]?.areas || emptyGubunAreas();
@@ -4276,7 +4296,7 @@ function exportForestExcel() {
   });
 
   // 합계 행
-  if (hasGubun) {
+  if (hasGubun || includeOwner) {
     const tot = ['합계','','','','','','','','','','',''];
     const bjSum = forestResultRows.reduce((s,r)=>{ const p=String(r.pnu||'').padStart(19,'0');
       const ex=(typeof ldLinkExtra!=='undefined'?ldLinkExtra[p]:null)||{};
@@ -4284,14 +4304,28 @@ function exportForestExcel() {
       const b=calcBojeong(r,lk); return s+((b!=null&&!isNaN(b))?b:r.pyeonipArea); },0);
     tot[10] = r1(bjSum);
     if (includeOwner) {
-      const gongbuSum = forestResultRows.reduce((s,r)=>{ const g=ldNum(forestLd(r).gongbu); return s+(g||0); },0);
-      tot.push(gongbuSum ? r1(gongbuSum) : '', '', '', '', '');
+      let gongbuSum=0, gukSum=0, gongSum=0, saSum=0;
+      forestResultRows.forEach(r=>{
+        const p=String(r.pnu||'').padStart(19,'0');
+        const ex=(typeof ldLinkExtra!=='undefined'?ldLinkExtra[p]:null)||{};
+        const lk=ex['area']?parseFloat(String(ex['area']).replace(/,/g,'')):null;
+        const b=calcBojeong(r,lk); const bv=(b!=null&&!isNaN(b))?b:r.pyeonipArea;
+        const ld=forestLd(r);
+        const g=ldNum(ld.gongbu); gongbuSum+=(g||0);
+        const bk=forestOwnerBucket(ld.ownerType);
+        if(bk==='국유림')gukSum+=bv; else if(bk==='공유림')gongSum+=bv; else if(bk==='사유림')saSum+=bv;
+      });
+      tot.push(gongbuSum?r1(gongbuSum):'', '', '',
+               gukSum?r1(gukSum):'', gongSum?r1(gongSum):'', saSum?r1(saSum):'',
+               '', '');
     }
-    const cat = { '임업용산지':0,'공익용산지':0,'준보전산지':0 };
-    forestResultRows.forEach(r=>{ const p=String(r.pnu||'').padStart(19,'0');
-      const a=forestGubunMap[p]?.areas||{}; FOREST_GUBUN_CATS.forEach(c=>cat[c]+=(a[c]||0)); });
-    const gsum = r1(cat['임업용산지']+cat['공익용산지']+cat['준보전산지']);
-    tot.push(gsum, r1(cat['임업용산지']), r1(cat['공익용산지']), r1(cat['준보전산지']));
+    if (hasGubun) {
+      const cat = { '임업용산지':0,'공익용산지':0,'준보전산지':0 };
+      forestResultRows.forEach(r=>{ const p=String(r.pnu||'').padStart(19,'0');
+        const a=forestGubunMap[p]?.areas||{}; FOREST_GUBUN_CATS.forEach(c=>cat[c]+=(a[c]||0)); });
+      const gsum = r1(cat['임업용산지']+cat['공익용산지']+cat['준보전산지']);
+      tot.push(gsum, r1(cat['임업용산지']), r1(cat['공익용산지']), r1(cat['준보전산지']));
+    }
     data.push(tot);
   }
 
