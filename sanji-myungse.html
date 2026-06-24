@@ -2382,11 +2382,11 @@ let ldUnmatchedPnus = []; // 미매칭 필지 PNU 목록
 // 기본 출력 항목 정의
 const LD_LINK_FIELDS = [
   { key:'jimok',     label:'지목',           default:true  },
-  { key:'area',      label:'공부상면적(㎡)',   default:false },
+  { key:'area',      label:'공부상면적(㎡)',   default:true  },
   { key:'price',     label:'공시지가(원/㎡)', default:true  },
   { key:'ownerType', label:'소유구분',        default:true  },
   { key:'ownerName', label:'소유자성명',      default:true  },
-  { key:'ownerAddr', label:'소유자주소',      default:false },
+  { key:'ownerAddr', label:'소유자주소',      default:true  },
   // 행정구역 — 개별 컬럼(A형) 또는 통합 컬럼(B형) 자동 감지
   { key:'sido',      label:'시도',           default:false, adminType:'sido'    },
   { key:'sigungu',   label:'시군구',          default:false, adminType:'sigungu' },
@@ -2506,8 +2506,8 @@ function ldLinkAutoMatch(key) {
     jimok:       /지목/,
     area:        /면적|공부면적|지적면적/,
     price:       /공시지가|개별공시지가/,
-    ownerType:   /소유구분|소유형태|소유권/,
-    ownerName:   /소유자.{0,4}성명|^성명$|소유자명/,
+    ownerType:   /소유구분|소유형태|소유권|소유.{0,3}구분|공유구분|소유자구분/,
+    ownerName:   /소유자.{0,4}성명|^성명$|소유자명|성명.{0,4}명칭|^명칭$|명의인|^소유자$/,
     ownerAddr:   /소유자.{0,4}주소|소유자.{0,4}소재/,
     // A형 개별 컬럼 — 실제 토지대장에서 자주 쓰이는 헤더명 포함
     sido:        /^시\s*도$|^광역시도|^시도명|^시\.?도$/,
