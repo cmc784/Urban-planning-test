@@ -877,33 +877,29 @@ window.APP_CONFIG = window.APP_CONFIG || { encodedKey: '', vworldKey: '' };
     <div class="panel">
       <div class="panel-title">좌표계 설정</div>
       <label class="field-label">원본 좌표계</label>
-      <select id="src-crs" onchange="onCrsChange()">
-        <optgroup label="── GRS80 (KRAS 주제도 표준) ──">
-          <option value="5185">EPSG:5185 — 서부원점 GRS80</option>
-          <option value="5186" id="opt-5186">EPSG:5186 — 중부원점 GRS80 ★ KRAS 기본</option>
-          <option value="5187">EPSG:5187 — 동부원점 GRS80</option>
-          <option value="5188">EPSG:5188 — 동해원점 GRS80</option>
-        </optgroup>
-        <optgroup label="── Bessel 1841 (구 측량 원점 / DXF 등) ──">
+      <select id="src-crs">
+        <optgroup label="── Bessel 1841 (구 측량 원점) ──">
           <option value="5173">EPSG:5173 — 서부원점 Bessel</option>
-          <option value="5174" id="opt-5174">EPSG:5174 — 중부원점 Bessel</option>
+          <option value="5174" selected>EPSG:5174 — 중부원점 Bessel ★</option>
           <option value="5175">EPSG:5175 — 동부원점 Bessel</option>
           <option value="5176">EPSG:5176 — 동해원점 Bessel</option>
+        </optgroup>
+        <optgroup label="── GRS80 (현행 측량 원점) ──">
+          <option value="5185">EPSG:5185 — 서부원점 GRS80</option>
+          <option value="5186">EPSG:5186 — 중부원점 GRS80</option>
+          <option value="5187">EPSG:5187 — 동부원점 GRS80</option>
+          <option value="5188">EPSG:5188 — 동해원점 GRS80</option>
         </optgroup>
         <optgroup label="── 기타 ──">
           <option value="32652">EPSG:32652 — UTM Zone 52N</option>
           <option value="4326">EPSG:4326 — WGS84 (위경도)</option>
         </optgroup>
       </select>
-      <div class="coord-info show" id="crs-auto-note">→ WGS84 자동 변환 후 위성지도 표시</div>
+      <div class="coord-info show">→ WGS84 자동 변환 후 위성지도 표시</div>
       <div style="font-size:10.5px;color:var(--ink3);margin-top:4px;line-height:1.5;">
         SHP 업로드 시 .prj에 좌표계가 명시되어 있어도 자동 인식하지 않습니다.<br>
-        KRAS 주제도 SHP는 보통 <strong>GRS80 중부원점(EPSG:5186)</strong>이 기본값으로 선택됩니다.<br>
-        실제 좌표계가 다르면 위 목록에서 직접 변경 후 다시 생성하세요.
+        위 목록에서 원본 SHP의 실제 좌표계를 직접 선택하세요.
       </div>
-      <button class="btn btn-outline" id="btn-reproject" style="display:none; margin-top:8px;" onclick="reprojectAndRegenerate()">
-        ↺&nbsp; 변경한 좌표계로 다시 변환
-      </button>
     </div>
 
     <!-- 3. 레이어 -->
@@ -1167,8 +1163,6 @@ proj4.defs([
 
 /* ── 전역 상태 ── */
 let map, dxfData = null, drawnLayers = [], selectedLayers = new Set();
-let lastUploadedFileType = null; // 'dxf' | 'shp' 마지막 업로드 파일 종류 (좌표계 기본값 결정에 사용)
-let mapHasBeenGenerated = false; // 좌표계 변경 후 "다시 변환" 버튼 노출 여부 판단
 let northCtrl = null, scaleCtrl = null;
 let showNorth = true, showScale = true, showTitle = true;
 let currentTileSat = null, currentTileLabel = null, currentTileBase = null;
@@ -1414,8 +1408,6 @@ function handleFile(file) {
   document.getElementById('file-chip').classList.add('show');
 
   if (isDxf) {
-    lastUploadedFileType = 'dxf';
-    setDefaultCrs('dxf');
     setStep(2); setProgress(true, 'DXF 파싱 중...', 25);
     const reader = new FileReader();
     reader.onload = e => {
@@ -1433,8 +1425,6 @@ function handleFile(file) {
     };
     reader.readAsText(file, 'euc-kr');
   } else {
-    lastUploadedFileType = 'shp';
-    setDefaultCrs('shp');
     // SHP 또는 ZIP(SHP+DBF+PRJ 묶음)
     setStep(2); setProgress(true, 'SHP 파싱 중...', 25);
     const reader = new FileReader();
@@ -1445,7 +1435,7 @@ function handleFile(file) {
         setProgress(true, '파싱 완료', 100);
         setTimeout(() => setProgress(false), 500);
         document.getElementById('btn-gen').disabled = false;
-        toast(`${dxfData.entities.length}개 엔티티, ${dxfData.layers.size}개 레이어 인식 (KRAS 주제도 기준 GRS80 중부원점으로 기본 설정됨)`, 'success');
+        toast(`${dxfData.entities.length}개 엔티티, ${dxfData.layers.size}개 레이어 인식`, 'success');
       } catch(err) {
         setProgress(false);
         toast('SHP 파싱 오류: ' + err.message, 'error');
@@ -1453,40 +1443,6 @@ function handleFile(file) {
     };
     reader.readAsArrayBuffer(file);
   }
-}
-
-/* 파일 종류에 맞춰 좌표계 select 기본값을 자동 지정.
-   - SHP: KRAS 주제도 표준인 GRS80 중부원점(EPSG:5186)을 기본으로
-   - DXF: 기존 관행대로 Bessel 중부원점(EPSG:5174)을 기본으로
-   사용자가 이후 직접 select를 바꾸면 onCrsChange()가 "다시 변환" 버튼을 노출시킨다. */
-function setDefaultCrs(fileType) {
-  const select = document.getElementById('src-crs');
-  select.value = (fileType === 'shp') ? '5186' : '5174';
-  document.getElementById('btn-reproject').style.display = 'none';
-  updateCrsNote(fileType);
-}
-
-function updateCrsNote(fileType) {
-  const note = document.getElementById('crs-auto-note');
-  if (fileType === 'shp') {
-    note.textContent = '→ KRAS 주제도 기본값(GRS80 중부원점) 적용, WGS84로 자동 변환';
-  } else {
-    note.textContent = '→ WGS84 자동 변환 후 위성지도 표시';
-  }
-}
-
-/* 좌표계를 사용자가 직접 변경했을 때: 이미 지도가 생성된 상태라면
-   "다시 변환" 버튼을 노출시켜, 새로 고른 좌표계로 재계산할 수 있게 한다. */
-function onCrsChange() {
-  if (mapHasBeenGenerated && dxfData) {
-    document.getElementById('btn-reproject').style.display = 'block';
-  }
-}
-
-/* 좌표계를 바꾼 뒤 다시 누르는 변환 버튼 — generateMap()을 그대로 재호출. */
-function reprojectAndRegenerate() {
-  document.getElementById('btn-reproject').style.display = 'none';
-  generateMap();
 }
 
 /* ── SHP 파서 (shpjs 라이브러리 사용) ──
@@ -1750,7 +1706,6 @@ async function generateMap() {
   document.getElementById('export-btns').style.display = 'block';
   setStep(4);
   toast('위치도가 생성되었습니다!', 'success');
-  mapHasBeenGenerated = true;
 }
 
 function fitAll() {
@@ -1877,9 +1832,6 @@ async function exportPDF() {
 /* ── 초기화 ── */
 function resetAll() {
   dxfData = null;
-  lastUploadedFileType = null;
-  mapHasBeenGenerated = false;
-  document.getElementById('btn-reproject').style.display = 'none';
   drawnLayers.forEach(l => map.removeLayer(l));
   drawnLayers = []; selectedLayers.clear();
   document.getElementById('layer-list').innerHTML = '';
