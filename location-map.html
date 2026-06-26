@@ -10,6 +10,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://unpkg.com/shpjs@latest/dist/shp.js"></script>
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
@@ -579,7 +580,7 @@ window.APP_CONFIG = window.APP_CONFIG || { encodedKey: '', vworldKey: '' };
   <div class="topbar-left">
     <button class="back-btn" onclick="history.back()">← 돌아가기</button>
     <span class="topbar-title">위치도 생성</span>
-    <span class="topbar-badge" id="topbar-badge">DXF → 위성지도</span>
+    <span class="topbar-badge" id="topbar-badge">DXF/SHP → 위성지도</span>
   </div>
   <div class="step-bar" id="dxf-step-bar">
     <div class="step-item done" id="s1"><span class="step-dot"></span>업로드</div>
@@ -852,7 +853,7 @@ window.APP_CONFIG = window.APP_CONFIG || { encodedKey: '', vworldKey: '' };
 
     <!-- 1. 파일 업로드 -->
     <div class="panel">
-      <div class="panel-title">DXF 파일 업로드</div>
+      <div class="panel-title">DXF / SHP 파일 업로드</div>
       <div class="dropzone" id="dropzone">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -860,12 +861,15 @@ window.APP_CONFIG = window.APP_CONFIG || { encodedKey: '', vworldKey: '' };
           <line x1="12" y1="18" x2="12" y2="12"/>
           <polyline points="9,15 12,12 15,15"/>
         </svg>
-        <div class="dz-label"><strong>클릭</strong>하거나 DXF 파일을<br>드래그하세요</div>
-        <input type="file" id="dxf-input" accept=".dxf">
+        <div class="dz-label"><strong>클릭</strong>하거나 DXF/SHP 파일을<br>드래그하세요</div>
+        <input type="file" id="dxf-input" accept=".dxf,.shp,.zip">
       </div>
       <div class="file-chip" id="file-chip">
         <div class="fn" id="file-name"></div>
         <div class="fm" id="file-meta"></div>
+      </div>
+      <div style="font-size:10.5px;color:var(--ink3);margin-top:6px;line-height:1.5;">
+        SHP는 .dbf/.prj 등을 포함한 <strong>.zip</strong>으로 압축하거나, .shp 단일 파일로 업로드하세요.
       </div>
     </div>
 
@@ -873,25 +877,33 @@ window.APP_CONFIG = window.APP_CONFIG || { encodedKey: '', vworldKey: '' };
     <div class="panel">
       <div class="panel-title">좌표계 설정</div>
       <label class="field-label">원본 좌표계</label>
-      <select id="src-crs">
-        <optgroup label="── Bessel 1841 (구 측량 원점) ──">
-          <option value="5173">EPSG:5173 — 서부원점 Bessel</option>
-          <option value="5174" selected>EPSG:5174 — 중부원점 Bessel ★</option>
-          <option value="5175">EPSG:5175 — 동부원점 Bessel</option>
-          <option value="5176">EPSG:5176 — 동해원점 Bessel</option>
-        </optgroup>
-        <optgroup label="── GRS80 (현행 측량 원점) ──">
+      <select id="src-crs" onchange="onCrsChange()">
+        <optgroup label="── GRS80 (KRAS 주제도 표준) ──">
           <option value="5185">EPSG:5185 — 서부원점 GRS80</option>
-          <option value="5186">EPSG:5186 — 중부원점 GRS80</option>
+          <option value="5186" id="opt-5186">EPSG:5186 — 중부원점 GRS80 ★ KRAS 기본</option>
           <option value="5187">EPSG:5187 — 동부원점 GRS80</option>
           <option value="5188">EPSG:5188 — 동해원점 GRS80</option>
+        </optgroup>
+        <optgroup label="── Bessel 1841 (구 측량 원점 / DXF 등) ──">
+          <option value="5173">EPSG:5173 — 서부원점 Bessel</option>
+          <option value="5174" id="opt-5174">EPSG:5174 — 중부원점 Bessel</option>
+          <option value="5175">EPSG:5175 — 동부원점 Bessel</option>
+          <option value="5176">EPSG:5176 — 동해원점 Bessel</option>
         </optgroup>
         <optgroup label="── 기타 ──">
           <option value="32652">EPSG:32652 — UTM Zone 52N</option>
           <option value="4326">EPSG:4326 — WGS84 (위경도)</option>
         </optgroup>
       </select>
-      <div class="coord-info show">→ WGS84 자동 변환 후 위성지도 표시</div>
+      <div class="coord-info show" id="crs-auto-note">→ WGS84 자동 변환 후 위성지도 표시</div>
+      <div style="font-size:10.5px;color:var(--ink3);margin-top:4px;line-height:1.5;">
+        SHP 업로드 시 .prj에 좌표계가 명시되어 있어도 자동 인식하지 않습니다.<br>
+        KRAS 주제도 SHP는 보통 <strong>GRS80 중부원점(EPSG:5186)</strong>이 기본값으로 선택됩니다.<br>
+        실제 좌표계가 다르면 위 목록에서 직접 변경 후 다시 생성하세요.
+      </div>
+      <button class="btn btn-outline" id="btn-reproject" style="display:none; margin-top:8px;" onclick="reprojectAndRegenerate()">
+        ↺&nbsp; 변경한 좌표계로 다시 변환
+      </button>
     </div>
 
     <!-- 3. 레이어 -->
@@ -1007,7 +1019,7 @@ window.APP_CONFIG = window.APP_CONFIG || { encodedKey: '', vworldKey: '' };
     <div class="map-empty" id="map-empty">
       <div class="map-empty-icon">🗺️</div>
       <div class="map-empty-text" id="map-empty-text">
-        DXF 파일을 업로드하고<br>
+        DXF/SHP 파일을 업로드하고<br>
         <strong>위치도 생성</strong>을 클릭하세요
       </div>
     </div>
@@ -1155,6 +1167,8 @@ proj4.defs([
 
 /* ── 전역 상태 ── */
 let map, dxfData = null, drawnLayers = [], selectedLayers = new Set();
+let lastUploadedFileType = null; // 'dxf' | 'shp' 마지막 업로드 파일 종류 (좌표계 기본값 결정에 사용)
+let mapHasBeenGenerated = false; // 좌표계 변경 후 "다시 변환" 버튼 노출 여부 판단
 let northCtrl = null, scaleCtrl = null;
 let showNorth = true, showScale = true, showTitle = true;
 let currentTileSat = null, currentTileLabel = null, currentTileBase = null;
@@ -1386,29 +1400,174 @@ dropzone.addEventListener('drop', e => {
 fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
 
 function handleFile(file) {
-  if (!file.name.toLowerCase().endsWith('.dxf')) {
-    toast('DXF 파일만 지원합니다.', 'error'); return;
+  const lower = file.name.toLowerCase();
+  const isDxf = lower.endsWith('.dxf');
+  const isShp = lower.endsWith('.shp');
+  const isZip = lower.endsWith('.zip');
+
+  if (!isDxf && !isShp && !isZip) {
+    toast('DXF, SHP, 또는 SHP가 포함된 ZIP 파일만 지원합니다.', 'error'); return;
   }
+
   document.getElementById('file-name').textContent = file.name;
   document.getElementById('file-meta').textContent = `${(file.size/1024).toFixed(1)} KB`;
   document.getElementById('file-chip').classList.add('show');
-  setStep(2); setProgress(true, 'DXF 파싱 중...', 25);
 
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      dxfData = parseDXF(e.target.result);
-      renderLayerList(dxfData.layers);
-      setProgress(true, '파싱 완료', 100);
-      setTimeout(() => setProgress(false), 500);
-      document.getElementById('btn-gen').disabled = false;
-      toast(`${dxfData.entities.length}개 엔티티, ${dxfData.layers.size}개 레이어 인식`, 'success');
-    } catch(err) {
-      setProgress(false);
-      toast('파싱 오류: ' + err.message, 'error');
-    }
-  };
-  reader.readAsText(file, 'euc-kr');
+  if (isDxf) {
+    lastUploadedFileType = 'dxf';
+    setDefaultCrs('dxf');
+    setStep(2); setProgress(true, 'DXF 파싱 중...', 25);
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        dxfData = parseDXF(e.target.result);
+        renderLayerList(dxfData.layers);
+        setProgress(true, '파싱 완료', 100);
+        setTimeout(() => setProgress(false), 500);
+        document.getElementById('btn-gen').disabled = false;
+        toast(`${dxfData.entities.length}개 엔티티, ${dxfData.layers.size}개 레이어 인식`, 'success');
+      } catch(err) {
+        setProgress(false);
+        toast('파싱 오류: ' + err.message, 'error');
+      }
+    };
+    reader.readAsText(file, 'euc-kr');
+  } else {
+    lastUploadedFileType = 'shp';
+    setDefaultCrs('shp');
+    // SHP 또는 ZIP(SHP+DBF+PRJ 묶음)
+    setStep(2); setProgress(true, 'SHP 파싱 중...', 25);
+    const reader = new FileReader();
+    reader.onload = async e => {
+      try {
+        dxfData = await parseSHP(e.target.result, isShp);
+        renderLayerList(dxfData.layers);
+        setProgress(true, '파싱 완료', 100);
+        setTimeout(() => setProgress(false), 500);
+        document.getElementById('btn-gen').disabled = false;
+        toast(`${dxfData.entities.length}개 엔티티, ${dxfData.layers.size}개 레이어 인식 (KRAS 주제도 기준 GRS80 중부원점으로 기본 설정됨)`, 'success');
+      } catch(err) {
+        setProgress(false);
+        toast('SHP 파싱 오류: ' + err.message, 'error');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+}
+
+/* 파일 종류에 맞춰 좌표계 select 기본값을 자동 지정.
+   - SHP: KRAS 주제도 표준인 GRS80 중부원점(EPSG:5186)을 기본으로
+   - DXF: 기존 관행대로 Bessel 중부원점(EPSG:5174)을 기본으로
+   사용자가 이후 직접 select를 바꾸면 onCrsChange()가 "다시 변환" 버튼을 노출시킨다. */
+function setDefaultCrs(fileType) {
+  const select = document.getElementById('src-crs');
+  select.value = (fileType === 'shp') ? '5186' : '5174';
+  document.getElementById('btn-reproject').style.display = 'none';
+  updateCrsNote(fileType);
+}
+
+function updateCrsNote(fileType) {
+  const note = document.getElementById('crs-auto-note');
+  if (fileType === 'shp') {
+    note.textContent = '→ KRAS 주제도 기본값(GRS80 중부원점) 적용, WGS84로 자동 변환';
+  } else {
+    note.textContent = '→ WGS84 자동 변환 후 위성지도 표시';
+  }
+}
+
+/* 좌표계를 사용자가 직접 변경했을 때: 이미 지도가 생성된 상태라면
+   "다시 변환" 버튼을 노출시켜, 새로 고른 좌표계로 재계산할 수 있게 한다. */
+function onCrsChange() {
+  if (mapHasBeenGenerated && dxfData) {
+    document.getElementById('btn-reproject').style.display = 'block';
+  }
+}
+
+/* 좌표계를 바꾼 뒤 다시 누르는 변환 버튼 — generateMap()을 그대로 재호출. */
+function reprojectAndRegenerate() {
+  document.getElementById('btn-reproject').style.display = 'none';
+  generateMap();
+}
+
+/* ── SHP 파서 (shpjs 라이브러리 사용) ──
+   .shp 단일 파일 또는 .shp/.dbf/.prj를 포함한 .zip 모두 지원.
+   결과를 DXF 파서와 동일한 { entities, layers } 형식으로 변환하여
+   이후 로직(generateMap 등)을 그대로 재사용한다. */
+async function parseSHP(arrayBuffer, isSingleShp) {
+  if (typeof shp === 'undefined') {
+    throw new Error('shpjs 라이브러리를 불러오지 못했습니다. 네트워크 연결을 확인하세요.');
+  }
+
+  // shpjs는 GeoJSON(FeatureCollection)을 반환한다.
+  // .shp 단일 파일은 shp.parseShp, .zip은 shp() 통합 함수로 처리.
+  let geojson;
+  if (isSingleShp) {
+    const coords = shp.parseShp(arrayBuffer); // geometry만 반환 (속성 없음)
+    geojson = { type: 'FeatureCollection', features: coords.map(geom => ({ type:'Feature', properties:{}, geometry: geomToGeoJSON(geom) })) };
+  } else {
+    geojson = await shp(arrayBuffer); // zip → FeatureCollection (or array of them)
+  }
+
+  // shp()가 여러 레이어(배열)를 반환하는 경우 합치기
+  const collections = Array.isArray(geojson) ? geojson : [geojson];
+
+  const entities = [], layers = new Map();
+
+  function addEnt(type, layer, pts) {
+    const e = { type, layer: layer || '0', pts };
+    entities.push(e);
+    if (!layers.has(e.layer)) layers.set(e.layer, []);
+    layers.get(e.layer).push(e);
+  }
+
+  function ringToPts(ring) {
+    return ring.map(([x, y]) => ({ x, y }));
+  }
+
+  collections.forEach((fc, fcIdx) => {
+    const fcName = (fc && fc.fileName) ? fc.fileName : `SHP${fcIdx + 1}`;
+    (fc.features || []).forEach(feat => {
+      const geom = feat.geometry;
+      if (!geom) return;
+      // 속성 중 레이어명으로 쓸만한 필드가 있으면 사용, 없으면 파일명 사용
+      const props = feat.properties || {};
+      const layerName = props.LAYER || props.layer || props.Layer || fcName;
+
+      switch (geom.type) {
+        case 'Polygon':
+          geom.coordinates.forEach(ring => addEnt('LWPOLYLINE', layerName, ringToPts(ring)));
+          break;
+        case 'MultiPolygon':
+          geom.coordinates.forEach(poly => poly.forEach(ring => addEnt('LWPOLYLINE', layerName, ringToPts(ring))));
+          break;
+        case 'LineString':
+          addEnt('LWPOLYLINE', layerName, ringToPts(geom.coordinates));
+          break;
+        case 'MultiLineString':
+          geom.coordinates.forEach(line => addEnt('LWPOLYLINE', layerName, ringToPts(line)));
+          break;
+        case 'Point':
+          addEnt('POINT', layerName, [{ x: geom.coordinates[0], y: geom.coordinates[1] }]);
+          break;
+        case 'MultiPoint':
+          geom.coordinates.forEach(([x, y]) => addEnt('POINT', layerName, [{ x, y }]));
+          break;
+      }
+    });
+  });
+
+  if (entities.length === 0) {
+    throw new Error('SHP에서 도형을 찾지 못했습니다.');
+  }
+
+  return { entities, layers };
+}
+
+/* shp.parseShp()가 반환하는 raw geometry 객체를 GeoJSON geometry로 보정.
+   (버전에 따라 이미 GeoJSON 형태로 오는 경우 그대로 통과시킴) */
+function geomToGeoJSON(geom) {
+  if (geom && geom.type && geom.coordinates) return geom; // 이미 GeoJSON
+  return geom;
 }
 
 /* ── DXF 파서 ── */
@@ -1533,7 +1692,7 @@ function renderLayerList(layers) {
 
 /* ── 위치도 생성 ── */
 async function generateMap() {
-  if (!dxfData) { toast('DXF 파일을 먼저 업로드하세요.', 'error'); return; }
+  if (!dxfData) { toast('DXF/SHP 파일을 먼저 업로드하세요.', 'error'); return; }
   setStep(3); setProgress(true, '좌표 변환 중...', 30);
 
   const epsg = document.getElementById('src-crs').value;
@@ -1591,6 +1750,7 @@ async function generateMap() {
   document.getElementById('export-btns').style.display = 'block';
   setStep(4);
   toast('위치도가 생성되었습니다!', 'success');
+  mapHasBeenGenerated = true;
 }
 
 function fitAll() {
@@ -1717,6 +1877,9 @@ async function exportPDF() {
 /* ── 초기화 ── */
 function resetAll() {
   dxfData = null;
+  lastUploadedFileType = null;
+  mapHasBeenGenerated = false;
+  document.getElementById('btn-reproject').style.display = 'none';
   drawnLayers.forEach(l => map.removeLayer(l));
   drawnLayers = []; selectedLayers.clear();
   document.getElementById('layer-list').innerHTML = '';
