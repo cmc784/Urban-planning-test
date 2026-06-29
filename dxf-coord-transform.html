@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DXF 좌표변환</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #f4f2ee;
+  --white: #fff;
+  --ink: #1a1a1a;
+  --ink2: #444;
+  --ink3: #888;
+  --border: #ddd9d0;
+  --border2: #eceae4;
+  --green: #1a5c3a;
+  --green-light: #e6f2eb;
+  --green-mid: #2e7d52;
+  --blue: #1a3a6e;
+  --blue-light: #e8f0fc;
+  --amber: #b45309;
+  --amber-light: #fef3cd;
+  --red: #b91c1c;
+  --red-light: #fee2e2;
+  --purple: #5b21b6;
+  --purple-light: #ede9fe;
+  --teal: #0f766e;
+  --teal-light: #ccfbf1;
+  --shadow: 0 1px 4px rgba(0,0,0,0.07);
+  --shadow-md: 0 4px 20px rgba(0,0,0,0.10);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.13);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--ink); min-height:100vh; }
+
+/* TOPBAR */
+.topbar {
+  background:var(--purple); color:white;
+  padding:0 28px; height:54px;
+  display:flex; align-items:center; justify-content:space-between;
+  position:sticky; top:0; z-index:200;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.topbar-left { display:flex; align-items:center; gap:12px; }
+.back-btn {
+  background:rgba(255,255,255,0.15); border:none; color:white;
+  padding:6px 14px; border-radius:7px; font-size:12px; font-weight:700;
+  cursor:pointer; font-family:'Noto Sans KR',sans-serif;
+  display:flex; align-items:center; gap:5px; transition:background 0.15s;
+}
+.back-btn:hover { background:rgba(255,255,255,0.28); }
+.topbar-title { font-size:15px; font-weight:700; }
+.topbar-badge {
+  background:rgba(255,255,255,0.18); border-radius:5px;
+  padding:3px 10px; font-size:11px; font-weight:600;
+}
+
+/* MAIN */
+.main { max-width:900px; margin:0 auto; padding:32px 20px 80px; }
+
+/* SECTION TITLE */
+.section-title {
+  font-size:11px; font-weight:800; text-transform:uppercase;
+  letter-spacing:1px; color:var(--ink3); font-family:'DM Mono',monospace;
+  margin-bottom:14px; display:flex; align-items:center; gap:8px;
+}
+.section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+/* CARD */
+.card {
+  background:var(--white); border:1px solid var(--border);
+  border-radius:14px; padding:24px; margin-bottom:20px;
+  box-shadow:var(--shadow);
+}
+.card-title {
+  font-size:14px; font-weight:800; color:var(--ink); margin-bottom:4px;
+}
+.card-desc {
+  font-size:12px; color:var(--ink3); margin-bottom:16px; line-height:1.6;
+}
+
+/* UPLOAD ZONE */
+.upload-zone {
+  border:2px dashed var(--border); border-radius:12px;
+  padding:40px 20px; text-align:center; cursor:pointer;
+  transition:all 0.2s; background:var(--bg);
+}
+.upload-zone:hover, .upload-zone.dragover {
+  border-color:var(--purple); background:var(--purple-light);
+}
+.upload-zone.has-file {
+  border-color:var(--green); background:var(--green-light);
+  border-style:solid;
+}
+.upload-icon { font-size:36px; margin-bottom:10px; }
+.upload-main { font-size:14px; font-weight:700; color:var(--ink); margin-bottom:4px; }
+.upload-sub { font-size:12px; color:var(--ink3); }
+.upload-file-info {
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  margin-top:8px;
+}
+.upload-file-name {
+  font-size:13px; font-weight:600; color:var(--green);
+  font-family:'DM Mono',monospace;
+}
+.upload-remove {
+  background:none; border:none; cursor:pointer; font-size:14px;
+  color:var(--ink3); padding:2px 6px; border-radius:4px;
+}
+.upload-remove:hover { background:var(--red-light); color:var(--red); }
+
+/* CRS SELECT */
+.crs-row { display:grid; grid-template-columns:1fr auto 1fr; gap:12px; align-items:end; }
+.crs-group { display:flex; flex-direction:column; gap:6px; }
+.crs-label {
+  font-size:11px; font-weight:700; color:var(--ink3);
+  text-transform:uppercase; letter-spacing:0.6px;
+  font-family:'DM Mono',monospace;
+}
+.crs-select {
+  padding:10px 14px; border:1.5px solid var(--border); border-radius:10px;
+  font-size:13px; font-family:'Noto Sans KR',sans-serif; color:var(--ink);
+  background:var(--white); cursor:pointer; outline:none;
+  transition:border 0.15s; width:100%; appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' stroke='%23888' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 12px center;
+  padding-right:32px;
+}
+.crs-select:focus { border-color:var(--purple); box-shadow:0 0 0 3px rgba(91,33,182,0.08); }
+.crs-swap {
+  width:40px; height:40px; border:1.5px solid var(--border); border-radius:10px;
+  background:var(--white); cursor:pointer; font-size:18px;
+  display:flex; align-items:center; justify-content:center;
+  transition:all 0.2s; margin-bottom:0;
+}
+.crs-swap:hover { background:var(--purple-light); border-color:var(--purple); }
+.crs-detail {
+  font-size:11px; color:var(--ink3); margin-top:4px;
+  font-family:'DM Mono',monospace; min-height:16px;
+}
+
+/* DETECTED BADGE */
+.detect-badge {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:4px 10px; border-radius:8px; font-size:11px; font-weight:600;
+  background:var(--purple-light); color:var(--purple);
+  margin-top:8px;
+}
+
+/* TRANSFORM BUTTON */
+.transform-btn {
+  width:100%; padding:14px; background:var(--purple); color:white;
+  border:none; border-radius:12px; font-size:15px; font-weight:700;
+  font-family:'Noto Sans KR',sans-serif; cursor:pointer;
+  transition:all 0.2s; display:flex; align-items:center;
+  justify-content:center; gap:8px;
+}
+.transform-btn:hover:not(:disabled) { background:#4c1d95; }
+.transform-btn:disabled { background:var(--border); color:var(--ink3); cursor:default; }
+
+/* STATS */
+.stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:16px; }
+.stat-box {
+  background:var(--bg); border-radius:10px; padding:12px 14px; text-align:center;
+}
+.stat-num {
+  font-size:20px; font-weight:800; font-family:'DM Mono',monospace;
+  color:var(--purple);
+}
+.stat-lbl {
+  font-size:10px; color:var(--ink3); font-weight:600;
+  text-transform:uppercase; letter-spacing:0.5px;
+  font-family:'DM Mono',monospace; margin-top:2px;
+}
+
+/* PREVIEW TABLE */
+.preview-wrap {
+  max-height:320px; overflow-y:auto; border:1px solid var(--border2);
+  border-radius:10px;
+}
+.preview-table {
+  width:100%; border-collapse:collapse; font-size:11px;
+  font-family:'DM Mono',monospace;
+}
+.preview-table th {
+  background:var(--bg); position:sticky; top:0;
+  padding:8px 10px; text-align:left; font-weight:700;
+  color:var(--ink3); font-size:10px; text-transform:uppercase;
+  letter-spacing:0.5px; border-bottom:1px solid var(--border);
+}
+.preview-table td {
+  padding:6px 10px; border-bottom:1px solid var(--border2); color:var(--ink2);
+}
+.preview-table tr:hover td { background:var(--purple-light); }
+.coord-old { color:var(--ink3); }
+.coord-new { color:var(--purple); font-weight:600; }
+
+/* DOWNLOAD */
+.download-row { display:flex; gap:10px; margin-top:16px; }
+.dl-btn {
+  flex:1; padding:12px; border:1.5px solid var(--purple); border-radius:10px;
+  background:var(--white); color:var(--purple); font-size:13px; font-weight:700;
+  font-family:'Noto Sans KR',sans-serif; cursor:pointer; transition:all 0.15s;
+  display:flex; align-items:center; justify-content:center; gap:6px;
+}
+.dl-btn:hover { background:var(--purple-light); }
+.dl-btn.primary { background:var(--purple); color:white; border-color:var(--purple); }
+.dl-btn.primary:hover { background:#4c1d95; }
+
+/* LOG */
+.log-box {
+  background:var(--ink); color:#a8e6a3; border-radius:10px;
+  padding:14px 16px; font-size:11px; font-family:'DM Mono',monospace;
+  max-height:180px; overflow-y:auto; line-height:1.7;
+}
+.log-box .log-warn { color:#fbbf24; }
+.log-box .log-err  { color:#f87171; }
+.log-box .log-info { color:#93c5fd; }
+
+/* CANVAS PREVIEW */
+.canvas-wrap {
+  border:1px solid var(--border2); border-radius:10px;
+  overflow:hidden; position:relative; background:#1e1e2e;
+}
+.preview-canvas { width:100%; height:300px; display:block; }
+.canvas-legend {
+  position:absolute; bottom:10px; right:10px;
+  background:rgba(0,0,0,0.7); border-radius:8px; padding:8px 12px;
+  display:flex; gap:12px; font-size:10px; font-family:'DM Mono',monospace;
+}
+.legend-item { display:flex; align-items:center; gap:4px; color:#ccc; }
+.legend-dot { width:8px; height:8px; border-radius:50%; }
+
+/* TOAST */
+.toast {
+  position:fixed; bottom:24px; left:50%;
+  transform:translateX(-50%) translateY(80px);
+  background:var(--ink); color:white; padding:10px 22px;
+  border-radius:30px; font-size:13px; font-weight:500;
+  z-index:999; transition:transform 0.3s ease; pointer-events:none;
+}
+.toast.show { transform:translateX(-50%) translateY(0); }
+
+/* HIDDEN */
+.hidden { display:none !important; }
+
+/* RESPONSIVE */
+@media(max-width:640px) {
+  .crs-row { grid-template-columns:1fr; }
+  .crs-swap { width:100%; height:36px; }
+  .stats-grid { grid-template-columns:1fr 1fr; }
+  .download-row { flex-direction:column; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <button class="back-btn" onclick="history.back()">← 돌아가기</button>
+    <span class="topbar-title">DXF 좌표변환</span>
+  </div>
+  <span class="topbar-badge">🔄 좌표계 변환</span>
+</div>
+
+<div class="main">
+
+  <!-- 1. 파일 업로드 -->
+  <div class="section-title">파일 업로드</div>
+  <div class="card">
+    <div class="upload-zone" id="uploadZone"
+         onclick="document.getElementById('fileInput').click()">
+      <div class="upload-icon">📐</div>
+      <div class="upload-main">DXF 파일을 여기에 놓거나 클릭하여 선택</div>
+      <div class="upload-sub">.dxf 파일만 지원됩니다</div>
+    </div>
+    <input type="file" id="fileInput" accept=".dxf" style="display:none">
+  </div>
+
+  <!-- 2. 좌표계 설정 -->
+  <div class="section-title">좌표계 설정</div>
+  <div class="card" id="crsCard">
+    <div class="crs-row">
+      <div class="crs-group">
+        <span class="crs-label">원본 좌표계 (Source)</span>
+        <select class="crs-select" id="srcCrs">
+          <optgroup label="GRS80 TM (현행)">
+            <option value="EPSG5186">EPSG:5186 — TM 중부원점 (GRS80)</option>
+            <option value="EPSG5185">EPSG:5185 — TM 서부원점 (GRS80)</option>
+            <option value="EPSG5187">EPSG:5187 — TM 동부원점 (GRS80)</option>
+            <option value="EPSG5188">EPSG:5188 — TM 동해원점 (GRS80)</option>
+          </optgroup>
+          <optgroup label="Bessel TM (구좌표계)">
+            <option value="EPSG5174">EPSG:5174 — TM 중부원점 (Bessel 보정)</option>
+            <option value="EPSG5175">EPSG:5175 — TM 서부원점 (Bessel 보정)</option>
+            <option value="EPSG5176">EPSG:5176 — TM 동부원점 (Bessel 보정)</option>
+          </optgroup>
+          <optgroup label="UTM-K">
+            <option value="EPSG5179">EPSG:5179 — UTM-K (GRS80)</option>
+          </optgroup>
+          <optgroup label="글로벌">
+            <option value="EPSG4326">EPSG:4326 — WGS84 경위도</option>
+          </optgroup>
+        </select>
+        <div class="crs-detail" id="srcDetail">중부원점 127°E · FE 200,000 · FN 600,000</div>
+      </div>
+
+      <button class="crs-swap" onclick="swapCrs()" title="좌표계 교환">⇄</button>
+
+      <div class="crs-group">
+        <span class="crs-label">대상 좌표계 (Target)</span>
+        <select class="crs-select" id="tgtCrs">
+          <optgroup label="GRS80 TM (현행)">
+            <option value="EPSG5186">EPSG:5186 — TM 중부원점 (GRS80)</option>
+            <option value="EPSG5185">EPSG:5185 — TM 서부원점 (GRS80)</option>
+            <option value="EPSG5187">EPSG:5187 — TM 동부원점 (GRS80)</option>
+            <option value="EPSG5188">EPSG:5188 — TM 동해원점 (GRS80)</option>
+          </optgroup>
+          <optgroup label="Bessel TM (구좌표계)">
+            <option value="EPSG5174" selected>EPSG:5174 — TM 중부원점 (Bessel 보정)</option>
+            <option value="EPSG5175">EPSG:5175 — TM 서부원점 (Bessel 보정)</option>
+            <option value="EPSG5176">EPSG:5176 — TM 동부원점 (Bessel 보정)</option>
+          </optgroup>
+          <optgroup label="UTM-K">
+            <option value="EPSG5179">EPSG:5179 — UTM-K (GRS80)</option>
+          </optgroup>
+          <optgroup label="글로벌">
+            <option value="EPSG4326">EPSG:4326 — WGS84 경위도</option>
+          </optgroup>
+        </select>
+        <div class="crs-detail" id="tgtDetail">Bessel 중부 보정 · FE 200,000 · FN 500,000</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. 변환 버튼 -->
+  <div class="card" style="padding:16px 24px">
+    <button class="transform-btn" id="transformBtn" onclick="runTransform()" disabled>
+      <span>🔄</span> 좌표 변환 실행
+    </button>
+  </div>
+
+  <!-- 4. 결과 영역 (숨김) -->
+  <div id="resultArea" class="hidden">
+
+    <!-- 변환 통계 -->
+    <div class="section-title">변환 결과</div>
+    <div class="card">
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-num" id="rEntities">0</div>
+          <div class="stat-lbl">엔티티</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" id="rPoints">0</div>
+          <div class="stat-lbl">좌표점</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" id="rTime">0</div>
+          <div class="stat-lbl">처리 시간(ms)</div>
+        </div>
+      </div>
+
+      <!-- 시각화 -->
+      <div class="canvas-wrap">
+        <canvas class="preview-canvas" id="previewCanvas"></canvas>
+        <div class="canvas-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#6366f1"></div>변환 전</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#34d399"></div>변환 후</div>
+        </div>
+      </div>
+
+      <!-- 다운로드 -->
+      <div class="download-row">
+        <button class="dl-btn primary" onclick="downloadDxf()">📥 변환된 DXF 다운로드</button>
+        <button class="dl-btn" onclick="downloadLog()">📋 변환 로그 저장</button>
+      </div>
+    </div>
+
+    <!-- 좌표 미리보기 -->
+    <div class="section-title">좌표 미리보기 <span style="font-weight:400;text-transform:none;letter-spacing:0;font-family:'Noto Sans KR',sans-serif;font-size:11px">(상위 100개)</span></div>
+    <div class="card" style="padding:0; overflow:hidden;">
+      <div class="preview-wrap">
+        <table class="preview-table" id="previewTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>엔티티</th>
+              <th>원본 X</th>
+              <th>원본 Y</th>
+              <th>변환 X</th>
+              <th>변환 Y</th>
+            </tr>
+          </thead>
+          <tbody id="previewBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 변환 로그 -->
+    <div class="section-title">변환 로그</div>
+    <div class="card" style="padding:0; overflow:hidden;">
+      <div class="log-box" id="logBox"></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  좌표계 정의 (Ellipsoid + Projection Parameters)
+// ═══════════════════════════════════════════════════════
+
+const ELLIPSOID = {
+  GRS80: { a: 6378137.0, f: 1/298.257222101 },
+  BESSEL: { a: 6377397.155, f: 1/299.1528128 }
+};
+
+// Bessel → GRS80(≈WGS84) Molodensky parameters
+const DATUM_BESSEL_TO_GRS80 = { dx: -145.907, dy: 505.034, dz: 685.756 };
+
+const CRS_DEFS = {
+  // ── GRS80 TM ──
+  EPSG5186: { name:'TM 중부원점 (GRS80)', epsg:'5186', ellipsoid:'GRS80', type:'TM',
+              lat0:38, lon0:127, fe:200000, fn:600000,  k0:1.0 },
+  EPSG5185: { name:'TM 서부원점 (GRS80)', epsg:'5185', ellipsoid:'GRS80', type:'TM',
+              lat0:38, lon0:125, fe:200000, fn:600000,  k0:1.0 },
+  EPSG5187: { name:'TM 동부원점 (GRS80)', epsg:'5187', ellipsoid:'GRS80', type:'TM',
+              lat0:38, lon0:129, fe:200000, fn:600000,  k0:1.0 },
+  EPSG5188: { name:'TM 동해원점 (GRS80)', epsg:'5188', ellipsoid:'GRS80', type:'TM',
+              lat0:38, lon0:131, fe:200000, fn:600000,  k0:1.0 },
+  // ── Bessel TM 보정 ──
+  EPSG5174: { name:'TM 중부원점 (Bessel)', epsg:'5174', ellipsoid:'BESSEL', type:'TM',
+              lat0:38, lon0:127 + 10.405/3600, fe:200000, fn:500000, k0:1.0 },
+  EPSG5175: { name:'TM 서부원점 (Bessel)', epsg:'5175', ellipsoid:'BESSEL', type:'TM',
+              lat0:38, lon0:125 + 10.405/3600, fe:200000, fn:500000, k0:1.0 },
+  EPSG5176: { name:'TM 동부원점 (Bessel)', epsg:'5176', ellipsoid:'BESSEL', type:'TM',
+              lat0:38, lon0:129 + 10.405/3600, fe:200000, fn:500000, k0:1.0 },
+  // ── UTM-K ──
+  EPSG5179: { name:'UTM-K (GRS80)', epsg:'5179', ellipsoid:'GRS80', type:'TM',
+              lat0:38, lon0:127.5, fe:1000000, fn:2000000, k0:0.9996 },
+  // ── WGS84 경위도 ──
+  EPSG4326: { name:'WGS84 경위도', epsg:'4326', ellipsoid:'GRS80', type:'LONLAT',
+              lat0:0, lon0:0, fe:0, fn:0, k0:1.0 }
+};
+
+// ═══════════════════════════════════════════════════════
+//  수학 유틸
+// ═══════════════════════════════════════════════════════
+const DEG = Math.PI / 180;
+const RAD = 180 / Math.PI;
+
+function ellipsoidParams(name) {
+  const e = ELLIPSOID[name];
+  const a = e.a, f = e.f;
+  const b = a * (1 - f);
+  const e2 = 2*f - f*f;          // first eccentricity squared
+  const ep2 = e2 / (1 - e2);     // second eccentricity squared
+  return { a, b, f, e2, ep2 };
+}
+
+// ── TM 정변환 (Geographic → TM) ──
+function tmForward(latDeg, lonDeg, crs) {
+  const def = CRS_DEFS[crs];
+  const ep = ellipsoidParams(def.ellipsoid);
+  const { a, e2, ep2 } = ep;
+  const k0 = def.k0;
+
+  const phi = latDeg * DEG;
+  const lam = lonDeg * DEG;
+  const lam0 = def.lon0 * DEG;
+  const phi0 = def.lat0 * DEG;
+
+  const sinP = Math.sin(phi), cosP = Math.cos(phi), tanP = Math.tan(phi);
+  const N = a / Math.sqrt(1 - e2 * sinP * sinP);
+  const T = tanP * tanP;
+  const C = ep2 * cosP * cosP;
+  const A = (lam - lam0) * cosP;
+
+  // Meridional arc from equator
+  const M = meridionalArc(phi, ep);
+  const M0 = meridionalArc(phi0, ep);
+
+  const x = k0 * N * (A + A*A*A/6*(1-T+C) + A*A*A*A*A/120*(5-18*T+T*T+72*C-58*ep2));
+  const y = k0 * (M - M0 + N * tanP * (A*A/2 + A*A*A*A/24*(5-T+9*C+4*C*C)
+            + A*A*A*A*A*A/720*(61-58*T+T*T+600*C-330*ep2)));
+
+  return { x: x + def.fe, y: y + def.fn };
+}
+
+// ── TM 역변환 (TM → Geographic) ──
+function tmInverse(easting, northing, crs) {
+  const def = CRS_DEFS[crs];
+  const ep = ellipsoidParams(def.ellipsoid);
+  const { a, e2, ep2 } = ep;
+  const k0 = def.k0;
+
+  const x = easting - def.fe;
+  const y = northing - def.fn;
+
+  const M0 = meridionalArc(def.lat0 * DEG, ep);
+  const M = M0 + y / k0;
+
+  const mu = M / (a * (1 - e2/4 - 3*e2*e2/64 - 5*e2*e2*e2/256));
+  const e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2));
+
+  const phi1 = mu + (3*e1/2 - 27*e1*e1*e1/32)*Math.sin(2*mu)
+             + (21*e1*e1/16 - 55*e1*e1*e1*e1/32)*Math.sin(4*mu)
+             + (151*e1*e1*e1/96)*Math.sin(6*mu)
+             + (1097*e1*e1*e1*e1/512)*Math.sin(8*mu);
+
+  const sinP1 = Math.sin(phi1), cosP1 = Math.cos(phi1), tanP1 = Math.tan(phi1);
+  const N1 = a / Math.sqrt(1 - e2 * sinP1 * sinP1);
+  const R1 = a * (1 - e2) / Math.pow(1 - e2 * sinP1 * sinP1, 1.5);
+  const T1 = tanP1 * tanP1;
+  const C1 = ep2 * cosP1 * cosP1;
+  const D = x / (N1 * k0);
+
+  const lat = phi1 - (N1 * tanP1 / R1) * (D*D/2 - (5 + 3*T1 + 10*C1 - 4*C1*C1 - 9*ep2)*D*D*D*D/24
+              + (61 + 90*T1 + 298*C1 + 45*T1*T1 - 252*ep2 - 3*C1*C1)*D*D*D*D*D*D/720);
+  const lon = (def.lon0 * DEG) + (D - (1 + 2*T1 + C1)*D*D*D/6
+              + (5 - 2*C1 + 28*T1 - 3*C1*C1 + 8*ep2 + 24*T1*T1)*D*D*D*D*D/120) / cosP1;
+
+  return { lat: lat * RAD, lon: lon * RAD };
+}
+
+// ── 자오선 호장 ──
+function meridionalArc(phi, ep) {
+  const { a, e2 } = ep;
+  const n = e2;
+  return a * ((1 - n/4 - 3*n*n/64 - 5*n*n*n/256) * phi
+            - (3*n/8 + 3*n*n/32 + 45*n*n*n/1024) * Math.sin(2*phi)
+            + (15*n*n/256 + 45*n*n*n/1024) * Math.sin(4*phi)
+            - (35*n*n*n/3072) * Math.sin(6*phi));
+}
+
+// ── Molodensky 변환 (Bessel ↔ GRS80) ──
+function molodenskyTransform(latDeg, lonDeg, h, fromEllip, toEllip, dx, dy, dz) {
+  const from = ellipsoidParams(fromEllip);
+  const to = ellipsoidParams(toEllip);
+  const da = to.a - from.a;
+  const df = to.f - from.f;
+
+  const phi = latDeg * DEG;
+  const lam = lonDeg * DEG;
+  const sinP = Math.sin(phi), cosP = Math.cos(phi);
+  const sinL = Math.sin(lam), cosL = Math.cos(lam);
+
+  const { a, f, e2 } = from;
+  const Rn = a / Math.sqrt(1 - e2 * sinP * sinP);
+  const Rm = a * (1 - e2) / Math.pow(1 - e2 * sinP * sinP, 1.5);
+
+  const dPhi = (-dx*sinP*cosL - dy*sinP*sinL + dz*cosP
+               + da*(Rn*e2*sinP*cosP)/a
+               + df*(Rm*(a/(a*(1-f)))+Rn*((a*(1-f))/a))*sinP*cosP) / (Rm + h);
+  const dLam = (-dx*sinL + dy*cosL) / ((Rn + h) * cosP);
+  const dH = dx*cosP*cosL + dy*cosP*sinL + dz*sinP
+            - da*a/Rn + df*(a*(1-f))*Rn*sinP*sinP/a;
+
+  return {
+    lat: latDeg + dPhi * RAD,
+    lon: lonDeg + dLam * RAD,
+    h: h + dH
+  };
+}
+
+// ═══════════════════════════════════════════════════════
+//  좌표 변환 메인 함수
+// ═══════════════════════════════════════════════════════
+
+function transformCoord(x, y, srcCrs, tgtCrs) {
+  if (srcCrs === tgtCrs) return { x, y };
+  const src = CRS_DEFS[srcCrs];
+  const tgt = CRS_DEFS[tgtCrs];
+
+  // Step 1: Source → Geographic (on source ellipsoid)
+  let lat, lon;
+  if (src.type === 'LONLAT') {
+    // x=lon, y=lat for EPSG:4326
+    lon = x; lat = y;
+  } else {
+    // TM inverse: DXF convention x=easting, y=northing
+    const geo = tmInverse(x, y, srcCrs);
+    lat = geo.lat; lon = geo.lon;
+  }
+
+  // Step 2: Datum transformation if ellipsoids differ
+  const srcE = src.ellipsoid;
+  const tgtE = tgt.ellipsoid;
+  if (srcE !== tgtE) {
+    if (srcE === 'BESSEL' && (tgtE === 'GRS80')) {
+      const r = molodenskyTransform(lat, lon, 0, 'BESSEL', 'GRS80',
+                DATUM_BESSEL_TO_GRS80.dx, DATUM_BESSEL_TO_GRS80.dy, DATUM_BESSEL_TO_GRS80.dz);
+      lat = r.lat; lon = r.lon;
+    } else if (srcE === 'GRS80' && tgtE === 'BESSEL') {
+      const r = molodenskyTransform(lat, lon, 0, 'GRS80', 'BESSEL',
+                -DATUM_BESSEL_TO_GRS80.dx, -DATUM_BESSEL_TO_GRS80.dy, -DATUM_BESSEL_TO_GRS80.dz);
+      lat = r.lat; lon = r.lon;
+    }
+  }
+
+  // Step 3: Geographic → Target
+  if (tgt.type === 'LONLAT') {
+    return { x: lon, y: lat };
+  } else {
+    const proj = tmForward(lat, lon, tgtCrs);
+    return { x: proj.x, y: proj.y };
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  DXF 파싱 & 변환
+// ═══════════════════════════════════════════════════════
+
+// 좌표를 가지는 group code 세트
+const COORD_X_CODES = new Set([10,11,12,13,14,15,16,17,18]);
+const COORD_Y_CODES = new Set([20,21,22,23,24,25,26,27,28]);
+
+// 좌표 변환 대상 엔티티
+const ENTITY_TYPES = new Set([
+  'POINT','LINE','CIRCLE','ARC','ELLIPSE','POLYLINE','LWPOLYLINE',
+  'VERTEX','3DFACE','SOLID','TRACE','INSERT','TEXT','MTEXT',
+  'SPLINE','LEADER','DIMENSION','HATCH','IMAGE','ATTRIB','ATTDEF'
+]);
+
+function parseDxfPairs(text) {
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  const pairs = [];
+  for (let i = 0; i < lines.length - 1; i += 2) {
+    const code = parseInt(lines[i].trim(), 10);
+    const val = lines[i + 1]; // preserve original spacing for non-coord values
+    if (!isNaN(code)) {
+      pairs.push({ code, val, lineIdx: i });
+    }
+  }
+  return pairs;
+}
+
+function transformDxf(dxfText, srcCrs, tgtCrs) {
+  const pairs = parseDxfPairs(dxfText);
+  const lines = dxfText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  const results = []; // [{entity, oldX, oldY, newX, newY}]
+
+  let inEntities = false;
+  let currentEntity = '';
+  let entityCount = 0;
+  let pointCount = 0;
+
+  // Coordinate buffer: we need X and Y together to transform
+  // Strategy: scan pairs, when we see group 10-18, peek ahead for matching 20-28
+  const coordEdits = []; // [{xLineIdx, yLineIdx, newX, newY}]
+
+  for (let i = 0; i < pairs.length; i++) {
+    const p = pairs[i];
+
+    // Track ENTITIES section
+    if (p.code === 2 && p.val.trim() === 'ENTITIES') inEntities = true;
+    if (p.code === 0 && p.val.trim() === 'ENDSEC' && inEntities) inEntities = false;
+
+    // Track entity type
+    if (p.code === 0 && ENTITY_TYPES.has(p.val.trim())) {
+      currentEntity = p.val.trim();
+      entityCount++;
+    }
+
+    // Only process inside ENTITIES section (or BLOCKS section entities)
+    if (p.code >= 10 && p.code <= 18 && COORD_X_CODES.has(p.code)) {
+      const matchingYCode = p.code + 10; // 10→20, 11→21, etc
+      // Look ahead for matching Y
+      for (let j = i + 1; j < Math.min(i + 5, pairs.length); j++) {
+        if (pairs[j].code === matchingYCode) {
+          const oldX = parseFloat(p.val);
+          const oldY = parseFloat(pairs[j].val);
+          if (!isNaN(oldX) && !isNaN(oldY)) {
+            const t = transformCoord(oldX, oldY, srcCrs, tgtCrs);
+            coordEdits.push({
+              xLineIdx: p.lineIdx + 1,   // value is on the line after the code
+              yLineIdx: pairs[j].lineIdx + 1,
+              newX: t.x,
+              newY: t.y
+            });
+            pointCount++;
+            if (results.length < 100) {
+              results.push({
+                entity: currentEntity || '?',
+                oldX, oldY,
+                newX: t.x, newY: t.y
+              });
+            }
+          }
+          break;
+        }
+        // If we hit another X code or entity boundary, stop
+        if (pairs[j].code === 0 || COORD_X_CODES.has(pairs[j].code)) break;
+      }
+    }
+  }
+
+  // Apply edits to lines
+  const outLines = [...lines];
+  for (const edit of coordEdits) {
+    // Format to match DXF precision
+    const tgtDef = CRS_DEFS[tgtCrs];
+    if (tgtDef.type === 'LONLAT') {
+      outLines[edit.xLineIdx] = edit.newX.toFixed(10);
+      outLines[edit.yLineIdx] = edit.newY.toFixed(10);
+    } else {
+      outLines[edit.xLineIdx] = edit.newX.toFixed(6);
+      outLines[edit.yLineIdx] = edit.newY.toFixed(6);
+    }
+  }
+
+  return {
+    output: outLines.join('\n'),
+    entityCount,
+    pointCount,
+    preview: results,
+    // for canvas viz, collect all old/new coords
+    allOld: results.map(r => [r.oldX, r.oldY]),
+    allNew: results.map(r => [r.newX, r.newY])
+  };
+}
+
+// ═══════════════════════════════════════════════════════
+//  좌표계 자동 감지 (좌표 범위 기반 추정)
+// ═══════════════════════════════════════════════════════
+
+function detectCrs(dxfText) {
+  const pairs = parseDxfPairs(dxfText);
+  const xs = [], ys = [];
+  for (let i = 0; i < pairs.length; i++) {
+    if (pairs[i].code === 10) {
+      const v = parseFloat(pairs[i].val);
+      if (!isNaN(v)) xs.push(v);
+    }
+    if (pairs[i].code === 20) {
+      const v = parseFloat(pairs[i].val);
+      if (!isNaN(v)) ys.push(v);
+    }
+  }
+  if (xs.length === 0) return null;
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const avgX = (minX + maxX) / 2;
+  const avgY = (minY + maxY) / 2;
+
+  // WGS84 경위도 (한반도 범위)
+  if (avgX > 124 && avgX < 132 && avgY > 33 && avgY < 43) return 'EPSG4326';
+
+  // UTM-K: FE=1000000, FN=2000000 → X: ~900k~1100k, Y: ~1700k~2200k
+  if (avgX > 800000 && avgX < 1200000 && avgY > 1500000 && avgY < 2500000) return 'EPSG5179';
+
+  // TM 좌표계: FE=200000 → X: ~100k~350k
+  if (avgX > 80000 && avgX < 400000) {
+    // FN=600000 → Y: ~100k~700k (GRS80) vs FN=500000 → Y: ~0~600k (Bessel)
+    if (avgY > 500000) {
+      // Likely GRS80 TM (FN=600000)
+      // Determine origin by X range relative to FE=200000 and longitude
+      return 'EPSG5186'; // Default to 중부원점
+    } else {
+      // Likely Bessel TM (FN=500000)
+      return 'EPSG5174';
+    }
+  }
+
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════
+//  UI 제어
+// ═══════════════════════════════════════════════════════
+
+let loadedFile = null;
+let loadedText = null;
+let transformedDxf = null;
+let logLines = [];
+
+const uploadZone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('fileInput');
+const srcSel = document.getElementById('srcCrs');
+const tgtSel = document.getElementById('tgtCrs');
+const transformBtn = document.getElementById('transformBtn');
+
+// ── 파일 업로드 ──
+fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('dragover');
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+});
+
+function handleFile(file) {
+  if (!file) return;
+  if (!file.name.toLowerCase().endsWith('.dxf')) {
+    showToast('⚠️ DXF 파일만 업로드할 수 있습니다');
+    return;
+  }
+  loadedFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    loadedText = e.target.result;
+    uploadZone.classList.add('has-file');
+    uploadZone.innerHTML = `
+      <div class="upload-icon">✅</div>
+      <div class="upload-main">파일이 준비되었습니다</div>
+      <div class="upload-file-info">
+        <span class="upload-file-name">${file.name}</span>
+        <button class="upload-remove" onclick="event.stopPropagation(); clearFile()">✕</button>
+      </div>
+      <div class="upload-sub">${(file.size/1024).toFixed(1)} KB</div>
+    `;
+
+    // 좌표계 자동 감지
+    const detected = detectCrs(loadedText);
+    if (detected) {
+      srcSel.value = detected;
+      updateCrsDetail();
+      // 자동 감지 뱃지
+      const badge = document.createElement('div');
+      badge.className = 'detect-badge';
+      badge.innerHTML = `🎯 좌표계 자동 감지: <strong>${CRS_DEFS[detected].name}</strong>`;
+      uploadZone.appendChild(badge);
+    }
+
+    transformBtn.disabled = false;
+    document.getElementById('resultArea').classList.add('hidden');
+    showToast('📂 DXF 파일이 로드되었습니다');
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+window.clearFile = function() {
+  loadedFile = null;
+  loadedText = null;
+  transformedDxf = null;
+  fileInput.value = '';
+  uploadZone.classList.remove('has-file');
+  uploadZone.innerHTML = `
+    <div class="upload-icon">📐</div>
+    <div class="upload-main">DXF 파일을 여기에 놓거나 클릭하여 선택</div>
+    <div class="upload-sub">.dxf 파일만 지원됩니다</div>
+  `;
+  transformBtn.disabled = true;
+  document.getElementById('resultArea').classList.add('hidden');
+};
+
+// ── 좌표계 선택 ──
+srcSel.addEventListener('change', updateCrsDetail);
+tgtSel.addEventListener('change', updateCrsDetail);
+
+function updateCrsDetail() {
+  const s = CRS_DEFS[srcSel.value];
+  const t = CRS_DEFS[tgtSel.value];
+  document.getElementById('srcDetail').textContent = crsDetailText(s);
+  document.getElementById('tgtDetail').textContent = crsDetailText(t);
+}
+
+function crsDetailText(def) {
+  if (def.type === 'LONLAT') return 'WGS84 경위도 (도 단위)';
+  const origin = def.ellipsoid === 'BESSEL' ? `Bessel ${def.lon0.toFixed(4)}°E` : `${def.lon0}°E`;
+  return `${origin} · FE ${def.fe.toLocaleString()} · FN ${def.fn.toLocaleString()}`;
+}
+
+window.swapCrs = function() {
+  const tmp = srcSel.value;
+  srcSel.value = tgtSel.value;
+  tgtSel.value = tmp;
+  updateCrsDetail();
+};
+
+updateCrsDetail();
+
+// ── 변환 실행 ──
+window.runTransform = function() {
+  if (!loadedText) return;
+  const srcCrs = srcSel.value;
+  const tgtCrs = tgtSel.value;
+
+  if (srcCrs === tgtCrs) {
+    showToast('⚠️ 원본과 대상 좌표계가 동일합니다');
+    return;
+  }
+
+  logLines = [];
+  addLog('info', `변환 시작: ${CRS_DEFS[srcCrs].name} → ${CRS_DEFS[tgtCrs].name}`);
+  addLog('info', `파일: ${loadedFile.name} (${(loadedFile.size/1024).toFixed(1)} KB)`);
+
+  const t0 = performance.now();
+  try {
+    transformedDxf = transformDxf(loadedText, srcCrs, tgtCrs);
+  } catch(e) {
+    addLog('err', `변환 오류: ${e.message}`);
+    showToast('❌ 변환 중 오류가 발생했습니다');
+    renderLog();
+    return;
+  }
+  const elapsed = (performance.now() - t0).toFixed(1);
+
+  addLog('info', `엔티티 수: ${transformedDxf.entityCount}`);
+  addLog('info', `변환된 좌표점: ${transformedDxf.pointCount}`);
+  addLog('info', `처리 시간: ${elapsed} ms`);
+
+  // 첫 번째 좌표 샘플 로그
+  if (transformedDxf.preview.length > 0) {
+    const s = transformedDxf.preview[0];
+    addLog('info', `첫 번째 좌표: (${s.oldX.toFixed(3)}, ${s.oldY.toFixed(3)}) → (${s.newX.toFixed(3)}, ${s.newY.toFixed(3)})`);
+  }
+
+  if (transformedDxf.pointCount === 0) {
+    addLog('warn', '변환된 좌표가 없습니다. 파일에 좌표 엔티티가 포함되어 있는지 확인해주세요.');
+  }
+
+  addLog('info', '✅ 변환 완료');
+
+  // UI 업데이트
+  document.getElementById('rEntities').textContent = transformedDxf.entityCount.toLocaleString();
+  document.getElementById('rPoints').textContent = transformedDxf.pointCount.toLocaleString();
+  document.getElementById('rTime').textContent = elapsed;
+
+  renderPreview(transformedDxf.preview);
+  renderCanvas(transformedDxf.allOld, transformedDxf.allNew);
+  renderLog();
+
+  document.getElementById('resultArea').classList.remove('hidden');
+  document.getElementById('resultArea').scrollIntoView({ behavior:'smooth', block:'start' });
+  showToast(`✅ ${transformedDxf.pointCount.toLocaleString()}개 좌표 변환 완료`);
+};
+
+// ── 미리보기 테이블 ──
+function renderPreview(rows) {
+  const tbody = document.getElementById('previewBody');
+  tbody.innerHTML = rows.map((r, i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td>${r.entity}</td>
+      <td class="coord-old">${r.oldX.toFixed(4)}</td>
+      <td class="coord-old">${r.oldY.toFixed(4)}</td>
+      <td class="coord-new">${r.newX.toFixed(4)}</td>
+      <td class="coord-new">${r.newY.toFixed(4)}</td>
+    </tr>
+  `).join('');
+}
+
+// ── 캔버스 시각화 ──
+function renderCanvas(oldPts, newPts) {
+  const canvas = document.getElementById('previewCanvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  const W = rect.width, H = rect.height;
+
+  ctx.fillStyle = '#1e1e2e';
+  ctx.fillRect(0, 0, W, H);
+
+  if (oldPts.length === 0) return;
+
+  // Combine all points for bounds
+  const allX = [...oldPts.map(p=>p[0]), ...newPts.map(p=>p[0])];
+  const allY = [...oldPts.map(p=>p[1]), ...newPts.map(p=>p[1])];
+  const minX = Math.min(...allX), maxX = Math.max(...allX);
+  const minY = Math.min(...allY), maxY = Math.max(...allY);
+  const pad = 30;
+  const rangeX = maxX - minX || 1;
+  const rangeY = maxY - minY || 1;
+  const scale = Math.min((W - pad*2) / rangeX, (H - pad*2) / rangeY);
+
+  function toScreen(x, y) {
+    return [
+      pad + (x - minX) * scale + ((W - pad*2) - rangeX * scale) / 2,
+      H - pad - (y - minY) * scale - ((H - pad*2) - rangeY * scale) / 2
+    ];
+  }
+
+  // Draw grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 10; i++) {
+    const gx = pad + (W - pad*2) * i / 10;
+    const gy = pad + (H - pad*2) * i / 10;
+    ctx.beginPath(); ctx.moveTo(gx, pad); ctx.lineTo(gx, H-pad); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(pad, gy); ctx.lineTo(W-pad, gy); ctx.stroke();
+  }
+
+  // Draw old points
+  ctx.fillStyle = 'rgba(99, 102, 241, 0.6)';
+  for (const p of oldPts) {
+    const [sx, sy] = toScreen(p[0], p[1]);
+    ctx.beginPath(); ctx.arc(sx, sy, 3, 0, Math.PI*2); ctx.fill();
+  }
+
+  // Draw new points
+  ctx.fillStyle = 'rgba(52, 211, 153, 0.7)';
+  for (const p of newPts) {
+    const [sx, sy] = toScreen(p[0], p[1]);
+    ctx.beginPath(); ctx.arc(sx, sy, 3, 0, Math.PI*2); ctx.fill();
+  }
+
+  // Draw shift arrows (sample)
+  ctx.strokeStyle = 'rgba(251, 191, 36, 0.3)';
+  ctx.lineWidth = 1;
+  const step = Math.max(1, Math.floor(oldPts.length / 30));
+  for (let i = 0; i < oldPts.length; i += step) {
+    const [sx1, sy1] = toScreen(oldPts[i][0], oldPts[i][1]);
+    const [sx2, sy2] = toScreen(newPts[i][0], newPts[i][1]);
+    ctx.beginPath(); ctx.moveTo(sx1, sy1); ctx.lineTo(sx2, sy2); ctx.stroke();
+  }
+}
+
+// ── 로그 ──
+function addLog(type, msg) {
+  logLines.push({ type, msg, time: new Date().toLocaleTimeString() });
+}
+
+function renderLog() {
+  const box = document.getElementById('logBox');
+  box.innerHTML = logLines.map(l => {
+    const cls = l.type === 'warn' ? 'log-warn' : l.type === 'err' ? 'log-err' : 'log-info';
+    return `<div class="${cls}">[${l.time}] ${l.msg}</div>`;
+  }).join('');
+  box.scrollTop = box.scrollHeight;
+}
+
+// ── 다운로드 ──
+window.downloadDxf = function() {
+  if (!transformedDxf) return;
+  const tgtName = CRS_DEFS[tgtSel.value].epsg;
+  const baseName = loadedFile.name.replace(/\.dxf$/i, '');
+  const fileName = `${baseName}_EPSG${tgtName}.dxf`;
+  downloadBlob(transformedDxf.output, fileName, 'application/dxf');
+  showToast(`📥 ${fileName} 다운로드 완료`);
+};
+
+window.downloadLog = function() {
+  if (!logLines.length) return;
+  const txt = logLines.map(l => `[${l.time}] [${l.type.toUpperCase()}] ${l.msg}`).join('\n');
+  const baseName = loadedFile ? loadedFile.name.replace(/\.dxf$/i, '') : 'transform';
+  downloadBlob(txt, `${baseName}_변환로그.txt`, 'text/plain');
+  showToast('📋 변환 로그 저장 완료');
+};
+
+function downloadBlob(content, name, type) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ── 토스트 ──
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2400);
+}
+</script>
+</body>
+</html>
