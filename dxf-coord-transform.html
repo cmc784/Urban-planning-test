@@ -421,8 +421,13 @@ const ELLIPSOID = {
   BESSEL: { a: 6377397.155, f: 1/299.1528128 }
 };
 
-// Bessel → GRS80(≈WGS84) Molodensky parameters
-const DATUM_BESSEL_TO_GRS80 = { dx: -145.907, dy: 505.034, dz: 685.756 };
+// Bessel → GRS80(≈WGS84) 7-parameter Bursa-Wolf (Helmert) 변환
+// 출처: proj4/QGIS EPSG:5174 towgs84 — 한국 측지 표준 파라미터
+const DATUM_BESSEL_TO_GRS80 = {
+  dx: -115.80,   dy: 474.99,   dz: 674.11,    // 이동량 (m)
+  rx: 1.16,      ry: -2.31,    rz: -1.63,     // 회전량 (arc-seconds)
+  ds: 6.43                                      // 축척 보정 (ppm)
+};
 
 const CRS_DEFS = {
   // ── GRS80 TM ──
@@ -539,34 +544,82 @@ function meridionalArc(phi, ep) {
             - (35*n*n*n/3072) * Math.sin(6*phi));
 }
 
-// ── Molodensky 변환 (Bessel ↔ GRS80) ──
-function molodenskyTransform(latDeg, lonDeg, h, fromEllip, toEllip, dx, dy, dz) {
-  const from = ellipsoidParams(fromEllip);
-  const to = ellipsoidParams(toEllip);
-  const da = to.a - from.a;
-  const df = to.f - from.f;
-
+// ── Geographic → Geocentric (ECEF) 변환 ──
+function geographicToGeocentric(latDeg, lonDeg, h, ellipName) {
+  const ep = ellipsoidParams(ellipName);
+  const { a, e2 } = ep;
   const phi = latDeg * DEG;
   const lam = lonDeg * DEG;
   const sinP = Math.sin(phi), cosP = Math.cos(phi);
   const sinL = Math.sin(lam), cosL = Math.cos(lam);
-
-  const { a, f, e2 } = from;
-  const Rn = a / Math.sqrt(1 - e2 * sinP * sinP);
-  const Rm = a * (1 - e2) / Math.pow(1 - e2 * sinP * sinP, 1.5);
-
-  const dPhi = (-dx*sinP*cosL - dy*sinP*sinL + dz*cosP
-               + da*(Rn*e2*sinP*cosP)/a
-               + df*(Rm*(a/(a*(1-f)))+Rn*((a*(1-f))/a))*sinP*cosP) / (Rm + h);
-  const dLam = (-dx*sinL + dy*cosL) / ((Rn + h) * cosP);
-  const dH = dx*cosP*cosL + dy*cosP*sinL + dz*sinP
-            - da*a/Rn + df*(a*(1-f))*Rn*sinP*sinP/a;
-
+  const N = a / Math.sqrt(1 - e2 * sinP * sinP);
   return {
-    lat: latDeg + dPhi * RAD,
-    lon: lonDeg + dLam * RAD,
-    h: h + dH
+    X: (N + h) * cosP * cosL,
+    Y: (N + h) * cosP * sinL,
+    Z: (N * (1 - e2) + h) * sinP
   };
+}
+
+// ── Geocentric (ECEF) → Geographic 변환 (Bowring 반복법) ──
+function geocentricToGeographic(X, Y, Z, ellipName) {
+  const ep = ellipsoidParams(ellipName);
+  const { a, b, e2 } = ep;
+  const ep2 = (a*a - b*b) / (b*b);  // second eccentricity squared
+  const p = Math.sqrt(X*X + Y*Y);
+  const lon = Math.atan2(Y, X);
+
+  // Bowring 초기값
+  let theta = Math.atan2(Z * a, p * b);
+  let lat = Math.atan2(
+    Z + ep2 * b * Math.pow(Math.sin(theta), 3),
+    p - e2 * a * Math.pow(Math.cos(theta), 3)
+  );
+
+  // 반복 수렴 (보통 2~3회면 충분)
+  for (let iter = 0; iter < 10; iter++) {
+    const sinLat = Math.sin(lat);
+    const N = a / Math.sqrt(1 - e2 * sinLat * sinLat);
+    const latNew = Math.atan2(Z + e2 * N * sinLat, p);
+    if (Math.abs(latNew - lat) < 1e-14) { lat = latNew; break; }
+    lat = latNew;
+  }
+
+  const sinLat = Math.sin(lat);
+  const N = a / Math.sqrt(1 - e2 * sinLat * sinLat);
+  const h = p / Math.cos(lat) - N;
+
+  return { lat: lat * RAD, lon: lon * RAD, h };
+}
+
+// ── Bursa-Wolf 7-parameter 변환 (지심좌표계 기반) ──
+// forward=true:  Bessel → GRS80
+// forward=false: GRS80 → Bessel
+function bursaWolfTransform(latDeg, lonDeg, h, fromEllip, toEllip, params, forward) {
+  const { dx, dy, dz, rx, ry, rz, ds } = params;
+
+  // 회전량: arc-seconds → radians
+  const rxR = (forward ? rx : -rx) * DEG / 3600;
+  const ryR = (forward ? ry : -ry) * DEG / 3600;
+  const rzR = (forward ? rz : -rz) * DEG / 3600;
+  // 축척: ppm → 무차원
+  const s = 1 + (forward ? ds : -ds) * 1e-6;
+  // 이동량
+  const DX = forward ? dx : -dx;
+  const DY = forward ? dy : -dy;
+  const DZ = forward ? dz : -dz;
+
+  // 1) 원본 타원체에서 지심좌표 산출
+  const srcEllip = forward ? fromEllip : toEllip;
+  const tgtEllip = forward ? toEllip : fromEllip;
+  const gc = geographicToGeocentric(latDeg, lonDeg, h || 0, srcEllip);
+
+  // 2) Bursa-Wolf 회전 + 축척 + 이동 적용
+  const Xp = DX + s * ( gc.X + rzR * gc.Y - ryR * gc.Z);
+  const Yp = DY + s * (-rzR * gc.X + gc.Y + rxR * gc.Z);
+  const Zp = DZ + s * ( ryR * gc.X - rxR * gc.Y + gc.Z);
+
+  // 3) 대상 타원체에서 경위도 복원
+  return geocentricToGeographic(Xp, Yp, Zp, tgtEllip);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -593,13 +646,13 @@ function transformCoord(x, y, srcCrs, tgtCrs) {
   const srcE = src.ellipsoid;
   const tgtE = tgt.ellipsoid;
   if (srcE !== tgtE) {
-    if (srcE === 'BESSEL' && (tgtE === 'GRS80')) {
-      const r = molodenskyTransform(lat, lon, 0, 'BESSEL', 'GRS80',
-                DATUM_BESSEL_TO_GRS80.dx, DATUM_BESSEL_TO_GRS80.dy, DATUM_BESSEL_TO_GRS80.dz);
+    if (srcE === 'BESSEL' && tgtE === 'GRS80') {
+      // Bessel → GRS80: forward
+      const r = bursaWolfTransform(lat, lon, 0, 'BESSEL', 'GRS80', DATUM_BESSEL_TO_GRS80, true);
       lat = r.lat; lon = r.lon;
     } else if (srcE === 'GRS80' && tgtE === 'BESSEL') {
-      const r = molodenskyTransform(lat, lon, 0, 'GRS80', 'BESSEL',
-                -DATUM_BESSEL_TO_GRS80.dx, -DATUM_BESSEL_TO_GRS80.dy, -DATUM_BESSEL_TO_GRS80.dz);
+      // GRS80 → Bessel: inverse
+      const r = bursaWolfTransform(lat, lon, 0, 'BESSEL', 'GRS80', DATUM_BESSEL_TO_GRS80, false);
       lat = r.lat; lon = r.lon;
     }
   }
