@@ -305,7 +305,7 @@ body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--
             <option value="EPSG4326">EPSG:4326 — WGS84 경위도</option>
           </optgroup>
         </select>
-        <div class="crs-detail" id="srcDetail">중부원점 127°E · FE 200,000 · FN 600,000</div>
+        <div class="crs-detail" id="srcDetail">127°+10.405" (GRS80) · FE 200,000 · FN 600,000</div>
       </div>
 
       <button class="crs-swap" onclick="swapCrs()" title="좌표계 교환">⇄</button>
@@ -331,7 +331,7 @@ body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--
             <option value="EPSG4326">EPSG:4326 — WGS84 경위도</option>
           </optgroup>
         </select>
-        <div class="crs-detail" id="tgtDetail">Bessel 중부 보정 · FE 200,000 · FN 500,000</div>
+        <div class="crs-detail" id="tgtDetail">127°E (BESSEL) · FE 200,000 · FN 500,000</div>
       </div>
     </div>
   </div>
@@ -421,31 +421,31 @@ const ELLIPSOID = {
   BESSEL: { a: 6377397.155, f: 1/299.1528128 }
 };
 
-// Bessel → GRS80(≈WGS84) 7-parameter Bursa-Wolf (Helmert) 변환
-// 출처: proj4/QGIS EPSG:5174 towgs84 — 한국 측지 표준 파라미터
-const DATUM_BESSEL_TO_GRS80 = {
-  dx: -115.80,   dy: 474.99,   dz: 674.11,    // 이동량 (m)
-  rx: 1.16,      ry: -2.31,    rz: -1.63,     // 회전량 (arc-seconds)
-  ds: 6.43                                      // 축척 보정 (ppm)
+// GRS80 → Bessel 7-parameter Bursa-Wolf (Helmert) 변환
+// 출처: CAD 좌표변환 설정 (스크린샷 기준)
+const DATUM_GRS80_TO_BESSEL = {
+  dx: 145.907,    dy: -505.034,   dz: -685.756,    // 이동량 (m)
+  rx: 1.162,      ry: -2.347,     rz: -1.592,      // 회전량 (arc-seconds)
+  ds: -6.3421                                        // 축척 보정 (ppm) ← 0.9999936579
 };
 
 const CRS_DEFS = {
-  // ── GRS80 TM ──
+  // ── GRS80 TM (10.405" 보정 적용) ──
   EPSG5186: { name:'TM 중부원점 (GRS80)', epsg:'5186', ellipsoid:'GRS80', type:'TM',
-              lat0:38, lon0:127, fe:200000, fn:600000,  k0:1.0 },
+              lat0:38, lon0:127 + 10.405/3600, fe:200000, fn:600000,  k0:1.0 },
   EPSG5185: { name:'TM 서부원점 (GRS80)', epsg:'5185', ellipsoid:'GRS80', type:'TM',
-              lat0:38, lon0:125, fe:200000, fn:600000,  k0:1.0 },
+              lat0:38, lon0:125 + 10.405/3600, fe:200000, fn:600000,  k0:1.0 },
   EPSG5187: { name:'TM 동부원점 (GRS80)', epsg:'5187', ellipsoid:'GRS80', type:'TM',
-              lat0:38, lon0:129, fe:200000, fn:600000,  k0:1.0 },
+              lat0:38, lon0:129 + 10.405/3600, fe:200000, fn:600000,  k0:1.0 },
   EPSG5188: { name:'TM 동해원점 (GRS80)', epsg:'5188', ellipsoid:'GRS80', type:'TM',
-              lat0:38, lon0:131, fe:200000, fn:600000,  k0:1.0 },
-  // ── Bessel TM 보정 ──
+              lat0:38, lon0:131 + 10.405/3600, fe:200000, fn:600000,  k0:1.0 },
+  // ── Bessel TM (보정 없음, CM 그대로) ──
   EPSG5174: { name:'TM 중부원점 (Bessel)', epsg:'5174', ellipsoid:'BESSEL', type:'TM',
-              lat0:38, lon0:127 + 10.405/3600, fe:200000, fn:500000, k0:1.0 },
+              lat0:38, lon0:127, fe:200000, fn:500000, k0:1.0 },
   EPSG5175: { name:'TM 서부원점 (Bessel)', epsg:'5175', ellipsoid:'BESSEL', type:'TM',
-              lat0:38, lon0:125 + 10.405/3600, fe:200000, fn:500000, k0:1.0 },
+              lat0:38, lon0:125, fe:200000, fn:500000, k0:1.0 },
   EPSG5176: { name:'TM 동부원점 (Bessel)', epsg:'5176', ellipsoid:'BESSEL', type:'TM',
-              lat0:38, lon0:129 + 10.405/3600, fe:200000, fn:500000, k0:1.0 },
+              lat0:38, lon0:129, fe:200000, fn:500000, k0:1.0 },
   // ── UTM-K ──
   EPSG5179: { name:'UTM-K (GRS80)', epsg:'5179', ellipsoid:'GRS80', type:'TM',
               lat0:38, lon0:127.5, fe:1000000, fn:2000000, k0:0.9996 },
@@ -592,8 +592,8 @@ function geocentricToGeographic(X, Y, Z, ellipName) {
 }
 
 // ── Bursa-Wolf 7-parameter 변환 (지심좌표계 기반) ──
-// forward=true:  Bessel → GRS80
-// forward=false: GRS80 → Bessel
+// forward=true:  GRS80 → Bessel (파라미터 그대로 적용)
+// forward=false: Bessel → GRS80 (파라미터 부호 반전)
 function bursaWolfTransform(latDeg, lonDeg, h, fromEllip, toEllip, params, forward) {
   const { dx, dy, dz, rx, ry, rz, ds } = params;
 
@@ -646,13 +646,13 @@ function transformCoord(x, y, srcCrs, tgtCrs) {
   const srcE = src.ellipsoid;
   const tgtE = tgt.ellipsoid;
   if (srcE !== tgtE) {
-    if (srcE === 'BESSEL' && tgtE === 'GRS80') {
-      // Bessel → GRS80: forward
-      const r = bursaWolfTransform(lat, lon, 0, 'BESSEL', 'GRS80', DATUM_BESSEL_TO_GRS80, true);
+    if (srcE === 'GRS80' && tgtE === 'BESSEL') {
+      // GRS80 → Bessel: forward
+      const r = bursaWolfTransform(lat, lon, 0, 'GRS80', 'BESSEL', DATUM_GRS80_TO_BESSEL, true);
       lat = r.lat; lon = r.lon;
-    } else if (srcE === 'GRS80' && tgtE === 'BESSEL') {
-      // GRS80 → Bessel: inverse
-      const r = bursaWolfTransform(lat, lon, 0, 'BESSEL', 'GRS80', DATUM_BESSEL_TO_GRS80, false);
+    } else if (srcE === 'BESSEL' && tgtE === 'GRS80') {
+      // Bessel → GRS80: inverse (파라미터 부호 반전)
+      const r = bursaWolfTransform(lat, lon, 0, 'GRS80', 'BESSEL', DATUM_GRS80_TO_BESSEL, false);
       lat = r.lat; lon = r.lon;
     }
   }
@@ -1051,7 +1051,11 @@ function updateCrsDetail() {
 
 function crsDetailText(def) {
   if (def.type === 'LONLAT') return 'WGS84 경위도 (도 단위)';
-  const origin = def.ellipsoid === 'BESSEL' ? `Bessel ${def.lon0.toFixed(4)}°E` : `${def.lon0}°E`;
+  const baseLon = Math.round(def.lon0);
+  const has10405 = Math.abs(def.lon0 - baseLon - 10.405/3600) < 0.0001;
+  const origin = has10405
+    ? `${baseLon}°+10.405" (${def.ellipsoid})`
+    : `${def.lon0}°E (${def.ellipsoid})`;
   return `${origin} · FE ${def.fe.toLocaleString()} · FN ${def.fn.toLocaleString()}`;
 }
 
