@@ -1,0 +1,1755 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>특정시설 운영현황 및 사례조사</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/shpjs/6.2.0/shp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #f4f2ee;
+  --white: #fff;
+  --ink: #1a1a1a;
+  --ink2: #444;
+  --ink3: #888;
+  --border: #ddd9d0;
+  --border2: #eceae4;
+  --green: #1a5c3a;
+  --green-light: #e6f2eb;
+  --green-mid: #2e7d52;
+  --blue: #1a3a6e;
+  --blue-light: #e8f0fc;
+  --amber: #b45309;
+  --amber-light: #fef3cd;
+  --red: #b91c1c;
+  --red-light: #fee2e2;
+  --slate: #4b5563;
+  --slate-light: #f3f4f6;
+  --shadow: 0 1px 4px rgba(0,0,0,0.07);
+  --shadow-md: 0 4px 20px rgba(0,0,0,0.10);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.13);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--ink); min-height:100vh; font-size:14px; }
+
+/* TOPBAR */
+.topbar { background:var(--green); color:white; padding:0 28px; height:54px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:200; box-shadow:0 2px 8px rgba(0,0,0,0.15); }
+.topbar-left { display:flex; align-items:center; gap:12px; }
+.back-btn { background:rgba(255,255,255,0.15); border:none; color:white; padding:6px 14px; border-radius:7px; font-size:12px; font-weight:700; cursor:pointer; font-family:'Noto Sans KR',sans-serif; display:flex; align-items:center; gap:5px; transition:background 0.15s; }
+.back-btn:hover { background:rgba(255,255,255,0.28); }
+.topbar-title { font-size:15px; font-weight:700; }
+.topbar-badge { background:rgba(255,255,255,0.18); border-radius:5px; padding:3px 10px; font-size:11px; font-weight:600; }
+
+/* MAIN */
+.main { max-width:1100px; margin:0 auto; padding:32px 20px 80px; }
+
+.page-header { background:var(--white); border:1px solid var(--border); border-radius:14px; padding:24px 28px; margin-bottom:24px; box-shadow:var(--shadow-md); }
+.page-eyebrow { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--ink3); font-family:'DM Mono',monospace; margin-bottom:6px; }
+.page-title { font-size:22px; font-weight:800; color:var(--ink); margin-bottom:8px; }
+.page-desc { font-size:12.5px; color:var(--ink3); line-height:1.7; }
+
+.stats-row { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:28px; }
+.stat-card { background:var(--white); border:1px solid var(--border); border-radius:10px; padding:14px 16px; box-shadow:var(--shadow); }
+.stat-label { font-size:10px; color:var(--ink3); font-weight:700; text-transform:uppercase; letter-spacing:0.6px; margin-bottom:5px; font-family:'DM Mono',monospace; }
+.stat-val { font-size:20px; font-weight:800; font-family:'DM Mono',monospace; }
+
+.section-title { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:var(--ink3); font-family:'DM Mono',monospace; margin:32px 0 14px; display:flex; align-items:center; gap:8px; }
+.section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+.section-title:first-of-type { margin-top:0; }
+.section-sub { font-size:12px; color:var(--ink3); margin:-8px 0 16px; line-height:1.6; }
+
+/* UPLOAD STEPPER */
+.upload-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:16px; }
+.upload-card { background:var(--white); border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:8px; transition:border-color .15s; }
+.upload-card.done { border-color:var(--green); }
+.upload-top { display:flex; align-items:center; gap:8px; }
+.upload-num { width:24px; height:24px; border-radius:50%; background:var(--border2); color:var(--ink3); display:flex; align-items:center; justify-content:center; font-family:'DM Mono',monospace; font-size:11px; font-weight:700; flex-shrink:0; }
+.upload-card.done .upload-num { background:var(--green); color:#fff; }
+.upload-title { font-size:13px; font-weight:800; color:var(--ink); }
+.upload-category { font-size:9.5px; font-weight:700; letter-spacing:0.5px; color:var(--blue); text-transform:uppercase; font-family:'DM Mono',monospace; margin-bottom:1px; }
+.extra-grid { display:none; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:14px; margin-bottom:14px; }
+.extra-card-head { display:flex; align-items:center; gap:6px; }
+.extra-label-input { flex:1; padding:6px 8px; border:1px solid var(--border); border-radius:7px; font-size:12px; font-family:'Noto Sans KR',sans-serif; }
+.extra-label-input:focus { border-color:var(--green); outline:none; }
+.extra-remove-btn { width:26px; height:26px; border-radius:6px; border:1px solid var(--border); background:#fff; cursor:pointer; font-size:12px; color:var(--red); flex-shrink:0; }
+.extra-remove-btn:hover { background:var(--red-light); border-color:var(--red); }
+.add-extra-btn { padding:10px 18px; border:1.5px dashed var(--border); border-radius:10px; background:#fff; color:var(--ink2); font-size:12.5px; font-weight:700; cursor:pointer; font-family:'Noto Sans KR',sans-serif; margin-bottom:20px; }
+.add-extra-btn:hover { border-color:var(--green); color:var(--green); background:var(--green-light); }
+.upload-desc { font-size:11px; color:var(--ink3); line-height:1.5; }
+.upload-drop { border:1.5px dashed var(--border); border-radius:9px; padding:12px; text-align:center; font-size:11.5px; color:var(--ink3); cursor:pointer; transition:all .15s; }
+.upload-drop:hover { border-color:var(--green); color:var(--green); background:var(--green-light); }
+.upload-drop input { display:none; }
+.upload-status { font-size:10.5px; font-family:'DM Mono',monospace; color:var(--ink3); }
+.field-mini { display:none; flex-direction:column; gap:6px; }
+.field-mini.show { display:flex; }
+.field-mini label { font-size:10px; color:var(--ink3); }
+.field-mini select { padding:6px 8px; border:1px solid var(--border); border-radius:7px; font-size:11px; font-family:'DM Mono',monospace; color:var(--ink); background:#fff; }
+
+/* SOURCE TOGGLE (파일 업로드 / API) */
+.src-toggle { display:flex; gap:4px; background:var(--slate-light); border-radius:8px; padding:3px; margin-bottom:2px; }
+.src-tab { flex:1; padding:5px 0; border:none; background:transparent; border-radius:6px; font-size:10.5px; font-weight:700; color:var(--ink3); cursor:pointer; font-family:'Noto Sans KR',sans-serif; }
+.src-tab.active { background:#fff; color:var(--green); box-shadow:var(--shadow); }
+.src-pane { display:none; flex-direction:column; gap:8px; }
+.src-pane.show { display:flex; }
+.api-input { padding:7px 9px; border:1px solid var(--border); border-radius:7px; font-size:11px; font-family:'DM Mono',monospace; color:var(--ink); background:#fff; outline:none; }
+.api-input:focus { border-color:var(--green); }
+.api-fetch-btn { padding:7px; background:var(--blue); color:#fff; border:none; border-radius:7px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Noto Sans KR',sans-serif; }
+.api-fetch-btn:hover { background:#254a8c; }
+.api-fetch-btn:disabled { background:var(--border); color:var(--ink3); cursor:not-allowed; }
+.api-status { font-size:10px; font-family:'DM Mono',monospace; color:var(--ink3); line-height:1.5; }
+
+.api-settings { background:var(--blue-light); border:1px solid var(--blue); border-radius:12px; padding:16px 20px; margin-bottom:16px; }
+.api-settings-head { display:flex; align-items:center; justify-content:space-between; cursor:pointer; }
+.api-settings-title { font-size:12.5px; font-weight:800; color:var(--blue); display:flex; align-items:center; gap:6px; }
+.api-settings-body { display:none; margin-top:14px; }
+.api-settings-body.show { display:block; }
+.api-settings-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; }
+.api-settings-note { font-size:11px; color:#1a3a6e; line-height:1.7; background:rgba(255,255,255,0.6); border-radius:8px; padding:10px 12px; margin-top:8px; }
+.bbox-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.bbox-display { font-size:11px; font-family:'DM Mono',monospace; color:var(--ink2); background:#fff; border:1px solid var(--border); border-radius:7px; padding:7px 10px; flex:1; min-width:220px; }
+.bbox-btn { padding:7px 14px; border:1px solid var(--blue); border-radius:7px; background:#fff; color:var(--blue); font-size:11.5px; font-weight:700; cursor:pointer; font-family:'Noto Sans KR',sans-serif; }
+.bbox-btn.active { background:var(--blue); color:#fff; }
+.bbox-btn:hover { background:var(--blue-light); }
+.bbox-btn.active:hover { background:#15326b; }
+
+.run-btn { width:100%; padding:13px; background:var(--green); color:#fff; border:none; border-radius:10px; font-weight:700; font-size:14px; cursor:pointer; margin-bottom:24px; font-family:'Noto Sans KR',sans-serif; transition:background .15s; }
+.run-btn:disabled { background:var(--border); color:var(--ink3); cursor:not-allowed; }
+.run-btn:not(:disabled):hover { background:var(--green-mid); }
+.run-log { text-align:center; font-size:11.5px; color:var(--ink3); font-family:'DM Mono',monospace; margin:-14px 0 24px; }
+
+.map-card { background:#fff; border:1px solid var(--border); border-radius:14px; overflow:hidden; box-shadow:var(--shadow-md); margin-bottom:16px; }
+#map { height:420px; width:100%; }
+.map-legend { display:flex; gap:16px; padding:10px 18px; border-top:1px solid var(--border2); font-size:11.5px; color:var(--ink3); flex-wrap:wrap; }
+.legend-dot { width:9px; height:9px; border-radius:50%; display:inline-block; margin-right:5px; }
+
+.result-actions { display:flex; justify-content:flex-end; gap:10px; margin-bottom:12px; }
+.btn-ghost { padding:8px 16px; border:1px solid var(--border); border-radius:8px; background:#fff; font-size:12px; font-weight:600; color:var(--ink2); cursor:pointer; font-family:'Noto Sans KR',sans-serif; }
+.btn-ghost:hover { background:var(--slate-light); }
+.btn-primary-sm { padding:8px 16px; border:none; border-radius:8px; background:var(--green); color:#fff; font-size:12px; font-weight:700; cursor:pointer; font-family:'Noto Sans KR',sans-serif; }
+.btn-primary-sm:hover { background:var(--green-mid); }
+.btn-primary-sm:disabled { background:var(--border); color:var(--ink3); cursor:not-allowed; }
+
+/* TABLE CARD (both results & case log) */
+.table-card { background:var(--white); border:1px solid var(--border); border-radius:14px; overflow:hidden; box-shadow:var(--shadow-md); margin-bottom:16px; }
+.table-wrap { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; min-width:760px; }
+thead tr { background:var(--ink); color:#fff; }
+th { padding:12px 14px; text-align:left; font-size:10.5px; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; font-family:'DM Mono',monospace; white-space:nowrap; }
+tbody tr { border-bottom:1px solid var(--border2); }
+tbody tr:last-child { border-bottom:none; }
+tbody tr:hover { background:#faf9f6; }
+td { padding:12px 14px; font-size:12.5px; vertical-align:middle; color:var(--ink2); }
+td.col-name { font-weight:700; color:var(--ink); cursor:pointer; }
+.memo-cell { max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11.5px; color:var(--ink3); }
+.empty-state { text-align:center; padding:50px 20px; color:var(--ink3); }
+.empty-icon { font-size:36px; margin-bottom:10px; }
+
+/* STATUS BADGE */
+.status-badge { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700; white-space:nowrap; }
+.s-operating { background:var(--green-light); color:var(--green); }
+.s-partial { background:var(--blue-light); color:var(--blue); }
+.s-idle { background:var(--amber-light); color:var(--amber); }
+.s-removed { background:var(--red-light); color:var(--red); }
+.s-unknown { background:var(--slate-light); color:var(--slate); }
+.type-badge { display:inline-block; padding:3px 8px; border-radius:4px; font-size:10.5px; font-weight:600; background:var(--slate-light); color:var(--ink2); border:1px solid var(--border); }
+
+/* TOOLBAR (case log) */
+.toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+.search-input { padding:8px 12px; border:1.5px solid var(--border); border-radius:9px; font-size:12.5px; font-family:'Noto Sans KR',sans-serif; outline:none; min-width:200px; }
+.search-input:focus { border-color:var(--green); }
+.filter-chip { padding:7px 13px; border:1px solid var(--border); border-radius:8px; background:#fff; font-size:11.5px; font-family:'Noto Sans KR',sans-serif; cursor:pointer; color:var(--ink2); font-weight:600; }
+.filter-chip:hover, .filter-chip.active { background:var(--green); color:#fff; border-color:var(--green); }
+
+/* MODAL (재사용: far-modal 스타일) */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:600; display:flex; align-items:center; justify-content:center; padding:20px; opacity:0; pointer-events:none; transition:opacity .2s; }
+.modal-overlay.open { opacity:1; pointer-events:auto; }
+.modal-box { background:var(--white); border:1px solid var(--border); border-radius:18px; width:100%; max-width:600px; box-shadow:var(--shadow-lg); overflow:hidden; transform:translateY(16px); transition:transform .25s; max-height:90vh; overflow-y:auto; }
+.modal-overlay.open .modal-box { transform:translateY(0); }
+.mhead { padding:20px 24px 16px; border-bottom:1px solid var(--border2); display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; background:#fff; z-index:1; }
+.mhead h3 { font-size:15px; font-weight:800; }
+.mclose { background:none; border:none; cursor:pointer; color:var(--ink3); font-size:20px; width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; }
+.mclose:hover { background:var(--border2); }
+.mbody { padding:20px 24px; }
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+.form-row.full { grid-template-columns:1fr; }
+.form-group { display:flex; flex-direction:column; gap:5px; }
+.form-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; color:var(--ink3); font-family:'DM Mono',monospace; }
+.form-input, .form-select, .form-textarea { padding:9px 12px; border:1.5px solid var(--border); border-radius:9px; font-size:13px; font-family:'Noto Sans KR',sans-serif; color:var(--ink); background:#fff; outline:none; transition:border .15s; }
+.form-input:focus, .form-select:focus, .form-textarea:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(26,92,58,0.08); }
+.form-textarea { resize:vertical; min-height:60px; }
+.mfoot { padding:16px 24px; border-top:1px solid var(--border2); display:flex; gap:8px; justify-content:flex-end; position:sticky; bottom:0; background:#fff; }
+.btn-cancel { padding:9px 18px; border:1.5px solid var(--border); border-radius:9px; background:#fff; font-size:13px; font-weight:600; color:var(--ink2); cursor:pointer; font-family:'Noto Sans KR',sans-serif; }
+.btn-cancel:hover { background:var(--border2); }
+.btn-save { padding:9px 20px; border:none; border-radius:9px; background:var(--green); color:#fff; font-size:13px; font-weight:700; cursor:pointer; font-family:'Noto Sans KR',sans-serif; }
+.btn-save:hover { background:var(--green-mid); }
+
+.confirm-box { background:white; border-radius:14px; padding:26px; max-width:340px; width:90%; text-align:center; box-shadow:var(--shadow-lg); }
+.confirm-icon { font-size:34px; margin-bottom:10px; }
+.confirm-title { font-size:15px; font-weight:800; margin-bottom:8px; }
+.confirm-desc { font-size:12.5px; color:var(--ink3); margin-bottom:18px; }
+.confirm-btns { display:flex; gap:10px; justify-content:center; }
+.btn-del { background:var(--red); color:#fff; border:none; padding:9px 18px; border-radius:9px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Noto Sans KR',sans-serif; }
+
+.action-btns { display:flex; gap:6px; }
+.btn-icon { width:26px; height:26px; border-radius:6px; border:1px solid var(--border); background:#fff; cursor:pointer; font-size:12px; display:flex; align-items:center; justify-content:center; }
+.btn-icon:hover { background:var(--green); border-color:var(--green); color:#fff; }
+
+.toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px); background:var(--ink); color:white; padding:10px 22px; border-radius:30px; font-size:13px; font-weight:500; z-index:999; transition:transform .3s ease; pointer-events:none; }
+.toast.show { transform:translateX(-50%) translateY(0); }
+
+.wizard-card { background:#fff; border:1px solid var(--border); border-radius:14px; padding:26px 28px; box-shadow:var(--shadow-md); margin-bottom:20px; }
+.wizard-step { display:none; }
+.wizard-step.show { display:block; }
+.wizard-step + .wizard-step.show { border-top:1px solid var(--border2); margin-top:22px; padding-top:22px; }
+.wizard-q { font-size:14px; font-weight:800; color:var(--ink); margin-bottom:5px; }
+.wizard-qsub { font-size:11.5px; color:var(--ink3); margin-bottom:14px; line-height:1.6; }
+.wizard-options { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px; }
+.chip-option { padding:9px 16px; border:1.5px solid var(--border); border-radius:9px; background:#fff; font-size:12.5px; font-weight:600; color:var(--ink2); cursor:pointer; transition:all .15s; font-family:'Noto Sans KR',sans-serif; }
+.chip-option:hover { border-color:var(--green); color:var(--green); }
+.chip-option.active { background:var(--green); border-color:var(--green); color:#fff; }
+.wizard-custom { display:none; gap:8px; margin-top:10px; }
+.wizard-custom.show { display:flex; }
+.wizard-substep { }
+.checkbox-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:4px; }
+.checkbox-item { display:flex; align-items:center; gap:8px; padding:9px 12px; border:1.5px solid var(--border); border-radius:9px; cursor:pointer; font-size:12px; color:var(--ink2); transition:all .15s; }
+.checkbox-item:hover { border-color:var(--green); }
+.checkbox-item input { accent-color:var(--green); cursor:pointer; }
+.checkbox-item.checked { border-color:var(--green); background:var(--green-light); color:var(--green-mid); font-weight:600; }
+@media(max-width:600px){ .checkbox-grid{ grid-template-columns:1fr; } }
+.wizard-custom input { flex:1; }
+.wizard-summary { display:none; align-items:center; gap:18px; flex-wrap:wrap; background:var(--green-light); border:1px solid var(--green); border-radius:12px; padding:14px 20px; margin-bottom:20px; font-size:12.5px; color:var(--green-mid); }
+.wizard-summary.show { display:flex; }
+.wizard-summary strong { color:var(--ink); }
+.wizard-summary .btn-ghost { margin-left:auto; }
+.upload-section { display:none; }
+.upload-section.show { display:block; }
+
+@media(max-width:900px){ .upload-grid{ grid-template-columns:1fr 1fr; } .stats-row{ grid-template-columns:repeat(3,1fr); } }
+@media(max-width:600px){ .upload-grid{ grid-template-columns:1fr; } .stats-row{ grid-template-columns:1fr 1fr; } .form-row{ grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <button class="back-btn" onclick="history.back()">← 프로젝트로</button>
+    <span class="topbar-title">특정시설 운영현황 및 사례조사</span>
+  </div>
+  <span class="topbar-badge">범용 SHP 중첩분석 · 사례기록</span>
+</div>
+
+<div class="main">
+
+  <div class="page-header">
+    <div class="page-eyebrow">Facility Operation Status &amp; Case Study</div>
+    <div class="page-title">특정시설 운영현황 및 사례조사</div>
+    <div class="page-desc">
+      산업단지뿐 아니라 개발제한구역·택지개발지구·정비구역 등 다양한 지역지구 내에서, 폐기물처리시설을 포함한 다양한 도시계획시설의 소재지·건축물 매칭 여부를 확인하는 범용 중첩분석 도구입니다.<br>
+      아래 질문에 답하면 구역·시설 유형에 맞춰 업로드 항목과 판정 기준이 자동으로 구성됩니다. 분석 결과는 사례조사 기록으로 등록해 지속적으로 관리할 수 있습니다.
+    </div>
+  </div>
+
+  <!-- ===== WIZARD (문답식 설정) ===== -->
+  <div class="wizard-card" id="wizard">
+    <div class="wizard-step show" id="wstep1">
+      <div class="wizard-q">Q1. 어떤 구역(지역지구) 내에서 시설을 찾으시나요?</div>
+      <div class="wizard-qsub">중첩분석의 기준이 될 구역 경계 SHP의 성격을 선택하세요.</div>
+      <div class="wizard-options" id="wopts1">
+        <button class="chip-option" onclick="selectZoneMain('지구단위계획구역',this)">지구단위계획구역</button>
+        <button class="chip-option" onclick="selectZoneMain('공공주택지구',this)">공공주택지구</button>
+        <button class="chip-option" onclick="selectZoneMain('산업단지',this)">산업단지</button>
+        <button class="chip-option" onclick="selectZoneMain('도시개발구역',this)">도시개발구역</button>
+        <button class="chip-option" onclick="selectZoneMain('정비구역',this)">정비구역</button>
+        <button class="chip-option" onclick="selectZoneMain('택지개발지구',this)">택지개발지구</button>
+        <button class="chip-option" onclick="selectZoneMain('공원',this)">공원</button>
+        <button class="chip-option" onclick="selectZoneMain('__custom__',this)">직접입력</button>
+      </div>
+      <div class="wizard-custom" id="wcustom1">
+        <input class="form-input" id="wcustom1_input" placeholder="구역 유형을 입력하세요 (예: 자연녹지지역)">
+        <button class="btn-primary-sm" onclick="confirmCustom(1)">확인</button>
+      </div>
+
+      <div class="wizard-substep" id="wsub1a" style="display:none">
+        <div class="wizard-q" style="font-size:13px;margin-top:18px">Q1-1. 더 세분된 지역지구 선택이 필요한가요?</div>
+        <div class="wizard-qsub">해당 없으면 "아니요"를 선택하고 바로 다음 질문으로 넘어가세요.</div>
+        <div class="wizard-options">
+          <button class="chip-option" onclick="subzoneNeed(true, this)">예, 세분해서 선택할게요</button>
+          <button class="chip-option" onclick="subzoneNeed(false, this)">아니요, 이대로 진행할게요</button>
+        </div>
+      </div>
+
+      <div class="wizard-substep" id="wsub1b" style="display:none">
+        <div class="wizard-q" style="font-size:13px;margin-top:18px">세분류를 모두 선택하세요 (복수 선택 가능)</div>
+        <div class="checkbox-grid" id="subzoneCheckGrid"></div>
+        <div class="wizard-custom show" style="margin-top:10px">
+          <input class="form-input" id="subzoneCustomInput" placeholder="목록에 없는 세부유형을 직접 입력 (쉼표로 여러 개 가능)">
+        </div>
+        <button class="btn-primary-sm" style="margin-top:12px" onclick="confirmSubzone()">다음 →</button>
+      </div>
+    </div>
+
+    <div class="wizard-step" id="wstep2">
+      <div class="wizard-q">Q2. 찾으시려는 시설은 무엇인가요?</div>
+      <div class="wizard-qsub">먼저 시설을 어떤 기준으로 고르실지 선택하세요.</div>
+      <div class="wizard-options" id="wopts2kind">
+        <button class="chip-option" onclick="selectFacilityKind('building_use',this)">건축물 용도 (건축법 시행령 별표1)</button>
+        <button class="chip-option" onclick="selectFacilityKind('urban_facility',this)">도시·군계획시설 (국토계획법 시행령)</button>
+        <button class="chip-option" onclick="selectFacilityKind('custom',this)">직접입력</button>
+      </div>
+      <div class="wizard-custom" id="wcustomFacilityTop">
+        <input class="form-input" id="wcustomFacilityTop_input" placeholder="시설 유형을 직접 입력하세요 (예: 집단에너지시설)">
+        <button class="btn-primary-sm" onclick="confirmFacilityTopCustom()">확인</button>
+      </div>
+
+      <div class="wizard-substep" id="wfacMainWrap" style="display:none">
+        <div class="wizard-q" style="font-size:13px;margin-top:18px" id="wfacMainQ">세부 항목을 선택하세요</div>
+        <div class="wizard-options" id="wopts2main"></div>
+        <div class="wizard-custom" id="wcustom2">
+          <input class="form-input" id="wcustom2_input" placeholder="목록에 없으면 직접 입력하세요">
+          <button class="btn-primary-sm" onclick="confirmCustom(2)">확인</button>
+        </div>
+      </div>
+
+      <div class="wizard-substep" id="wsub2a" style="display:none">
+        <div class="wizard-q" style="font-size:13px;margin-top:18px">Q2-1. 더 세분된 시설 선택이 필요한가요?</div>
+        <div class="wizard-qsub">해당 없으면 "아니요"를 선택하고 바로 다음 질문으로 넘어가세요.</div>
+        <div class="wizard-options">
+          <button class="chip-option" onclick="facilitySubzoneNeed(true, this)">예, 세분해서 선택할게요</button>
+          <button class="chip-option" onclick="facilitySubzoneNeed(false, this)">아니요, 이대로 진행할게요</button>
+        </div>
+      </div>
+
+      <div class="wizard-substep" id="wsub2b" style="display:none">
+        <div class="wizard-q" style="font-size:13px;margin-top:18px">세분류를 모두 선택하세요 (복수 선택 가능)</div>
+        <div class="checkbox-grid" id="facilitySubCheckGrid"></div>
+        <div class="wizard-custom show" style="margin-top:10px">
+          <input class="form-input" id="facilitySubCustomInput" placeholder="목록에 없는 세부유형을 직접 입력 (쉼표로 여러 개 가능)">
+        </div>
+        <button class="btn-primary-sm" style="margin-top:12px" onclick="confirmFacilitySubzone()">다음 →</button>
+      </div>
+    </div>
+
+    <div class="wizard-step" id="wstep3">
+      <div class="wizard-q">Q3. 운영여부 판정에 사용할 주용도 키워드를 확인·수정하세요</div>
+      <div class="wizard-qsub">건축물통합정보의 주용도 필드에 아래 키워드 중 하나라도 포함되면 "운영 가능성 높음"으로 판정합니다. 쉼표로 구분해 자유롭게 수정하세요.</div>
+      <input class="form-input" id="wkeywords" placeholder="예: 폐기물,자원순환,재활용">
+      <button class="run-btn" id="wizardDoneBtn" style="margin-top:16px" onclick="revealStep(4)">다음 →</button>
+    </div>
+
+    <div class="wizard-step" id="wstep4">
+      <div class="wizard-q">Q4. 공간정보 API 인증키가 있으신가요?</div>
+      <div class="wizard-qsub">VWorld(국토교통부 공간정보 오픈플랫폼) 인증키가 있으면 자동조회를 기본으로 준비하고, 없으면 SHP 파일 직접 업로드를 기본으로 안내합니다. 어느 쪽을 고르든 이후 항목별로 언제든 전환할 수 있습니다.</div>
+      <div class="wizard-options">
+        <button class="chip-option" onclick="apiKeyAnswer(true,this)">예, 인증키가 있어요</button>
+        <button class="chip-option" onclick="apiKeyAnswer(false,this)">아니요, 파일을 업로드할게요</button>
+      </div>
+      <div class="wizard-custom" id="wapikeyBox" style="display:none;flex-direction:column;gap:10px;margin-top:12px;align-items:stretch">
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">VWorld API 인증키</label><input class="form-input" id="wApiKeyInput" placeholder="발급받은 인증키"></div>
+          <div class="form-group"><label class="form-label">등록 도메인</label><input class="form-input" id="wApiDomainInput" placeholder="VWorld에 등록한 도메인/IP"></div>
+        </div>
+        <div class="wizard-qsub" style="margin:0">인증키가 등록된 도메인에서 이 페이지를 열어야 정상 동작합니다. 요청이 실패하면 각 항목에서 파일 업로드로 개별 전환할 수 있습니다.</div>
+      </div>
+      <div class="wizard-qsub" id="wapikeyNoNote" style="display:none;margin-top:12px">👍 각 항목에서 SHP(.zip) 파일을 직접 업로드하시면 됩니다. (필요해지면 이후에도 API 조회로 전환 가능)</div>
+      <button class="btn-primary-sm" id="wstep4NextBtn" style="margin-top:16px;display:none" onclick="revealStep(5)">다음 →</button>
+    </div>
+
+    <div class="wizard-step" id="wstep5">
+      <div class="wizard-q">Q5. 조회할 행정구역을 선택하세요 (선택사항, 여러 개 가능)</div>
+      <div class="wizard-qsub">범위를 좁히지 않으려면 "전국"을 선택하세요. 시/도만 선택하고 시/군/구·읍/면/동은 생략해도 됩니다. 여기서 고른 행정구역은 이후 분석 결과를 해당 지역으로만 걸러내는 데 사용할 수 있습니다.</div>
+      <label class="checkbox-item" style="display:inline-flex;margin-bottom:14px">
+        <input type="checkbox" id="regionNationwide" onchange="onNationwideToggle(this.checked)"> 전국 (행정구역 제한 없음)
+      </label>
+      <div id="regionLevels">
+        <div class="form-label" style="margin-bottom:6px">시/도 (다중 선택)</div>
+        <div class="checkbox-grid" id="sidoGrid" style="grid-template-columns:repeat(3,1fr)"></div>
+
+        <div id="sigunguWrap" style="display:none;margin-top:16px">
+          <div class="form-label" style="margin-bottom:6px">시/군/구 (다중 선택)</div>
+          <div class="checkbox-grid" id="sigunguGrid" style="grid-template-columns:repeat(3,1fr)"></div>
+        </div>
+
+        <div id="eupmyeondongWrap" style="display:none;margin-top:16px">
+          <div class="form-label" style="margin-bottom:6px">읍/면/동 (선택사항, 쉼표로 여러 개 입력 가능)</div>
+          <input class="form-input" id="eupmyeondongInput" placeholder="예: 토평동, 인창동">
+        </div>
+      </div>
+      <button class="run-btn" style="margin-top:18px" onclick="finishWizard()">설정 완료 → 다음으로 이동</button>
+    </div>
+  </div>
+
+  <div class="wizard-summary" id="wizardSummary">
+    <span>🏷️ 구역: <strong id="wsZone"></strong></span>
+    <span>🏭 시설: <strong id="wsFacility"></strong></span>
+    <span>🔑 판정 키워드: <strong id="wsKeywords"></strong></span>
+    <span>🗺️ 행정구역: <strong id="wsRegion"></strong></span>
+    <button class="btn-ghost" onclick="reopenWizard()">⚙️ 설정 변경</button>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-label">전체 사례</div><div class="stat-val" id="cnt-total">0</div></div>
+    <div class="stat-card"><div class="stat-label">운영중</div><div class="stat-val" id="cnt-operating">0</div></div>
+    <div class="stat-card"><div class="stat-label">부분운영</div><div class="stat-val" id="cnt-partial">0</div></div>
+    <div class="stat-card"><div class="stat-label">미가동</div><div class="stat-val" id="cnt-idle">0</div></div>
+    <div class="stat-card"><div class="stat-label">철거/미집행</div><div class="stat-val" id="cnt-removed">0</div></div>
+  </div>
+
+  <!-- ===== SECTION 1: 공간정보 중첩분석 ===== -->
+  <div class="upload-section" id="uploadSection">
+  <div class="section-title">1. 공간정보 중첩분석</div>
+  <div class="section-sub">각 레이어는 SHP 파일을 직접 업로드하거나, VWorld(국토교통부 공간정보 오픈플랫폼) API로 자동 조회할 수 있습니다.</div>
+
+  <div class="api-settings" id="apiSettings">
+    <div class="api-settings-head" onclick="document.getElementById('apiSettingsBody').classList.toggle('show')">
+      <div class="api-settings-title">🌐 공간정보 API 연동 설정 (선택)</div>
+      <span style="font-size:11px;color:var(--blue)">펼치기 ▾</span>
+    </div>
+    <div class="api-settings-body" id="apiSettingsBody">
+      <div class="api-settings-grid">
+        <div class="form-group"><label class="form-label">VWorld API 인증키</label><input class="form-input" id="apiKey" placeholder="발급받은 인증키 (vworld.kr)" oninput="onApiKeyChanged()"></div>
+        <div class="form-group"><label class="form-label">등록 도메인</label><input class="form-input" id="apiDomain" placeholder="VWorld에 등록한 도메인/IP"></div>
+      </div>
+      <div class="form-group" style="margin-bottom:4px">
+        <label class="form-label">조회 영역 지정 (선택사항 — 지도 클릭 또는 Q5 행정구역 중 편한 방식 사용)</label>
+        <div class="bbox-row">
+          <button class="bbox-btn" id="bboxBtn" onclick="toggleBboxMode()">🖱️ 지도에서 영역 지정 (2회 클릭)</button>
+          <div class="bbox-display" id="bboxDisplay">지정 안 함 — 아래 지도 배경은 VWorld와 연동됩니다</div>
+          <button class="btn-ghost" id="bboxClearBtn" onclick="clearBbox()" style="display:none">✕ 영역 해제</button>
+        </div>
+      </div>
+      <div class="api-settings-note">
+        지도 영역 지정과 Q5 행정구역 선택은 <b>둘 다 선택사항</b>이며 같은 층위의 조회 범위 좁히기 수단입니다 — 아무 것도 지정하지 않아도 조회는 진행되며, 필요한 쪽만 골라 쓰면 됩니다.<br>
+        VWorld 오픈API(<a href="https://www.vworld.kr" target="_blank" style="color:var(--blue)">vworld.kr</a>)에서 인증키를 발급받고, 개발계정에 <b>이 페이지가 열리는 도메인</b>을 등록해야 정상 조회됩니다. 도메인이 다르면 브라우저 정책(CORS)·서버 검증에 의해 요청이 차단될 수 있으며, 이 경우 파일 업로드 방식을 이용해 주세요.<br>
+        서비스ID는 VWorld 데이터 카탈로그에서 검색해 확인하세요 (예: 연속지적도 = <span style="font-family:'DM Mono',monospace">LP_PA_CBND_BUBUN</span>, 미리 입력되어 있음).
+      </div>
+    </div>
+  </div>
+
+  <div class="map-card" style="margin-bottom:16px">
+    <div id="map"></div>
+    <div class="map-legend">
+      <span><i class="legend-dot" style="background:#8FA6BE"></i>산업단지 경계</span>
+      <span><i class="legend-dot" style="background:#2e7d52"></i>운영 가능성 높음</span>
+      <span><i class="legend-dot" style="background:#b45309"></i>용도 불일치(확인 필요)</span>
+      <span><i class="legend-dot" style="background:#b91c1c"></i>건축물 미확인(미집행 추정)</span>
+      <span style="margin-left:auto;font-family:'DM Mono',monospace" id="baseMapLabel">배경지도: OpenStreetMap</span>
+    </div>
+  </div>
+
+  <div class="upload-grid">
+    <div class="upload-card" id="ucard1">
+      <div class="upload-top"><div class="upload-num" id="unum1">1</div><div class="upload-title">지역지구 공간데이터</div></div>
+      <div class="upload-desc" id="udesc1">구역 경계</div>
+      <div class="src-toggle"><button class="src-tab active" onclick="setSrcMode(1,'file',this)">📁 파일</button><button class="src-tab" onclick="setSrcMode(1,'api',this)">🌐 API</button></div>
+      <div class="src-pane show" id="upane1_file">
+        <label class="upload-drop" id="udrop1">파일 선택 (.zip)<input type="file" id="ufile1" accept=".zip"></label>
+      </div>
+      <div class="src-pane" id="upane1_api">
+        <input class="api-input" id="uapi1_service" placeholder="서비스ID (VWorld 카탈로그에서 확인)">
+        <button class="api-fetch-btn" onclick="apiFetchCard(1)">API로 조회</button>
+      </div>
+      <div class="upload-status" id="ustatus1"></div>
+      <div class="field-mini" id="ufield1"><label>명칭 필드</label><select id="usel1_name"></select></div>
+    </div>
+    <div class="upload-card" id="ucard2">
+      <div class="upload-top"><div class="upload-num" id="unum2">2</div><div class="upload-title">조사대상 공간데이터</div></div>
+      <div class="upload-desc" id="udesc2">도시계획시설 결정 레이어</div>
+      <div class="src-toggle"><button class="src-tab active" onclick="setSrcMode(2,'file',this)">📁 파일</button><button class="src-tab" onclick="setSrcMode(2,'api',this)">🌐 API</button></div>
+      <div class="src-pane show" id="upane2_file">
+        <label class="upload-drop" id="udrop2">파일 선택 (.zip)<input type="file" id="ufile2" accept=".zip"></label>
+      </div>
+      <div class="src-pane" id="upane2_api">
+        <input class="api-input" id="uapi2_service" placeholder="서비스ID (예: 도시계획시설 관련)">
+        <button class="api-fetch-btn" onclick="apiFetchCard(2)">API로 조회</button>
+      </div>
+      <div class="upload-status" id="ustatus2"></div>
+      <div class="field-mini" id="ufield2"><label>시설명 필드</label><select id="usel2_name"></select></div>
+    </div>
+    <div class="upload-card" id="ucard3">
+      <div class="upload-top"><div class="upload-num" id="unum3">3</div><div class="upload-title">연속지적도</div></div>
+      <div class="upload-desc">지적도(필지) 데이터</div>
+      <div class="src-toggle"><button class="src-tab active" onclick="setSrcMode(3,'file',this)">📁 파일</button><button class="src-tab" onclick="setSrcMode(3,'api',this)">🌐 API</button></div>
+      <div class="src-pane show" id="upane3_file">
+        <label class="upload-drop" id="udrop3">파일 선택 (.zip)<input type="file" id="ufile3" accept=".zip"></label>
+      </div>
+      <div class="src-pane" id="upane3_api">
+        <input class="api-input" id="uapi3_service" value="LP_PA_CBND_BUBUN" placeholder="서비스ID">
+        <button class="api-fetch-btn" onclick="apiFetchCard(3)">API로 조회</button>
+      </div>
+      <div class="upload-status" id="ustatus3"></div>
+      <div class="field-mini" id="ufield3">
+        <label>PNU 필드</label><select id="usel3_pnu"></select>
+        <label style="margin-top:2px">지목 필드</label><select id="usel3_jimok"></select>
+        <label style="margin-top:2px">행정구역명 필드 (선택, 행정구역 필터용)</label><select id="usel3_region"></select>
+      </div>
+    </div>
+    <div class="upload-card" id="ucard4">
+      <div class="upload-top"><div class="upload-num" id="unum4">4</div><div class="upload-title">건축물 정보데이터</div></div>
+      <div class="upload-desc">필지별 건축물 속성</div>
+      <div class="src-toggle"><button class="src-tab active" onclick="setSrcMode(4,'file',this)">📁 파일</button><button class="src-tab" onclick="setSrcMode(4,'api',this)">🌐 API</button></div>
+      <div class="src-pane show" id="upane4_file">
+        <label class="upload-drop" id="udrop4">파일 선택 (.zip)<input type="file" id="ufile4" accept=".zip"></label>
+      </div>
+      <div class="src-pane" id="upane4_api">
+        <input class="api-input" id="uapi4_service" placeholder="서비스ID (예: 건물통합정보 관련)">
+        <button class="api-fetch-btn" onclick="apiFetchCard(4)">API로 조회</button>
+      </div>
+      <div class="upload-status" id="ustatus4"></div>
+      <div class="field-mini" id="ufield4">
+        <label>PNU 필드</label><select id="usel4_pnu"></select>
+        <label style="margin-top:2px">주용도 필드</label><select id="usel4_purps"></select>
+        <label style="margin-top:2px">연면적 필드(선택)</label><select id="usel4_area"></select>
+        <label style="margin-top:2px">사용승인일 필드(선택)</label><select id="usel4_apday"></select>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title" style="margin-top:24px">2. 추가입력사항 (선택)</div>
+  <div class="section-sub">필요하다면 1개 이상의 추가 공간데이터를 더 결합해 다중 중첩·조인 분석을 할 수 있습니다 (예: 인허가 현황, 지하수 관정, 오염원 조사 등). PNU로 결합하거나, 공간적으로 겹치는지(intersect)로 결합할 수 있습니다.</div>
+  <div class="extra-grid" id="extraLayersContainer"></div>
+  <button class="add-extra-btn" onclick="addExtraLayerCard()">＋ 데이터 추가</button>
+
+  <button class="run-btn" id="runBtn" disabled>중첩분석 실행 →</button>
+  <div class="run-log" id="runLog">모든 레이어를 준비하면 실행할 수 있습니다.</div>
+
+
+  <div class="result-actions">
+    <button class="btn-ghost" id="exportCsvBtn" onclick="exportCSV()" disabled>CSV 다운로드</button>
+    <button class="btn-primary-sm" id="exportXlsxBtn" onclick="exportXLSX()" disabled>📊 엑셀(XLSX) 다운로드</button>
+    <button class="btn-primary-sm" id="importBtn" onclick="importResultsToCaseLog()" disabled>분석결과 사례조사에 등록 →</button>
+  </div>
+
+  <div class="table-card">
+    <div class="table-wrap">
+      <table id="resultTable">
+        <thead><tr><th>시설명</th><th id="colZoneHeader">소재 구역</th><th>PNU</th><th>지목</th><th>행정구역</th><th>건축물수</th><th>매칭 주용도</th><th>연면적</th><th id="colJudgeHeader">판정</th></tr></thead>
+        <tbody id="resultBody"><tr><td colspan="9"><div class="empty-state"><div class="empty-icon">🗺️</div>4단계 SHP 업로드 후 분석을 실행하면 결과가 표시됩니다.</div></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  </div><!-- /uploadSection -->
+
+  <!-- ===== SECTION 2: 사례조사 기록 ===== -->
+  <div class="section-title">3. 운영현황 사례조사 기록</div>
+  <div class="section-sub">중첩분석 결과 또는 현장조사·인허가 확인 등을 통해 파악한 시설별 운영현황을 기록·관리합니다.</div>
+
+  <div class="toolbar">
+    <input type="text" class="search-input" id="searchInput" placeholder="시설명, 산업단지, 조사자 검색..." oninput="renderCaseTable()">
+    <button class="filter-chip active" data-filter="all" onclick="setFilter('all', this)">전체</button>
+    <button class="filter-chip" data-filter="운영중" onclick="setFilter('운영중', this)">운영중</button>
+    <button class="filter-chip" data-filter="부분운영" onclick="setFilter('부분운영', this)">부분운영</button>
+    <button class="filter-chip" data-filter="미가동" onclick="setFilter('미가동', this)">미가동</button>
+    <button class="filter-chip" data-filter="철거/미집행" onclick="setFilter('철거/미집행', this)">철거/미집행</button>
+    <button class="filter-chip" data-filter="확인필요" onclick="setFilter('확인필요', this)">확인필요</button>
+    <button class="btn-ghost" onclick="exportCaseXLSX()">📊 엑셀 다운로드</button>
+    <button class="btn-primary-sm" style="margin-left:auto" onclick="openAddModal()">＋ 사례 추가</button>
+  </div>
+
+  <div class="table-card">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>시설명</th><th id="colZoneHeaderCase">소재 구역</th><th>시설유형</th><th>운영상태</th><th>조사일자</th><th>조사자</th><th>비고</th><th></th></tr></thead>
+        <tbody id="caseBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-overlay" id="caseModalOverlay" onclick="if(event.target===this)closeCaseModal()">
+  <div class="modal-box">
+    <div class="mhead"><h3 id="caseModalTitle">시설 사례 추가</h3><button class="mclose" onclick="closeCaseModal()">✕</button></div>
+    <div class="mbody">
+      <input type="hidden" id="c-editId">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">시설명 *</label><input class="form-input" id="c-name" placeholder="예: OO폐기물처리시설"></div>
+        <div class="form-group"><label class="form-label" id="c-complex-label">소재 구역명</label><input class="form-input" id="c-complex" placeholder="예: 구리토평2 일반산업단지"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">시설유형</label>
+          <input class="form-input" id="c-type" list="typeList" placeholder="예: 폐기물처리시설">
+          <datalist id="typeList">
+            <option>폐기물처리시설</option><option>재활용시설</option><option>소각시설</option><option>매립시설</option>
+            <option>주차장</option><option>학교</option><option>종교시설</option><option>유통업무설비</option>
+            <option>사회복지시설</option><option>자동차관련시설</option><option>공원</option>
+          </datalist>
+        </div>
+        <div class="form-group">
+          <label class="form-label">운영상태</label>
+          <select class="form-select" id="c-status">
+            <option value="확인필요">확인필요</option><option value="운영중">운영중</option><option value="부분운영">부분운영</option><option value="미가동">미가동</option><option value="철거/미집행">철거/미집행</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">소재지 주소</label><input class="form-input" id="c-address" placeholder="지번/도로명 주소"></div>
+        <div class="form-group"><label class="form-label">PNU (선택)</label><input class="form-input" id="c-pnu" placeholder="필지고유번호" style="font-family:'DM Mono',monospace"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">조사일자</label><input class="form-input" type="date" id="c-surveydate"></div>
+        <div class="form-group"><label class="form-label">조사자</label><input class="form-input" id="c-surveyor" placeholder="예: 홍길동"></div>
+      </div>
+      <div class="form-row full"><div class="form-group"><label class="form-label">근거자료 / 출처</label><textarea class="form-textarea" id="c-source" placeholder="예: 폐기물처리업 인허가 현황, 항공영상 판독, 현장조사 등"></textarea></div></div>
+      <div class="form-row full"><div class="form-group"><label class="form-label">비고</label><textarea class="form-textarea" id="c-memo" placeholder="특이사항, 판단 근거, 후속조치 등"></textarea></div></div>
+    </div>
+    <div class="mfoot"><button class="btn-cancel" onclick="closeCaseModal()">취소</button><button class="btn-save" onclick="saveCase()">저장</button></div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM -->
+<div class="modal-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-icon">🗑️</div>
+    <div class="confirm-title">이 사례를 삭제할까요?</div>
+    <div class="confirm-desc">삭제된 데이터는 복구할 수 없습니다.</div>
+    <div class="confirm-btns"><button class="btn-cancel" onclick="closeConfirm()">취소</button><button class="btn-del" onclick="confirmDelete()">삭제</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, serverTimestamp, writeBatch } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBoG6ZwhhW-7iqHDuXjdQeBfV7fVYcuoOM",
+  authDomain: "urbanplanning-test.firebaseapp.com",
+  projectId: "urbanplanning-test",
+  storageBucket: "urbanplanning-test.firebasestorage.app",
+  messagingSenderId: "604565575520",
+  appId: "1:604565575520:web:951f429f4f2033c020f005",
+  measurementId: "G-T3F8V1RTG0"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const colRef = collection(db, 'facility_cases');
+
+/* ---------------- Case log state ---------------- */
+let cases = [];
+let currentFilter = 'all';
+let deleteTargetId = null;
+
+onSnapshot(colRef, (snap) => {
+  cases = snap.docs.map(d => ({ firestoreId:d.id, ...d.data() }));
+  window.__caseRows = cases;
+  renderCaseTable();
+}, (err) => { console.error(err); showToast('⚠️ 사례조사 데이터 로드 실패'); });
+
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function statusBadge(s){
+  const map = { '운영중':'s-operating','부분운영':'s-partial','미가동':'s-idle','철거/미집행':'s-removed','확인필요':'s-unknown' };
+  return `<span class="status-badge ${map[s]||'s-unknown'}">${s||'확인필요'}</span>`;
+}
+window.setFilter = function(val, btn){
+  currentFilter = val;
+  document.querySelectorAll('.filter-chip').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderCaseTable();
+};
+window.renderCaseTable = function(){
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  let list = cases.filter(c=>{
+    const mf = currentFilter==='all' || c.status===currentFilter;
+    const ms = !q || (c.name||'').toLowerCase().includes(q) || (c.complex||'').toLowerCase().includes(q) || (c.surveyor||'').toLowerCase().includes(q);
+    return mf && ms;
+  });
+  list.sort((a,b)=> (b.createdAt?.seconds??0) - (a.createdAt?.seconds??0));
+  const tbody = document.getElementById('caseBody');
+  if(list.length===0){
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">📭</div>등록된 사례가 없습니다.</div></td></tr>`;
+  } else {
+    tbody.innerHTML = list.map(c=>`
+      <tr>
+        <td class="col-name" onclick="openEditModal('${c.firestoreId}')">${escHtml(c.name)}</td>
+        <td>${escHtml(c.complex||'-')}</td>
+        <td><span class="type-badge">${escHtml(c.type||'-')}</span></td>
+        <td>${statusBadge(c.status)}</td>
+        <td style="font-family:'DM Mono',monospace;font-size:11.5px">${c.surveydate||'-'}</td>
+        <td>${escHtml(c.surveyor||'-')}</td>
+        <td><div class="memo-cell" title="${escHtml(c.memo||'')}">${escHtml(c.memo||'-')}</div></td>
+        <td>
+          <div class="action-btns">
+            <button class="btn-icon" title="수정" onclick="openEditModal('${c.firestoreId}')">✏️</button>
+            <button class="btn-icon" title="삭제" onclick="openDeleteConfirm('${c.firestoreId}')">🗑️</button>
+          </div>
+        </td>
+      </tr>`).join('');
+  }
+  document.getElementById('cnt-total').textContent = cases.length;
+  document.getElementById('cnt-operating').textContent = cases.filter(c=>c.status==='운영중').length;
+  document.getElementById('cnt-partial').textContent = cases.filter(c=>c.status==='부분운영').length;
+  document.getElementById('cnt-idle').textContent = cases.filter(c=>c.status==='미가동').length;
+  document.getElementById('cnt-removed').textContent = cases.filter(c=>c.status==='철거/미집행').length;
+};
+
+window.openAddModal = function(){
+  document.getElementById('caseModalTitle').textContent = '시설 사례 추가';
+  document.getElementById('c-editId').value = '';
+  ['name','complex','address','pnu','surveyor','source','memo'].forEach(f=>document.getElementById('c-'+f).value='');
+  document.getElementById('c-surveydate').value = '';
+  document.getElementById('c-type').value = (window.wizard && wizardFacilityLabel()) || '';
+  document.getElementById('c-status').value = '확인필요';
+  document.getElementById('caseModalOverlay').classList.add('open');
+};
+window.openEditModal = function(id){
+  const c = cases.find(x=>x.firestoreId===id);
+  if(!c) return;
+  document.getElementById('caseModalTitle').textContent = '시설 사례 수정';
+  document.getElementById('c-editId').value = id;
+  document.getElementById('c-name').value = c.name||'';
+  document.getElementById('c-complex').value = c.complex||'';
+  document.getElementById('c-address').value = c.address||'';
+  document.getElementById('c-pnu').value = c.pnu||'';
+  document.getElementById('c-type').value = c.type||'';
+  document.getElementById('c-status').value = c.status||'확인필요';
+  document.getElementById('c-surveydate').value = c.surveydate||'';
+  document.getElementById('c-surveyor').value = c.surveyor||'';
+  document.getElementById('c-source').value = c.source||'';
+  document.getElementById('c-memo').value = c.memo||'';
+  document.getElementById('caseModalOverlay').classList.add('open');
+};
+window.closeCaseModal = function(){ document.getElementById('caseModalOverlay').classList.remove('open'); };
+window.saveCase = async function(){
+  const name = document.getElementById('c-name').value.trim();
+  if(!name){ showToast('⚠️ 시설명을 입력해주세요'); return; }
+  const editId = document.getElementById('c-editId').value;
+  const data = {
+    name,
+    complex: document.getElementById('c-complex').value.trim(),
+    address: document.getElementById('c-address').value.trim(),
+    pnu: document.getElementById('c-pnu').value.trim(),
+    type: document.getElementById('c-type').value,
+    status: document.getElementById('c-status').value,
+    surveydate: document.getElementById('c-surveydate').value,
+    surveyor: document.getElementById('c-surveyor').value.trim(),
+    source: document.getElementById('c-source').value.trim(),
+    memo: document.getElementById('c-memo').value.trim(),
+  };
+  try{
+    if(editId){ await updateDoc(doc(db,'facility_cases',editId), data); showToast('✅ 수정되었습니다'); }
+    else { data.createdAt = serverTimestamp(); await addDoc(colRef, data); showToast('✅ 사례가 추가되었습니다'); }
+    closeCaseModal();
+  }catch(e){ showToast('⚠️ 저장 실패: '+e.message); }
+};
+window.openDeleteConfirm = function(id){ deleteTargetId=id; document.getElementById('confirmOverlay').classList.add('open'); };
+window.closeConfirm = function(){ deleteTargetId=null; document.getElementById('confirmOverlay').classList.remove('open'); };
+window.confirmDelete = async function(){
+  try{ await deleteDoc(doc(db,'facility_cases',deleteTargetId)); closeConfirm(); showToast('🗑️ 삭제되었습니다'); }
+  catch(e){ showToast('⚠️ 삭제 실패: '+e.message); }
+};
+
+/* ---------------- Bulk import from overlay analysis ---------------- */
+window.importResultsToCaseLog = async function(){
+  if(!window.__resultFeatures || window.__resultFeatures.length===0) return;
+  const btn = document.getElementById('importBtn');
+  btn.disabled = true; btn.textContent = '등록 중...';
+  try{
+    const batch = writeBatch(db);
+    const facilityLbl = (window.wizardFacilityFullLabel && window.wizardFacilityFullLabel()) || (window.wizardFacilityLabel && window.wizardFacilityLabel()) || '시설';
+    const zoneLbl = (window.wizardZoneFullLabel && window.wizardZoneFullLabel()) || (window.wizardZoneLabel && window.wizardZoneLabel()) || '구역';
+    window.__resultFeatures.forEach(item=>{
+      const statusMap = { operating:'운영중', mismatch:'확인필요', nobuild:'철거/미집행' };
+      const ref = doc(colRef);
+      batch.set(ref, {
+        name: item.facilityName,
+        complex: item.industrialName,
+        pnu: item.pnu ? String(item.pnu) : '',
+        type: facilityLbl,
+        status: statusMap[item.status] || '확인필요',
+        source: `공간정보 중첩분석 자동생성 (${zoneLbl}×${facilityLbl}×지적도×건축물)`,
+        memo: `매칭 주용도: ${item.mainPurps||'-'} / 지목: ${item.jimok||'-'} / 건축물수: ${item.buildingCount}`,
+        createdAt: serverTimestamp()
+      });
+    });
+    await batch.commit();
+    showToast(`✅ ${window.__resultFeatures.length}건이 사례조사에 등록되었습니다`);
+  }catch(e){ showToast('⚠️ 일괄등록 실패: '+e.message); }
+  finally{ btn.disabled=false; btn.textContent='분석결과 사례조사에 등록 →'; }
+};
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2400);
+}
+window.showToast = showToast;
+window.exportCaseXLSX = function(){
+  if(typeof XLSX === 'undefined'){ alert('엑셀 라이브러리 로드에 실패했습니다. 잠시 후 다시 시도해주세요.'); return; }
+  if(!cases || cases.length===0){ showToast('⚠️ 내보낼 사례조사 기록이 없습니다'); return; }
+  const headers = ['시설명','소재구역명','시설유형','운영상태','소재지주소','PNU','조사일자','조사자','근거자료','비고'];
+  const data = cases.map(c=>[c.name||'', c.complex||'', c.type||'', c.status||'', c.address||'', c.pnu||'', c.surveydate||'', c.surveyor||'', c.source||'', c.memo||'']);
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+  ws['!cols'] = headers.map(()=>({wch:16}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '사례조사기록');
+  XLSX.writeFile(wb, '시설_사례조사기록.xlsx');
+};
+</script>
+
+<script>
+/* ================= 문답식 설정 (구역 유형 / 시설 유형 / 판정 키워드) ================= */
+window.wizard = { zoneType:null, zoneCustom:'', zoneSubTypes:[], facilityKind:null, facilityType:null, facilityCustom:'', facilitySubTypes:[], keywords:'', hasApiKey:null, regions:{ nationwide:false, sido:[], sigungu:[], eupmyeondong:[] } };
+
+const SIDO_SIGUNGU = {
+  '서울특별시': ['종로구','중구','용산구','성동구','광진구','동대문구','중랑구','성북구','강북구','도봉구','노원구','은평구','서대문구','마포구','양천구','강서구','구로구','금천구','영등포구','동작구','관악구','서초구','강남구','송파구','강동구'],
+  '부산광역시': ['중구','서구','동구','영도구','부산진구','동래구','남구','북구','해운대구','사하구','금정구','강서구','연제구','수영구','사상구','기장군'],
+  '대구광역시': ['중구','동구','서구','남구','북구','수성구','달서구','달성군','군위군'],
+  '인천광역시': ['중구','동구','미추홀구','연수구','남동구','부평구','계양구','서구','강화군','옹진군'],
+  '광주광역시': ['동구','서구','남구','북구','광산구'],
+  '대전광역시': ['동구','중구','서구','유성구','대덕구'],
+  '울산광역시': ['중구','남구','동구','북구','울주군'],
+  '세종특별자치시': [],
+  '경기도': ['수원시','성남시','의정부시','안양시','부천시','광명시','평택시','동두천시','안산시','고양시','과천시','구리시','남양주시','오산시','시흥시','군포시','의왕시','하남시','용인시','파주시','이천시','안성시','김포시','화성시','광주시','양주시','포천시','여주시','연천군','가평군','양평군'],
+  '강원특별자치도': ['춘천시','원주시','강릉시','동해시','태백시','속초시','삼척시','홍천군','횡성군','영월군','평창군','정선군','철원군','화천군','양구군','인제군','고성군','양양군'],
+  '충청북도': ['청주시','충주시','제천시','보은군','옥천군','영동군','증평군','진천군','괴산군','음성군','단양군'],
+  '충청남도': ['천안시','공주시','보령시','아산시','서산시','논산시','계룡시','당진시','금산군','부여군','서천군','청양군','홍성군','예산군','태안군'],
+  '전북특별자치도': ['전주시','군산시','익산시','정읍시','남원시','김제시','완주군','진안군','무주군','장수군','임실군','순창군','고창군','부안군'],
+  '전라남도': ['목포시','여수시','순천시','나주시','광양시','담양군','곡성군','구례군','고흥군','보성군','화순군','장흥군','강진군','해남군','영암군','무안군','함평군','영광군','장성군','완도군','진도군','신안군'],
+  '경상북도': ['포항시','경주시','김천시','안동시','구미시','영주시','영천시','상주시','문경시','경산시','의성군','청송군','영양군','영덕군','청도군','고령군','성주군','칠곡군','예천군','봉화군','울진군','울릉군'],
+  '경상남도': ['창원시','진주시','통영시','사천시','김해시','밀양시','거제시','양산시','의령군','함안군','창녕군','고성군','남해군','하동군','산청군','함양군','거창군','합천군'],
+  '제주특별자치도': ['제주시','서귀포시']
+};
+
+window.apiKeyAnswer = function(has, el){
+  document.querySelectorAll('#wstep4 .chip-option').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  wizard.hasApiKey = has;
+  document.getElementById('wapikeyBox').style.display = has ? 'flex' : 'none';
+  document.getElementById('wapikeyNoNote').style.display = has ? 'none' : 'block';
+  document.getElementById('wstep4NextBtn').style.display = 'block';
+};
+
+function renderSidoGrid(){
+  const grid = document.getElementById('sidoGrid');
+  grid.innerHTML = Object.keys(SIDO_SIGUNGU).map(s=>`<label class="checkbox-item"><input type="checkbox" value="${s}" onchange="onSidoToggle(this)"> ${s}</label>`).join('');
+}
+window.onNationwideToggle = function(checked){
+  wizard.regions.nationwide = checked;
+  const lv = document.getElementById('regionLevels');
+  lv.style.opacity = checked ? '0.35' : '1';
+  lv.style.pointerEvents = checked ? 'none' : 'auto';
+};
+window.onSidoToggle = function(el){
+  const val = el.value;
+  el.parentElement.classList.toggle('checked', el.checked);
+  if(el.checked){ if(!wizard.regions.sido.includes(val)) wizard.regions.sido.push(val); }
+  else{ wizard.regions.sido = wizard.regions.sido.filter(x=>x!==val); }
+  renderSigunguGrid();
+};
+function renderSigunguGrid(){
+  const wrap = document.getElementById('sigunguWrap');
+  const grid = document.getElementById('sigunguGrid');
+  if(wizard.regions.sido.length===0){
+    wrap.style.display='none'; grid.innerHTML=''; wizard.regions.sigungu=[];
+    document.getElementById('eupmyeondongWrap').style.display='none';
+    return;
+  }
+  wrap.style.display='block';
+  let html='';
+  wizard.regions.sido.forEach(sido=>{
+    const list = SIDO_SIGUNGU[sido]||[];
+    if(list.length===0) return;
+    html += `<div style="grid-column:1/-1;font-size:10.5px;font-weight:700;color:var(--ink3);margin-top:6px">${sido}</div>`;
+    html += list.map(g=>{
+      const checked = wizard.regions.sigungu.includes(g) ? 'checked' : '';
+      const cls = checked ? 'checkbox-item checked' : 'checkbox-item';
+      return `<label class="${cls}"><input type="checkbox" value="${g}" data-sido="${sido}" ${checked} onchange="onSigunguToggle(this)"> ${g}</label>`;
+    }).join('');
+  });
+  grid.innerHTML = html || '<div style="font-size:11.5px;color:var(--ink3);grid-column:1/-1">해당 시/도는 하위 시/군/구 구분이 없습니다.</div>';
+  const validSigungu = new Set();
+  wizard.regions.sido.forEach(sido=>(SIDO_SIGUNGU[sido]||[]).forEach(g=>validSigungu.add(g)));
+  wizard.regions.sigungu = wizard.regions.sigungu.filter(g=>validSigungu.has(g));
+  document.getElementById('eupmyeondongWrap').style.display = wizard.regions.sigungu.length ? 'block' : 'none';
+}
+window.onSigunguToggle = function(el){
+  const val = el.value;
+  el.parentElement.classList.toggle('checked', el.checked);
+  if(el.checked){ if(!wizard.regions.sigungu.includes(val)) wizard.regions.sigungu.push(val); }
+  else{ wizard.regions.sigungu = wizard.regions.sigungu.filter(x=>x!==val); }
+  document.getElementById('eupmyeondongWrap').style.display = wizard.regions.sigungu.length ? 'block' : 'none';
+};
+renderSidoGrid();
+
+const KEYWORD_PRESETS = {
+  '폐기물처리시설':'폐기물,자원순환,재활용,소각,매립,환경',
+  '주차장':'주차장,주차',
+  '학교':'학교,교육',
+  '종교시설':'교회,성당,사찰,종교',
+  '유통업무설비':'유통,물류,창고',
+  '사회복지시설':'복지,요양,어린이집,사회복지',
+  '자동차관련시설':'자동차,정비,주유소,세차,카센터',
+  '공원':'공원,녹지,휴게',
+  '자원순환 관련 시설':'폐기물,자원순환,재활용,소각,매립,환경',
+  '환경기초시설':'폐기물,재활용,하수,수질,환경',
+  '자동차 관련 시설':'자동차,정비,주유소,세차,카센터',
+  '공공·문화체육시설':'공공,문화,체육,청사'
+};
+
+/* 건축물 용도 (건축법 시행령 별표1) — 대분류 */
+const BUILDING_USE_MAIN = [
+  '단독주택','공동주택','제1종 근린생활시설','제2종 근린생활시설','문화 및 집회시설','종교시설','판매시설','운수시설',
+  '의료시설','교육연구시설','노유자시설','수련시설','운동시설','업무시설','숙박시설','위락시설','공장','창고시설',
+  '위험물 저장 및 처리 시설','자동차 관련 시설','동물 및 식물 관련 시설','자원순환 관련 시설','교정시설','국방·군사시설',
+  '방송통신시설','발전시설','묘지 관련 시설','관광 휴게시설','장례시설','야영장 시설'
+];
+/* 건축물 용도별 세분류 (대표 예시, 참고용) */
+const BUILDING_USE_SUB = {
+  '단독주택': ['단독주택','다중주택','다가구주택','공관'],
+  '공동주택': ['아파트','연립주택','다세대주택','기숙사'],
+  '제1종 근린생활시설': ['슈퍼마켓·일용품소매점','휴게음식점(소규모)','제과점(소규모)','이용원·미용원·목욕장·세탁소','의원·치과의원·한의원·조산원','탁구장·체육도장(소규모)','공공업무시설(소규모)','마을회관·마을공동작업소','주민편의시설(변전소·정수장 등)','금융업소·사무소(소규모)'],
+  '제2종 근린생활시설': ['공연장·종교집회장(소규모)','일반음식점','기원','서점','체력단련장·에어로빅장 등','금융업소·사무소','다중생활시설','제조업소·수리점(소규모)','단란주점(소규모)','안마시술소·노래연습장','고시원'],
+  '문화 및 집회시설': ['공연장','집회장','관람장','전시장(박물관·미술관·과학관)','동·식물원'],
+  '종교시설': ['종교집회장','봉안당'],
+  '판매시설': ['도매시장','소매시장(대규모점포)','상점'],
+  '운수시설': ['여객자동차터미널','철도시설','공항시설','항만시설 및 종합여객시설'],
+  '의료시설': ['병원(종합·치과·한방·정신)','격리병원'],
+  '교육연구시설': ['학교','교육원','직업훈련소','학원','연구소','도서관'],
+  '노유자시설': ['아동관련시설(어린이집·유치원 등)','노인복지시설','장애인복지시설','그 밖의 사회복지시설'],
+  '수련시설': ['생활권 수련시설','자연권 수련시설','유스호스텔','야영장시설'],
+  '운동시설': ['체육도장·체력단련장','체육관','운동장'],
+  '업무시설': ['공공업무시설','일반업무시설(오피스텔 포함)'],
+  '숙박시설': ['일반숙박·생활숙박시설','관광숙박시설','다중생활시설(대규모)'],
+  '위락시설': ['단란주점(대규모)','유흥주점','유원시설업 시설','무도장·무도학원','카지노영업소'],
+  '공장': ['제조업 공장','가공업 공장','수리업 공장'],
+  '창고시설': ['창고','하역장','물류터미널','집배송시설'],
+  '위험물 저장 및 처리 시설': ['주유소·석유판매소','액화가스취급소·판매소','유독물보관·저장·판매시설','고압가스충전소·저장소·판매소','화약류저장소'],
+  '자동차 관련 시설': ['주차장','세차장','폐차장','검사장','매매장','정비공장','운전학원·정비학원','차고 및 주기장'],
+  '동물 및 식물 관련 시설': ['축사','가축시설','도축장','작물재배사','종묘배양시설','화초 및 분재 등의 온실'],
+  '자원순환 관련 시설': ['하수 등 처리시설','고물상','폐기물재활용시설','폐기물처분시설','폐기물감량화시설'],
+  '교정시설': ['교도소','구치소','보호관찰소','갱생보호시설','치료감호시설','소년원 및 소년분류심사원'],
+  '국방·군사시설': ['국방·군사시설'],
+  '방송통신시설': ['방송국','전신전화국','촬영소','통신용시설','데이터센터'],
+  '발전시설': ['원자력발전소','화력발전소','수력발전소','태양광발전소','풍력발전소','기타 발전시설'],
+  '묘지 관련 시설': ['화장시설','봉안당(종교시설 제외)','묘지 관련 시설','동물화장시설'],
+  '관광 휴게시설': ['야외음악당','야외극장','어린이회관','관망탑','휴게소'],
+  '장례시설': ['장례식장','동물전용 장례식장'],
+  '야영장 시설': ['일반야영장','자동차야영장']
+};
+
+/* 도시·군계획시설 (국토계획법 시행령 제2조) — 대분류(기반시설 7종) */
+const URBAN_FACILITY_MAIN = ['교통시설','공간시설','유통·공급시설','공공·문화체육시설','방재시설','보건위생시설','환경기초시설'];
+const URBAN_FACILITY_SUB = {
+  '교통시설': ['도로','철도','항만','공항','주차장','자동차정류장','궤도','차량 검사 및 면허시설','운하','자동차 및 건설기계검사시설'],
+  '공간시설': ['광장','공원','녹지','유원지','공공공지'],
+  '유통·공급시설': ['유통업무설비','수도공급설비','전기공급설비','가스공급설비','열공급설비','방송·통신시설','공동구','시장','유류저장 및 송유설비'],
+  '공공·문화체육시설': ['학교','운동장','공공청사','문화시설','공공필요성이 인정되는 체육시설','도서관','연구시설','사회복지시설','공공직업훈련시설','청소년수련시설'],
+  '방재시설': ['하천','유수지','저수지','방화설비','방풍설비','방수설비','사방설비','방조설비'],
+  '보건위생시설': ['장사시설','도축장','종합의료시설'],
+  '환경기초시설': ['하수도','폐기물처리 및 재활용시설','빗물저장 및 이용시설','수질오염방지시설','폐차장']
+};
+
+const SUBZONE_PRESETS = {
+  '지구단위계획구역': ['제1종지구단위계획구역','제2종지구단위계획구역','도시지역 지구단위계획구역','비도시지역 지구단위계획구역','주거형','산업·유통형','관광·휴양형','복합형'],
+  '공공주택지구': ['국민임대주택지구','행복주택지구','영구임대주택지구','통합공공임대주택지구','신혼희망타운','일반형 공공주택지구'],
+  '산업단지': ['국가산업단지','일반산업단지','도시첨단산업단지','농공단지'],
+  '도시개발구역': ['수용·사용방식','환지방식','혼용방식','주거형','산업·유통형','복합형'],
+  '정비구역': ['주거환경개선사업','재개발사업','재건축사업','가로주택정비사업','소규모재건축사업','도시환경정비사업'],
+  '택지개발지구': ['국민임대주택단지','보금자리주택지구','일반택지개발지구','공공택지','민간택지'],
+  '공원': ['근린공원','어린이공원','체육공원','문화공원','수변공원','도시자연공원구역','도시농업공원','묘지공원']
+};
+
+window.wizardZoneLabel = function(){ return wizard.zoneType==='__custom__' ? wizard.zoneCustom : wizard.zoneType; };
+window.wizardZoneFullLabel = function(){
+  const main = wizardZoneLabel();
+  return (wizard.zoneSubTypes && wizard.zoneSubTypes.length) ? main+' ('+wizard.zoneSubTypes.join(', ')+')' : main;
+};
+window.wizardFacilityLabel = function(){ return wizard.facilityType==='__custom__' ? wizard.facilityCustom : wizard.facilityType; };
+window.wizardFacilityFullLabel = function(){
+  const main = wizardFacilityLabel();
+  return (wizard.facilitySubTypes && wizard.facilitySubTypes.length) ? main+' ('+wizard.facilitySubTypes.join(', ')+')' : main;
+};
+
+function renderFacilityMainOptions(kind){
+  const wrap = document.getElementById('wopts2main');
+  const list = kind==='building_use' ? BUILDING_USE_MAIN : URBAN_FACILITY_MAIN;
+  wrap.innerHTML = list.map(v=>`<button class="chip-option" onclick="selectFacilityMain('${v.replace(/'/g,"\\'")}',this)">${v}</button>`).join('');
+}
+window.selectFacilityKind = function(kind, el){
+  document.querySelectorAll('#wopts2kind .chip-option').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('wfacMainWrap').style.display = 'none';
+  document.getElementById('wsub2a').style.display = 'none';
+  document.getElementById('wsub2b').style.display = 'none';
+  document.getElementById('wcustomFacilityTop').classList.remove('show');
+  wizard.facilityKind = kind;
+  if(kind==='custom'){
+    document.getElementById('wcustomFacilityTop').classList.add('show');
+    document.getElementById('wcustomFacilityTop_input').focus();
+    return;
+  }
+  document.getElementById('wfacMainQ').textContent = kind==='building_use'
+    ? '건축물 용도를 선택하세요 (건축법 시행령 별표1)'
+    : '도시·군계획시설 대분류를 선택하세요 (국토계획법 시행령 제2조)';
+  renderFacilityMainOptions(kind);
+  document.getElementById('wfacMainWrap').style.display = 'block';
+  document.getElementById('wfacMainWrap').scrollIntoView({behavior:'smooth', block:'nearest'});
+};
+window.confirmFacilityTopCustom = function(){
+  const val = document.getElementById('wcustomFacilityTop_input').value.trim();
+  if(!val) return;
+  wizard.facilityType='__custom__'; wizard.facilityCustom=val; wizard.facilitySubTypes=[];
+  document.getElementById('wkeywords').value='';
+  showFacilitySubzoneAsk();
+};
+window.selectFacilityMain = function(value, el){
+  document.querySelectorAll('#wopts2main .chip-option').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('wcustom2').classList.remove('show');
+  wizard.facilityType = value; wizard.facilityCustom='';
+  document.getElementById('wkeywords').value = KEYWORD_PRESETS[value] || '';
+  showFacilitySubzoneAsk();
+};
+function showFacilitySubzoneAsk(){
+  wizard.facilitySubTypes = [];
+  document.getElementById('wsub2b').style.display = 'none';
+  document.getElementById('wsub2a').style.display = 'block';
+  document.getElementById('wsub2a').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+window.facilitySubzoneNeed = function(need, el){
+  document.querySelectorAll('#wsub2a .chip-option').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  if(!need){
+    wizard.facilitySubTypes = [];
+    document.getElementById('wsub2b').style.display = 'none';
+    revealStep(3);
+    return;
+  }
+  const mainType = wizardFacilityLabel();
+  let presets = [];
+  if(wizard.facilityKind==='building_use') presets = BUILDING_USE_SUB[mainType] || [];
+  else if(wizard.facilityKind==='urban_facility') presets = URBAN_FACILITY_SUB[mainType] || [];
+  const grid = document.getElementById('facilitySubCheckGrid');
+  grid.innerHTML = presets.length
+    ? presets.map(p=>`<label class="checkbox-item"><input type="checkbox" value="${p}" onchange="this.parentElement.classList.toggle('checked',this.checked)"> ${p}</label>`).join('')
+    : '<div style="font-size:11.5px;color:var(--ink3);grid-column:1/-1">사전 정의된 세분류가 없습니다. 아래에 직접 입력해주세요.</div>';
+  document.getElementById('wsub2b').style.display = 'block';
+  document.getElementById('facilitySubCustomInput').value = '';
+  document.getElementById('wsub2b').scrollIntoView({behavior:'smooth', block:'nearest'});
+};
+window.confirmFacilitySubzone = function(){
+  const checked = Array.from(document.querySelectorAll('#facilitySubCheckGrid input:checked')).map(i=>i.value);
+  const customVal = document.getElementById('facilitySubCustomInput').value.trim();
+  const customList = customVal ? customVal.split(',').map(s=>s.trim()).filter(Boolean) : [];
+  wizard.facilitySubTypes = [...checked, ...customList];
+  revealStep(3);
+};
+
+window.selectZoneMain = function(value, el){
+  document.querySelectorAll('#wopts1 .chip-option').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('wsub1a').style.display = 'none';
+  document.getElementById('wsub1b').style.display = 'none';
+  if(value==='__custom__'){
+    document.getElementById('wcustom1').classList.add('show');
+    document.getElementById('wcustom1_input').focus();
+    return;
+  }
+  document.getElementById('wcustom1').classList.remove('show');
+  wizard.zoneType = value; wizard.zoneCustom=''; wizard.zoneSubTypes=[];
+  document.getElementById('wsub1a').style.display = 'block';
+  document.getElementById('wsub1a').scrollIntoView({behavior:'smooth', block:'nearest'});
+};
+window.subzoneNeed = function(need, el){
+  document.querySelectorAll('#wsub1a .chip-option').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  if(!need){
+    wizard.zoneSubTypes = [];
+    document.getElementById('wsub1b').style.display = 'none';
+    revealStep(2);
+    return;
+  }
+  const mainType = wizardZoneLabel();
+  const presets = SUBZONE_PRESETS[mainType] || [];
+  const grid = document.getElementById('subzoneCheckGrid');
+  grid.innerHTML = presets.length
+    ? presets.map(p=>`<label class="checkbox-item"><input type="checkbox" value="${p}" onchange="this.parentElement.classList.toggle('checked',this.checked)"> ${p}</label>`).join('')
+    : '<div style="font-size:11.5px;color:var(--ink3);grid-column:1/-1">사전 정의된 세분류가 없습니다. 아래에 직접 입력해주세요.</div>';
+  document.getElementById('wsub1b').style.display = 'block';
+  document.getElementById('subzoneCustomInput').value = '';
+  document.getElementById('wsub1b').scrollIntoView({behavior:'smooth', block:'nearest'});
+};
+window.confirmSubzone = function(){
+  const checked = Array.from(document.querySelectorAll('#subzoneCheckGrid input:checked')).map(i=>i.value);
+  const customVal = document.getElementById('subzoneCustomInput').value.trim();
+  const customList = customVal ? customVal.split(',').map(s=>s.trim()).filter(Boolean) : [];
+  wizard.zoneSubTypes = [...checked, ...customList];
+  revealStep(2);
+};
+
+window.chipClick = function(step, value, el){
+  document.querySelectorAll('#wopts'+step+' .chip-option').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  const customBox = document.getElementById('wcustom'+step);
+  if(value==='__custom__'){
+    customBox.classList.add('show');
+    document.getElementById('wcustom'+step+'_input').focus();
+    return;
+  }
+  customBox.classList.remove('show');
+};
+window.confirmCustom = function(step){
+  const val = document.getElementById('wcustom'+step+'_input').value.trim();
+  if(!val) return;
+  if(step===1){
+    wizard.zoneType='__custom__'; wizard.zoneCustom=val; wizard.zoneSubTypes=[];
+    document.getElementById('wsub1a').style.display = 'block';
+    document.getElementById('wsub1a').scrollIntoView({behavior:'smooth', block:'nearest'});
+  }
+  if(step===2){
+    // 건축물 용도/도시군계획시설 목록에 없어 직접 입력한 경우
+    document.querySelectorAll('#wopts2main .chip-option').forEach(b=>b.classList.remove('active'));
+    wizard.facilityType='__custom__'; wizard.facilityCustom=val;
+    document.getElementById('wkeywords').value='';
+    showFacilitySubzoneAsk();
+  }
+};
+function revealStep(n){
+  const el = document.getElementById('wstep'+n);
+  el.classList.add('show');
+  el.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+window.finishWizard = function(){
+  wizard.keywords = document.getElementById('wkeywords').value.trim();
+  const eupInput = document.getElementById('eupmyeondongInput').value.trim();
+  wizard.regions.eupmyeondong = eupInput ? eupInput.split(',').map(s=>s.trim()).filter(Boolean) : [];
+  const zoneLbl = wizardZoneLabel() || '구역';
+  const facLbl = wizardFacilityLabel() || '시설';
+
+  document.getElementById('udesc1').textContent = zoneLbl+' 경계 (예: '+zoneLbl+')';
+  document.getElementById('udesc2').textContent = '도시계획시설 결정 레이어 (예: '+facLbl+')';
+  document.getElementById('colZoneHeader').textContent = '소재 '+zoneLbl;
+  document.getElementById('colZoneHeaderCase').textContent = '소재 '+zoneLbl;
+  const complexLabel = document.getElementById('c-complex-label');
+  if(complexLabel) complexLabel.textContent = '소재 '+zoneLbl+'명';
+  const cType = document.getElementById('c-type');
+  if(cType && !cType.value) cType.value = facLbl;
+
+  document.getElementById('wizard').style.display = 'none';
+  const summary = document.getElementById('wizardSummary');
+  summary.classList.add('show');
+  document.getElementById('wsZone').textContent = wizardZoneFullLabel() || zoneLbl;
+  document.getElementById('wsFacility').textContent = wizardFacilityFullLabel() || facLbl;
+  document.getElementById('wsKeywords').textContent = wizard.keywords || '(미지정 — 자동판정 없이 건축물 존재여부만 확인)';
+  document.getElementById('wsRegion').textContent = regionSummaryLabel();
+
+  document.getElementById('uploadSection').classList.add('show');
+
+  if(wizard.hasApiKey){
+    const k = document.getElementById('wApiKeyInput').value.trim();
+    const d = document.getElementById('wApiDomainInput').value.trim();
+    if(k) document.getElementById('apiKey').value = k;
+    if(d) document.getElementById('apiDomain').value = d;
+    document.getElementById('apiSettingsBody').classList.add('show');
+    [1,2,3,4].forEach(n=>{
+      const apiTab = document.querySelector('#ucard'+n+' .src-tab:nth-child(2)');
+      if(apiTab) setSrcMode(n,'api',apiTab);
+    });
+    if(k) setBaseLayer(true);
+  }
+
+  setTimeout(()=>{ try{ map.invalidateSize(); }catch(e){} }, 60);
+};
+function regionSummaryLabel(){
+  if(wizard.regions.nationwide) return '전국 (제한 없음)';
+  const parts = [...wizard.regions.sido];
+  if(wizard.regions.sigungu.length) parts.push(...wizard.regions.sigungu);
+  if(wizard.regions.eupmyeondong.length) parts.push(...wizard.regions.eupmyeondong);
+  return parts.length ? parts.join(', ') : '(지정 안 함 — 전체 범위)';
+}
+window.reopenWizard = function(){
+  document.getElementById('wizard').style.display = 'block';
+  document.getElementById('wizardSummary').classList.remove('show');
+};
+
+/* ================= SHP 중첩분석 (일반 스크립트, Firestore 무관) ================= */
+const layers = { industrial:null, facility:null, cadastre:null, building:null };
+let map, leafletLayers = {};
+window.__resultFeatures = [];
+
+function guessField(keys, keywords){
+  const lower = keys.map(k=>k.toLowerCase());
+  for(const kw of keywords){ const idx = lower.findIndex(k=>k.includes(kw.toLowerCase())); if(idx>-1) return keys[idx]; }
+  return keys[0] || '';
+}
+function guessFieldOptional(keys, keywords){
+  const lower = keys.map(k=>k.toLowerCase());
+  for(const kw of keywords){ const idx = lower.findIndex(k=>k.includes(kw.toLowerCase())); if(idx>-1) return keys[idx]; }
+  return null;
+}
+function populateSelect(sel, keys, guess){
+  sel.innerHTML='';
+  keys.forEach(k=>{ const o=document.createElement('option'); o.value=k; o.textContent=k; if(k===guess) o.selected=true; sel.appendChild(o); });
+}
+function populateSelectOptional(sel, keys, guess){
+  sel.innerHTML = '<option value="">(사용 안함)</option>';
+  keys.forEach(k=>{ const o=document.createElement('option'); o.value=k; o.textContent=k; if(guess && k===guess) o.selected=true; sel.appendChild(o); });
+}
+function firstKeys(fc){ const f = fc.features.find(f=>f.properties && Object.keys(f.properties).length); return f ? Object.keys(f.properties) : []; }
+function asFC(geo){
+  if(Array.isArray(geo)){ let feats=[]; geo.forEach(g=>feats=feats.concat(g.features||[])); return {type:'FeatureCollection', features:feats}; }
+  return geo;
+}
+function safeIntersect(a,b){
+  try{ return turf.intersect(a,b); }
+  catch(e1){ try{ return turf.intersect(turf.featureCollection([a,b])); }catch(e2){ return null; } }
+}
+function safeArea(f){ try{ return turf.area(f); }catch(e){ return 0; } }
+
+async function handleFile(n, file){
+  if(!file) return;
+  const statusEl = document.getElementById('ustatus'+n);
+  statusEl.textContent = '파싱 중...';
+  runLog(file.name+' 파싱 중...');
+  try{
+    const buf = await file.arrayBuffer();
+    const raw = await shp(buf);
+    const fc = asFC(raw);
+    onLayerReady(n, fc, '완료 — 피처 '+fc.features.length+'개');
+  }catch(err){
+    console.error(err);
+    statusEl.textContent = '오류: SHP 파싱 실패 (.shp/.dbf/.prj 구성 확인)';
+    runLog('오류: '+file.name+' 파싱 실패');
+  }
+}
+
+function onLayerReady(n, fc, statusMsg){
+  const key = ['industrial','facility','cadastre','building'][n-1];
+  layers[key] = fc;
+  const statusEl = document.getElementById('ustatus'+n);
+  statusEl.textContent = statusMsg || ('완료 — 피처 '+fc.features.length+'개');
+  document.getElementById('ucard'+n).classList.add('done');
+  document.getElementById('unum'+n).textContent = '✓';
+
+  const keys = firstKeys(fc);
+  if(n===1){ populateSelect(document.getElementById('usel1_name'), keys, guessField(keys,['명칭','name','단지명'])); document.getElementById('ufield1').classList.add('show'); }
+  else if(n===2){ populateSelect(document.getElementById('usel2_name'), keys, guessField(keys,['시설명','name','fclt'])); document.getElementById('ufield2').classList.add('show'); }
+  else if(n===3){
+    populateSelect(document.getElementById('usel3_pnu'), keys, guessField(keys,['pnu','고유번호','지번코드','a1']));
+    populateSelect(document.getElementById('usel3_jimok'), keys, guessField(keys,['지목','jimok','a2']));
+    populateSelectOptional(document.getElementById('usel3_region'), keys, guessFieldOptional(keys,['읍면동','법정동','emd_nm','행정구역','sigg_nm','지역명','ri_nm','동리명']));
+    document.getElementById('ufield3').classList.add('show');
+  } else if(n===4){
+    populateSelect(document.getElementById('usel4_pnu'), keys, guessField(keys,['pnu','고유번호']));
+    populateSelect(document.getElementById('usel4_purps'), keys, guessField(keys,['주용도','purps']));
+    populateSelect(document.getElementById('usel4_area'), keys, guessField(keys,['연면적','totar','area']));
+    populateSelect(document.getElementById('usel4_apday'), keys, guessField(keys,['승인일','apr_day','useapr']));
+    document.getElementById('ufield4').classList.add('show');
+  }
+  checkReady();
+}
+function checkReady(){
+  const ready = layers.industrial && layers.facility && layers.cadastre && layers.building;
+  document.getElementById('runBtn').disabled = !ready;
+  if(ready) runLog('모든 레이어 준비 완료 — 실행 버튼을 눌러 분석을 시작하세요');
+}
+
+/* ---------------- 2. 추가입력사항: 다중 데이터 추가 중첩·조인 ---------------- */
+let extraLayers = [];
+function escLite(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function extraCardTemplate(e){
+  return `
+  <div class="upload-card" id="ecard_${e.uid}">
+    <div class="extra-card-head">
+      <input class="extra-label-input" id="elabel_${e.uid}" placeholder="데이터 명칭 (예: 인허가현황)" oninput="renameExtra('${e.uid}', this.value)">
+      <button class="extra-remove-btn" title="삭제" onclick="removeExtraLayer('${e.uid}')">✕</button>
+    </div>
+    <div class="src-toggle"><button class="src-tab active" onclick="setExtraSrcMode('${e.uid}','file',this)">📁 파일</button><button class="src-tab" onclick="setExtraSrcMode('${e.uid}','api',this)">🌐 API</button></div>
+    <div class="src-pane show" id="epane_${e.uid}_file">
+      <label class="upload-drop">파일 선택 (.zip)<input type="file" accept=".zip" onchange="handleExtraFile('${e.uid}', this.files[0])"></label>
+    </div>
+    <div class="src-pane" id="epane_${e.uid}_api">
+      <input class="api-input" id="eapi_${e.uid}_service" placeholder="서비스ID (VWorld)">
+      <button class="api-fetch-btn" onclick="apiFetchExtra('${e.uid}')">API로 조회</button>
+    </div>
+    <div class="upload-status" id="estatus_${e.uid}"></div>
+    <div class="field-mini" id="efield_${e.uid}">
+      <label>결합 방식</label>
+      <select id="ejoin_${e.uid}" onchange="onExtraJoinChange('${e.uid}')">
+        <option value="pnu">PNU로 결합 (지적도 매칭 필지 기준)</option>
+        <option value="intersect">공간 중첩(intersect)으로 결합</option>
+      </select>
+      <label style="margin-top:2px" id="ejoinFieldLabel_${e.uid}">결합 기준 필드 (PNU)</label>
+      <select id="ejoinField_${e.uid}"></select>
+      <label style="margin-top:2px">표시할 속성 필드</label>
+      <select id="edisplay_${e.uid}"></select>
+    </div>
+  </div>`;
+}
+window.addExtraLayerCard = function(){
+  const uid = 'e'+Math.random().toString(36).slice(2,8);
+  extraLayers.push({ uid, label:'', fc:null, joinType:'pnu', joinField:'', displayField:'' });
+  const wrap = document.getElementById('extraLayersContainer');
+  wrap.style.display = 'grid';
+  wrap.insertAdjacentHTML('beforeend', extraCardTemplate(extraLayers[extraLayers.length-1]));
+};
+window.removeExtraLayer = function(uid){
+  extraLayers = extraLayers.filter(e=>e.uid!==uid);
+  const el = document.getElementById('ecard_'+uid);
+  if(el) el.remove();
+  if(extraLayers.length===0) document.getElementById('extraLayersContainer').style.display='none';
+  refreshExtraColumns();
+};
+window.renameExtra = function(uid, val){ const e=extraLayers.find(x=>x.uid===uid); if(e) e.label=val; };
+window.setExtraSrcMode = function(uid, mode, el){
+  el.parentElement.querySelectorAll('.src-tab').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('epane_'+uid+'_file').classList.toggle('show', mode==='file');
+  document.getElementById('epane_'+uid+'_api').classList.toggle('show', mode==='api');
+};
+window.onExtraJoinChange = function(uid){
+  const e = extraLayers.find(x=>x.uid===uid); if(!e) return;
+  e.joinType = document.getElementById('ejoin_'+uid).value;
+  const isPnu = e.joinType==='pnu';
+  document.getElementById('ejoinFieldLabel_'+uid).textContent = isPnu ? '결합 기준 필드 (PNU)' : '결합 기준 (공간중첩 — 지오메트리로 자동 결합)';
+  document.getElementById('ejoinField_'+uid).style.display = isPnu ? 'block' : 'none';
+};
+async function handleExtraFile(uid, file){
+  if(!file) return;
+  const statusEl = document.getElementById('estatus_'+uid);
+  statusEl.textContent = '파싱 중...';
+  try{
+    const buf = await file.arrayBuffer();
+    const raw = await shp(buf);
+    const fc = asFC(raw);
+    onExtraLayerReady(uid, fc, '완료 — 피처 '+fc.features.length+'개');
+  }catch(err){
+    console.error(err);
+    statusEl.textContent = '오류: SHP 파싱 실패 (.shp/.dbf/.prj 구성 확인)';
+  }
+}
+window.handleExtraFile = handleExtraFile;
+window.apiFetchExtra = async function(uid){
+  const serviceId = document.getElementById('eapi_'+uid+'_service').value.trim();
+  const statusEl = document.getElementById('estatus_'+uid);
+  if(!serviceId){ statusEl.textContent='⚠️ 서비스ID를 입력하세요'; return; }
+  statusEl.textContent = '조회 중...';
+  try{
+    let all=[], page=1;
+    while(page<=5){
+      const fc = await fetchVWorldPage(serviceId, page);
+      all = all.concat(fc.features||[]);
+      if(!fc.features || fc.features.length<1000) break;
+      page++;
+    }
+    if(all.length===0){ statusEl.textContent='⚠️ 조회 결과 0건'; return; }
+    onExtraLayerReady(uid, {type:'FeatureCollection', features:all}, '완료 — 피처 '+all.length+'개 (VWorld API)');
+  }catch(e){ statusEl.textContent = '⚠️ '+e.message; }
+};
+function onExtraLayerReady(uid, fc, statusMsg){
+  const e = extraLayers.find(x=>x.uid===uid); if(!e) return;
+  e.fc = fc;
+  document.getElementById('estatus_'+uid).textContent = statusMsg;
+  document.getElementById('ecard_'+uid).classList.add('done');
+  const keys = firstKeys(fc);
+  const joinFieldSel = document.getElementById('ejoinField_'+uid);
+  const displaySel = document.getElementById('edisplay_'+uid);
+  populateSelect(joinFieldSel, keys, guessField(keys,['pnu','고유번호','지번코드']));
+  populateSelect(displaySel, keys, guessField(keys,['명칭','name','종류','내용','값','구분']));
+  document.getElementById('efield_'+uid).classList.add('show');
+  e.joinField = joinFieldSel.value;
+  e.displayField = displaySel.value;
+  joinFieldSel.addEventListener('change', ()=>{ e.joinField = joinFieldSel.value; });
+  displaySel.addEventListener('change', ()=>{ e.displayField = displaySel.value; });
+  if(!e.label){
+    const labelInput = document.getElementById('elabel_'+uid);
+    if(labelInput && !labelInput.value) labelInput.value = '추가데이터'+(extraLayers.indexOf(e)+1);
+    e.label = labelInput.value;
+  }
+  refreshExtraColumns();
+}
+function activeExtraLayers(){ return extraLayers.filter(e=>e.fc && e.label); }
+function refreshExtraColumns(){
+  const headRow = document.querySelector('#resultTable thead tr');
+  if(!headRow) return;
+  headRow.querySelectorAll('.extra-col-header').forEach(el=>el.remove());
+  const judgeHeader = document.getElementById('colJudgeHeader');
+  const extras = activeExtraLayers();
+  extras.forEach(e=>{
+    const th = document.createElement('th');
+    th.className = 'extra-col-header';
+    th.textContent = e.label;
+    headRow.insertBefore(th, judgeHeader);
+  });
+  const placeholderTd = document.querySelector('#resultBody > tr > td[colspan]');
+  if(placeholderTd && (!window.__resultFeatures || window.__resultFeatures.length===0)){
+    placeholderTd.setAttribute('colspan', String(9+extras.length));
+  }
+}
+
+/* ---------------- 파일 업로드 / API 소스 전환 ---------------- */
+window.setSrcMode = function(n, mode, el){
+  document.querySelectorAll('#ucard'+n+' .src-tab').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('upane'+n+'_file').classList.toggle('show', mode==='file');
+  document.getElementById('upane'+n+'_api').classList.toggle('show', mode==='api');
+};
+
+/* ---------------- BBOX 영역 지정 (지도 2회 클릭 — 선택사항, Q5 행정구역 선택과 동등) ---------------- */
+let bboxMode = false, bboxCorner1 = null, bboxRectLayer = null;
+window.toggleBboxMode = function(){
+  bboxMode = !bboxMode;
+  bboxCorner1 = null;
+  document.getElementById('bboxBtn').classList.toggle('active', bboxMode);
+  document.getElementById('bboxBtn').textContent = bboxMode ? '🖱️ 지도를 클릭하세요 (1/2)' : '🖱️ 지도에서 영역 지정 (2회 클릭)';
+};
+window.clearBbox = function(){
+  window.apiBBox = null;
+  if(bboxRectLayer){ map.removeLayer(bboxRectLayer); bboxRectLayer = null; }
+  document.getElementById('bboxDisplay').textContent = '지정 안 함 — 아래 지도 배경은 VWorld와 연동됩니다';
+  document.getElementById('bboxClearBtn').style.display = 'none';
+};
+function onMapClickForBbox(e){
+  if(!bboxMode) return;
+  if(!bboxCorner1){
+    bboxCorner1 = e.latlng;
+    document.getElementById('bboxBtn').textContent = '🖱️ 반대쪽 모서리를 클릭하세요 (2/2)';
+    return;
+  }
+  const c2 = e.latlng;
+  const minx = Math.min(bboxCorner1.lng, c2.lng), maxx = Math.max(bboxCorner1.lng, c2.lng);
+  const miny = Math.min(bboxCorner1.lat, c2.lat), maxy = Math.max(bboxCorner1.lat, c2.lat);
+  window.apiBBox = [minx, miny, maxx, maxy];
+  if(bboxRectLayer) map.removeLayer(bboxRectLayer);
+  bboxRectLayer = L.rectangle([[miny,minx],[maxy,maxx]], {color:'#1a3a6e', weight:2, fillOpacity:0.08}).addTo(map);
+  document.getElementById('bboxDisplay').textContent = `${minx.toFixed(5)}, ${miny.toFixed(5)} ~ ${maxx.toFixed(5)}, ${maxy.toFixed(5)}`;
+  document.getElementById('bboxClearBtn').style.display = 'inline-block';
+  bboxMode = false; bboxCorner1 = null;
+  document.getElementById('bboxBtn').classList.remove('active');
+  document.getElementById('bboxBtn').textContent = '🖱️ 지도에서 영역 지정 (2회 클릭)';
+}
+
+/* ---------------- 지도 배경 = VWorld 연동 (인증키 있으면 VWorld, 없으면 OSM으로 대체) ---------------- */
+let baseLayer = null;
+window.onApiKeyChanged = function(){ setBaseLayer(!!document.getElementById('apiKey').value.trim()); };
+function setBaseLayer(useVWorld){
+  const key = document.getElementById('apiKey').value.trim();
+  if(baseLayer){ map.removeLayer(baseLayer); baseLayer = null; }
+  if(useVWorld && key){
+    baseLayer = L.tileLayer(`https://api.vworld.kr/req/wmts/1.0.0/${key}/Base/{z}/{y}/{x}.png`, {
+      attribution:'&copy; VWorld(국토교통부 공간정보 오픈플랫폼)', maxZoom:19
+    });
+    baseLayer.on('tileerror', ()=>{
+      const label = document.getElementById('baseMapLabel');
+      if(label) label.textContent = '배경지도: VWorld 타일 로드 실패 → OpenStreetMap으로 전환';
+      setBaseLayer(false);
+    });
+    const label = document.getElementById('baseMapLabel');
+    if(label) label.textContent = '배경지도: VWorld';
+  } else {
+    baseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'&copy; OpenStreetMap contributors', maxZoom:19 });
+    const label = document.getElementById('baseMapLabel');
+    if(label) label.textContent = '배경지도: OpenStreetMap' + (key ? ' (VWorld 타일 실패)' : '');
+  }
+  baseLayer.addTo(map);
+}
+
+/* ---------------- VWorld Data API 2.0 (JSONP) ---------------- */
+function vworldJSONP(url, timeoutMs){
+  return new Promise((resolve, reject)=>{
+    const cbName = 'vworldCB_'+Math.random().toString(36).slice(2);
+    const script = document.createElement('script');
+    const timer = setTimeout(()=>{ cleanup(); reject(new Error('요청 시간초과 (CORS 또는 도메인 등록 문제일 수 있습니다)')); }, timeoutMs||10000);
+    function cleanup(){ clearTimeout(timer); delete window[cbName]; script.remove(); }
+    window[cbName] = (data)=>{ cleanup(); resolve(data); };
+    script.onerror = ()=>{ cleanup(); reject(new Error('요청 실패 (네트워크 또는 도메인 오류)')); };
+    script.src = url + '&callback=' + cbName;
+    document.body.appendChild(script);
+  });
+}
+async function fetchVWorldPage(serviceId, page){
+  const key = document.getElementById('apiKey').value.trim();
+  const domain = document.getElementById('apiDomain').value.trim();
+  if(!key) throw new Error('API 인증키를 입력하세요');
+  const params = new URLSearchParams({
+    service:'data', request:'GetFeature', data:serviceId, key,
+    size:'1000', page:String(page||1),
+    format:'json', crs:'EPSG:4326', geometry:'true'
+  });
+  // 조회 영역 지정은 선택사항입니다 — 지도 BBOX가 있으면 사용하고, 없으면 범위 제한 없이 조회합니다.
+  if(window.apiBBox) params.set('geomFilter', `BOX(${window.apiBBox.join(',')})`);
+  if(domain) params.set('domain', domain);
+  const url = 'https://api.vworld.kr/req/data?'+params.toString();
+  const data = await vworldJSONP(url);
+  if(!data || !data.response || data.response.status !== 'OK'){
+    const errText = data?.response?.error?.text || data?.response?.status || '알 수 없는 오류';
+    throw new Error('VWorld 응답 오류: '+errText);
+  }
+  return data.response.result?.featureCollection || {type:'FeatureCollection', features:[]};
+}
+window.apiFetchCard = async function(n){
+  const serviceId = document.getElementById('uapi'+n+'_service').value.trim();
+  const statusEl = document.getElementById('ustatus'+n);
+  if(!serviceId){ statusEl.textContent='⚠️ 서비스ID를 입력하세요'; return; }
+  statusEl.textContent = '조회 중...';
+  try{
+    let all = [], page = 1;
+    while(page<=5){
+      const fc = await fetchVWorldPage(serviceId, page);
+      all = all.concat(fc.features||[]);
+      if(!fc.features || fc.features.length < 1000) break;
+      page++;
+    }
+    if(all.length===0){ statusEl.textContent = '⚠️ 조회 결과 0건 — BBOX 영역·서비스ID를 확인하세요'; return; }
+    onLayerReady(n, {type:'FeatureCollection', features:all}, '완료 — 피처 '+all.length+'개 (VWorld API)');
+  }catch(e){
+    console.error(e);
+    statusEl.textContent = '⚠️ '+e.message+' — 파일 업로드로 전환해 주세요';
+  }
+};
+
+function runLog(msg){ document.getElementById('runLog').textContent = msg; }
+
+[1,2,3,4].forEach(n=>{
+  document.getElementById('ufile'+n).addEventListener('change', e=>handleFile(n, e.target.files[0]));
+});
+
+function initMap(){
+  if(map) return;
+  map = L.map('map', {zoomControl:true}).setView([36.5,127.8], 7);
+  setBaseLayer(!!document.getElementById('apiKey').value.trim());
+  map.on('click', onMapClickForBbox);
+}
+initMap();
+
+document.getElementById('runBtn').addEventListener('click', runAnalysis);
+
+async function runAnalysis(){
+  const nameFieldIndustrial = document.getElementById('usel1_name').value;
+  const nameFieldFacility = document.getElementById('usel2_name').value;
+  const pnuFieldCadastre = document.getElementById('usel3_pnu').value;
+  const jimokFieldCadastre = document.getElementById('usel3_jimok').value;
+  const regionFieldCadastre = document.getElementById('usel3_region').value;
+  const pnuFieldBuilding = document.getElementById('usel4_pnu').value;
+  const purpsFieldBuilding = document.getElementById('usel4_purps').value;
+  const areaFieldBuilding = document.getElementById('usel4_area').value;
+  const apdayFieldBuilding = document.getElementById('usel4_apday').value;
+
+  runLog('1/3 산업단지 × 폐기물처리시설 중첩 중...');
+  await new Promise(r=>setTimeout(r,30));
+
+  let stepA = [];
+  layers.facility.features.forEach(fFeat=>{
+    if(!fFeat.geometry) return;
+    layers.industrial.features.forEach(iFeat=>{
+      if(!iFeat.geometry) return;
+      let ix=false;
+      try{ ix = turf.booleanIntersects(fFeat, iFeat); }catch(e){}
+      if(ix){
+        const clip = safeIntersect(fFeat, iFeat);
+        stepA.push({
+          geometry: clip ? clip.geometry : fFeat.geometry,
+          facilityName: fFeat.properties[nameFieldFacility] ?? '(명칭없음)',
+          industrialName: iFeat.properties[nameFieldIndustrial] ?? '(명칭없음)'
+        });
+      }
+    });
+  });
+
+  runLog('2/3 지적도 결합(PNU 판정) 중... 대상 '+stepA.length+'건');
+  await new Promise(r=>setTimeout(r,30));
+
+  stepA.forEach(item=>{
+    const targetFeat = turf.feature(item.geometry);
+    let best=null, bestArea=0;
+    layers.cadastre.features.forEach(cFeat=>{
+      if(!cFeat.geometry) return;
+      let ix=false;
+      try{ ix = turf.booleanIntersects(targetFeat, cFeat); }catch(e){}
+      if(!ix) return;
+      const clip = safeIntersect(targetFeat, cFeat);
+      const a = clip ? safeArea(clip) : 0;
+      if(a>bestArea){ bestArea=a; best=cFeat; }
+    });
+    item.pnu = best ? (best.properties[pnuFieldCadastre] ?? null) : null;
+    item.jimok = best ? (best.properties[jimokFieldCadastre] ?? null) : null;
+    item.regionValue = (best && regionFieldCadastre) ? (best.properties[regionFieldCadastre] ?? null) : null;
+  });
+
+  const regionList = [...wizard.regions.sido, ...wizard.regions.sigungu, ...wizard.regions.eupmyeondong];
+  const regionFilterOn = !wizard.regions.nationwide && regionList.length>0;
+  if(regionFilterOn){
+    if(!regionFieldCadastre){
+      runLog('⚠️ 행정구역이 지정되었지만 지적도 카드에서 "행정구역명 필드"를 선택하지 않아 필터를 적용하지 못했습니다.');
+    } else {
+      const before = stepA.length;
+      stepA = stepA.filter(item => item.regionValue && regionList.some(r=>String(item.regionValue).includes(r)));
+      runLog(`행정구역 필터 적용 — ${before-stepA.length}건 제외, ${stepA.length}건 유지`);
+    }
+  }
+
+  runLog('3/3 건축물 속성 매칭 중...');
+  await new Promise(r=>setTimeout(r,30));
+
+  const matchKeywords = (window.wizard && window.wizard.keywords)
+    ? window.wizard.keywords.split(',').map(s=>s.trim()).filter(Boolean)
+    : [];
+  stepA.forEach(item=>{
+    let matched=[];
+    if(item.pnu!=null){ matched = layers.building.features.filter(b=> b.properties && String(b.properties[pnuFieldBuilding])===String(item.pnu)); }
+    item.buildingCount = matched.length;
+    if(matched.length===0){ item.status='nobuild'; item.mainPurps='—'; item.totArea='—'; }
+    else{
+      let chosen = matched[0];
+      if(areaFieldBuilding){
+        chosen = matched.reduce((a,b)=>{
+          const av=parseFloat(a.properties[areaFieldBuilding])||0, bv=parseFloat(b.properties[areaFieldBuilding])||0;
+          return bv>av ? b : a;
+        }, matched[0]);
+      }
+      const purps = String(chosen.properties[purpsFieldBuilding] ?? '');
+      item.mainPurps = purps || '(용도정보없음)';
+      item.totArea = areaFieldBuilding ? (chosen.properties[areaFieldBuilding] ?? '—') : '—';
+      item.status = (matchKeywords.length>0 && matchKeywords.some(kw=>purps.includes(kw))) ? 'operating' : 'mismatch';
+    }
+  });
+
+  const extras = activeExtraLayers();
+  if(extras.length>0){
+    runLog(`추가입력사항 ${extras.length}건 결합 중...`);
+    extras.forEach(ex=>{
+      stepA.forEach(item=>{
+        let matches=[];
+        if(ex.joinType==='pnu'){
+          if(item.pnu!=null && ex.joinField){
+            matches = ex.fc.features.filter(f=> f.properties && String(f.properties[ex.joinField])===String(item.pnu));
+          }
+        } else {
+          try{
+            const targetFeat = turf.feature(item.geometry);
+            matches = ex.fc.features.filter(f=> f.geometry && (()=>{ try{ return turf.booleanIntersects(targetFeat, f); }catch(e){ return false; } })());
+          }catch(e){ matches=[]; }
+        }
+        const vals = matches.map(f=> f.properties?.[ex.displayField]).filter(v=>v!==undefined && v!==null && v!=='');
+        item.extra = item.extra || {};
+        item.extra[ex.label] = vals.length ? [...new Set(vals.map(String))].join(', ') : '';
+      });
+    });
+  }
+
+  window.__resultFeatures = stepA;
+  renderMap();
+  renderResultTable();
+  document.getElementById('exportCsvBtn').disabled = stepA.length===0;
+  document.getElementById('exportXlsxBtn').disabled = stepA.length===0;
+  document.getElementById('importBtn').disabled = stepA.length===0;
+  runLog('분석 완료 — 총 '+stepA.length+'개 시설 구역 판정');
+}
+
+function renderMap(){
+  Object.values(leafletLayers).forEach(l=>map.removeLayer(l));
+  leafletLayers = {};
+  leafletLayers.industrial = L.geoJSON(layers.industrial, { style:{color:'#8FA6BE', weight:1.5, fillOpacity:0.03} }).addTo(map);
+  leafletLayers.cadastre = L.geoJSON(layers.cadastre, { style:{color:'#94a3b8', weight:0.4, fillOpacity:0} }).addTo(map);
+  const colorFor = s => s==='operating' ? '#2e7d52' : s==='mismatch' ? '#b45309' : '#b91c1c';
+  const fc = {type:'FeatureCollection', features: window.__resultFeatures.map(item=>({
+    type:'Feature', geometry:item.geometry,
+    properties:{ name:item.facilityName, industrial:item.industrialName, status:item.status, pnu:item.pnu, jimok:item.jimok, purps:item.mainPurps }
+  }))};
+  leafletLayers.result = L.geoJSON(fc, {
+    style: f => ({ color:colorFor(f.properties.status), weight:2, fillOpacity:0.45 }),
+    onEachFeature:(f,l)=>{ l.bindPopup('<b>'+f.properties.name+'</b><br>산업단지: '+f.properties.industrial+'<br>PNU: '+(f.properties.pnu??'-')+'<br>매칭 주용도: '+f.properties.purps); }
+  }).addTo(map);
+  try{ const b = leafletLayers.result.getBounds(); if(b.isValid()) map.fitBounds(b, {padding:[30,30]}); }catch(e){}
+}
+
+function resultBadge(s){
+  if(s==='operating') return '<span class="status-badge s-operating">운영 가능성 높음</span>';
+  if(s==='mismatch') return '<span class="status-badge s-idle">용도 불일치</span>';
+  return '<span class="status-badge s-removed">건축물 미확인</span>';
+}
+function renderResultTable(){
+  refreshExtraColumns();
+  const extras = activeExtraLayers();
+  const totalCols = 9 + extras.length;
+  const tbody = document.getElementById('resultBody');
+  if(window.__resultFeatures.length===0){
+    tbody.innerHTML = `<tr><td colspan="${totalCols}"><div class="empty-state"><div class="empty-icon">📭</div>조건에 맞는 교차 시설이 없습니다.</div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = window.__resultFeatures.map(item=>`
+    <tr>
+      <td class="col-name">${item.facilityName}</td>
+      <td>${item.industrialName}</td>
+      <td style="font-family:'DM Mono',monospace">${item.pnu??'-'}</td>
+      <td>${item.jimok??'-'}</td>
+      <td>${item.regionValue??'-'}</td>
+      <td style="font-family:'DM Mono',monospace">${item.buildingCount}</td>
+      <td>${item.mainPurps}</td>
+      <td style="font-family:'DM Mono',monospace">${item.totArea}</td>
+      ${extras.map(e=>`<td>${escLite(item.extra && item.extra[e.label] || '-')}</td>`).join('')}
+      <td>${resultBadge(item.status)}</td>
+    </tr>`).join('');
+}
+
+window.exportCSV = function(){
+  const {headers, rows} = buildResultRows();
+  const csv = [headers.join(','), ...rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(','))].join('\n');
+  const el = document.createElement('a');
+  el.setAttribute('href', 'data:text/plain;charset=utf-8,\uFEFF'+encodeURIComponent(csv));
+  el.setAttribute('download', '시설_중첩분석결과.csv');
+  el.style.display='none'; document.body.appendChild(el); el.click(); document.body.removeChild(el);
+};
+
+function buildResultRows(){
+  const extras = activeExtraLayers();
+  const headers=['시설명','소재구역','PNU','지목','행정구역','건축물수','매칭주용도','연면적', ...extras.map(e=>e.label), '판정'];
+  const rows = window.__resultFeatures.map(i=>[
+    i.facilityName,i.industrialName,i.pnu??'',i.jimok??'',i.regionValue??'',i.buildingCount,i.mainPurps,i.totArea,
+    ...extras.map(e=> (i.extra && i.extra[e.label]) || ''),
+    i.status==='operating'?'운영가능성높음':i.status==='mismatch'?'용도불일치':'건축물미확인'
+  ]);
+  return {headers, rows};
+}
+
+window.exportXLSX = function(){
+  if(typeof XLSX === 'undefined'){ alert('엑셀 라이브러리 로드에 실패했습니다. 잠시 후 다시 시도해주세요.'); return; }
+  const wb = XLSX.utils.book_new();
+
+  // 시트1: 중첩분석 결과
+  const {headers, rows} = buildResultRows();
+  const ws1 = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  ws1['!cols'] = headers.map(()=>({wch:16}));
+  XLSX.utils.book_append_sheet(wb, ws1, '중첩분석결과');
+
+  // 시트2: 사례조사 기록 (있으면)
+  const caseRows = window.__caseRows || [];
+  if(caseRows.length>0){
+    const caseHeaders = ['시설명','소재구역명','시설유형','운영상태','소재지주소','PNU','조사일자','조사자','근거자료','비고'];
+    const caseData = caseRows.map(c=>[
+      c.name||'', c.complex||'', c.type||'', c.status||'', c.address||'', c.pnu||'', c.surveydate||'', c.surveyor||'', c.source||'', c.memo||''
+    ]);
+    const ws2 = XLSX.utils.aoa_to_sheet([caseHeaders, ...caseData]);
+    ws2['!cols'] = caseHeaders.map(()=>({wch:16}));
+    XLSX.utils.book_append_sheet(wb, ws2, '사례조사기록');
+  }
+
+  // 시트3: 분석 설정 요약
+  const w = window.wizard || {};
+  const summaryRows = [
+    ['항목','값'],
+    ['구역(지역지구)', (window.wizardZoneFullLabel && window.wizardZoneFullLabel()) || ''],
+    ['시설유형', (window.wizardFacilityFullLabel && window.wizardFacilityFullLabel()) || ''],
+    ['판정 키워드', w.keywords || ''],
+    ['행정구역 선택', w.regions ? (w.regions.nationwide ? '전국(제한없음)' : [...(w.regions.sido||[]), ...(w.regions.sigungu||[]), ...(w.regions.eupmyeondong||[])].join(', ')) : ''],
+    ['추가입력사항', activeExtraLayers().map(e=>e.label+' ('+(e.joinType==='pnu'?'PNU결합':'공간중첩결합')+')').join(', ')],
+    ['생성일시', new Date().toLocaleString('ko-KR')]
+  ];
+  const ws3 = XLSX.utils.aoa_to_sheet(summaryRows);
+  ws3['!cols'] = [{wch:16},{wch:50}];
+  XLSX.utils.book_append_sheet(wb, ws3, '분석설정요약');
+
+  XLSX.writeFile(wb, '시설_중첩분석결과.xlsx');
+};
+</script>
+</body>
+</html>
