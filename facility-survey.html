@@ -82,6 +82,9 @@ body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--
 .add-extra-btn { padding:10px 18px; border:1.5px dashed var(--border); border-radius:10px; background:#fff; color:var(--ink2); font-size:12.5px; font-weight:700; cursor:pointer; font-family:'Noto Sans KR',sans-serif; margin-bottom:20px; }
 .add-extra-btn:hover { border-color:var(--green); color:var(--green); background:var(--green-light); }
 .upload-desc { font-size:11px; color:var(--ink3); line-height:1.5; }
+.catalog-link { display:inline-block; font-size:11px; color:var(--blue); text-decoration:none; font-weight:700; margin-top:2px; }
+.catalog-link:hover { text-decoration:underline; }
+.catalog-hint { font-size:10px; color:var(--ink3); margin-top:-2px; }
 .upload-drop { border:1.5px dashed var(--border); border-radius:9px; padding:12px; text-align:center; font-size:11.5px; color:var(--ink3); cursor:pointer; transition:all .15s; }
 .upload-drop:hover { border-color:var(--green); color:var(--green); background:var(--green-light); }
 .upload-drop input { display:none; }
@@ -426,7 +429,8 @@ td.col-name { font-weight:700; color:var(--ink); cursor:pointer; }
       <div class="api-settings-note">
         지도 영역 지정과 Q5 행정구역 선택은 <b>둘 다 선택사항</b>이며 같은 층위의 조회 범위 좁히기 수단입니다 — 아무 것도 지정하지 않아도 조회는 진행되며, 필요한 쪽만 골라 쓰면 됩니다.<br>
         VWorld 오픈API(<a href="https://www.vworld.kr" target="_blank" style="color:var(--blue)">vworld.kr</a>)에서 인증키를 발급받고, 개발계정에 <b>이 페이지가 열리는 도메인</b>을 등록해야 정상 조회됩니다. 도메인이 다르면 브라우저 정책(CORS)·서버 검증에 의해 요청이 차단될 수 있으며, 이 경우 파일 업로드 방식을 이용해 주세요.<br>
-        서비스ID는 VWorld 데이터 카탈로그에서 검색해 확인하세요 (예: 연속지적도 = <span style="font-family:'DM Mono',monospace">LP_PA_CBND_BUBUN</span>, 미리 입력되어 있음).
+        ✅ ①구역·②시설 카드는 국토교통부 "용도지역지구 표준분류코드"에 근거해 Q1/Q2 답변에 따라 서비스ID가 <b>자동으로 채워집니다</b>. 직접 확인하고 싶다면 카드의 "🔍 VWorld 카탈로그 열기"로 이동해 대조해보세요.<br>
+        ⚠️ ③지적도(<span style="font-family:'DM Mono',monospace">LP_PA_CBND_BUBUN</span>)는 미리 확인된 값이 입력되어 있고, ④건축물 정보데이터는 이 표준분류코드 체계에 포함되지 않아(별도 data.go.kr WFS) 자동연결이 안 됩니다 — 파일 업로드를 이용해주세요.
       </div>
     </div>
   </div>
@@ -446,13 +450,17 @@ td.col-name { font-weight:700; color:var(--ink); cursor:pointer; }
     <div class="upload-card" id="ucard1">
       <div class="upload-top"><div class="upload-num" id="unum1">1</div><div class="upload-title">지역지구 공간데이터</div></div>
       <div class="upload-desc" id="udesc1">구역 경계</div>
+      <a class="catalog-link" href="https://www.vworld.kr/dtmk/dtmk_main_s001.do" target="_blank" rel="noopener">🔍 VWorld 카탈로그 열기</a>
+      <div class="catalog-hint" id="catalogHint1">검색어 추천: (Q1 답변 후 표시됩니다)</div>
       <div class="src-toggle"><button class="src-tab active" onclick="setSrcMode(1,'file',this)">📁 파일</button><button class="src-tab" onclick="setSrcMode(1,'api',this)">🌐 API</button></div>
       <div class="src-pane show" id="upane1_file">
         <label class="upload-drop" id="udrop1">파일 선택 (.zip)<input type="file" id="ufile1" accept=".zip"></label>
       </div>
       <div class="src-pane" id="upane1_api">
-        <input class="api-input" id="uapi1_service" placeholder="서비스ID (VWorld 카탈로그에서 확인)">
+        <input class="api-input" id="uapi1_service" placeholder="Q1 답변에 따라 자동으로 채워집니다 (없으면 직접 입력)">
+        <input class="api-input" id="uapi1_attrfilter" placeholder="속성필터 attrFilter (선택, 세분류 선택 시 자동생성)">
         <button class="api-fetch-btn" onclick="apiFetchCard(1)">API로 조회</button>
+        <div class="catalog-hint" id="autoLinkHint1">Q1에 답하면 여기에 자동연결 여부가 표시됩니다.</div>
       </div>
       <div class="upload-status" id="ustatus1"></div>
       <div class="field-mini" id="ufield1"><label>명칭 필드</label><select id="usel1_name"></select></div>
@@ -460,13 +468,17 @@ td.col-name { font-weight:700; color:var(--ink); cursor:pointer; }
     <div class="upload-card" id="ucard2">
       <div class="upload-top"><div class="upload-num" id="unum2">2</div><div class="upload-title">조사대상 공간데이터</div></div>
       <div class="upload-desc" id="udesc2">도시계획시설 결정 레이어</div>
+      <a class="catalog-link" href="https://www.vworld.kr/dtmk/dtmk_main_s001.do" target="_blank" rel="noopener">🔍 VWorld 카탈로그 열기</a>
+      <div class="catalog-hint" id="catalogHint2">검색어 추천: (Q2 답변 후 표시됩니다)</div>
       <div class="src-toggle"><button class="src-tab active" onclick="setSrcMode(2,'file',this)">📁 파일</button><button class="src-tab" onclick="setSrcMode(2,'api',this)">🌐 API</button></div>
       <div class="src-pane show" id="upane2_file">
         <label class="upload-drop" id="udrop2">파일 선택 (.zip)<input type="file" id="ufile2" accept=".zip"></label>
       </div>
       <div class="src-pane" id="upane2_api">
-        <input class="api-input" id="uapi2_service" placeholder="서비스ID (예: 도시계획시설 관련)">
+        <input class="api-input" id="uapi2_service" placeholder="Q2 답변에 따라 자동으로 채워집니다 (없으면 직접 입력)">
+        <input class="api-input" id="uapi2_attrfilter" placeholder="속성필터 attrFilter (선택, 세분류 선택 시 자동생성)">
         <button class="api-fetch-btn" onclick="apiFetchCard(2)">API로 조회</button>
+        <div class="catalog-hint" id="autoLinkHint2">Q2에 답하면 여기에 자동연결 여부가 표시됩니다.</div>
       </div>
       <div class="upload-status" id="ustatus2"></div>
       <div class="field-mini" id="ufield2"><label>시설명 필드</label><select id="usel2_name"></select></div>
@@ -474,6 +486,8 @@ td.col-name { font-weight:700; color:var(--ink); cursor:pointer; }
     <div class="upload-card" id="ucard3">
       <div class="upload-top"><div class="upload-num" id="unum3">3</div><div class="upload-title">연속지적도</div></div>
       <div class="upload-desc">지적도(필지) 데이터</div>
+      <a class="catalog-link" href="https://www.vworld.kr/dtmk/dtmk_main_s001.do" target="_blank" rel="noopener">🔍 VWorld 카탈로그 열기</a>
+      <div class="catalog-hint">검색어 추천: 연속지적도</div>
       <div class="src-toggle"><button class="src-tab active" onclick="setSrcMode(3,'file',this)">📁 파일</button><button class="src-tab" onclick="setSrcMode(3,'api',this)">🌐 API</button></div>
       <div class="src-pane show" id="upane3_file">
         <label class="upload-drop" id="udrop3">파일 선택 (.zip)<input type="file" id="ufile3" accept=".zip"></label>
@@ -492,14 +506,29 @@ td.col-name { font-weight:700; color:var(--ink); cursor:pointer; }
     <div class="upload-card" id="ucard4">
       <div class="upload-top"><div class="upload-num" id="unum4">4</div><div class="upload-title">건축물 정보데이터</div></div>
       <div class="upload-desc">필지별 건축물 속성</div>
+      <a class="catalog-link" href="https://www.vworld.kr/dtmk/dtmk_main_s001.do" target="_blank" rel="noopener">🔍 VWorld 카탈로그 열기</a>
+      <div class="catalog-hint">검색어 추천: 건물통합정보</div>
       <div class="src-toggle"><button class="src-tab active" onclick="setSrcMode(4,'file',this)">📁 파일</button><button class="src-tab" onclick="setSrcMode(4,'api',this)">🌐 API</button></div>
       <div class="src-pane show" id="upane4_file">
         <label class="upload-drop" id="udrop4">파일 선택 (.zip)<input type="file" id="ufile4" accept=".zip"></label>
       </div>
       <div class="src-pane" id="upane4_api">
-        <input class="api-input" id="uapi4_service" placeholder="서비스ID (예: 건물통합정보 관련)">
-        <button class="api-fetch-btn" onclick="apiFetchCard(4)">API로 조회</button>
+        <label class="checkbox-item" style="margin-bottom:6px">
+          <input type="checkbox" id="uapi4_auto" checked onchange="toggleBuildingAutoMode()"> ①②③ 분석 결과 필지의 건축물을 자동으로 조회 (기본값)
+        </label>
+        <div id="uapi4_autoWrap">
+          <input class="api-input" id="uapi4_maincode" placeholder="특정 건축물 종류만 찾기 — 주용도코드 mainPrposCode (선택)">
+          <input class="api-input" id="uapi4_detailcode" placeholder="상세용도코드 detailPrposCode (선택)">
+          <div class="catalog-hint" id="autoLinkHint4">Q2에서 "건축물 용도"를 선택하면 여기에 자동연결 여부가 표시됩니다.</div>
+          <div class="catalog-hint">기본적으로는 종류를 지정하지 않고 <b>①②③ 중첩분석으로 찾은 모든 필지의 건축물을 그대로</b> 가져옵니다. 특별히 찾는 건축물 종류가 있을 때만 위 코드를 채워 좁혀서 조회하세요. 실행은 "실행 →" 버튼을 누르면 자동으로 진행됩니다 (여기서 따로 조회 버튼을 누를 필요 없음).</div>
+        </div>
+        <div id="uapi4_manualWrap" style="display:none">
+          <input class="api-input" id="uapi4_pnu" placeholder="법정동코드(10자리) 또는 PNU">
+          <button class="api-fetch-btn" onclick="apiFetchBuildingUse()">건축물정보 API로 미리 조회 (고급)</button>
+          <div class="catalog-hint">특정 지역 전체를 미리 받아 파일처럼 다루고 싶을 때만 사용하세요. 보통은 위 자동조회로 충분합니다.</div>
+        </div>
       </div>
+      <div class="catalog-hint" style="margin-top:2px">VWorld 건축물 용도 조회 전용 API(<span style="font-family:'DM Mono',monospace">/ned/data/getBuildingUse</span>)를 사용합니다.</div>
       <div class="upload-status" id="ustatus4"></div>
       <div class="field-mini" id="ufield4">
         <label>PNU 필드</label><select id="usel4_pnu"></select>
@@ -797,7 +826,7 @@ window.exportCaseXLSX = function(){
 
 <script>
 /* ================= 문답식 설정 (구역 유형 / 시설 유형 / 판정 키워드) ================= */
-window.wizard = { zoneType:null, zoneCustom:'', zoneSubTypes:[], facilityKind:null, facilityType:null, facilityCustom:'', facilitySubTypes:[], keywords:'', hasApiKey:null, regions:{ nationwide:false, sido:[], sigungu:[], eupmyeondong:[] } };
+window.wizard = { zoneType:null, zoneCustom:'', zoneSubTypes:[], zoneAttrFilter:'', facilityKind:null, facilityType:null, facilityCustom:'', facilitySubTypes:[], facilityAttrFilter:'', keywords:'', hasApiKey:null, regions:{ nationwide:false, sido:[], sigungu:[], eupmyeondong:[] } };
 
 const SIDO_SIGUNGU = {
   '서울특별시': ['종로구','중구','용산구','성동구','광진구','동대문구','중랑구','성북구','강북구','도봉구','노원구','은평구','서대문구','마포구','양천구','강서구','구로구','금천구','영등포구','동작구','관악구','서초구','강남구','송파구','강동구'],
@@ -880,6 +909,29 @@ window.onSigunguToggle = function(el){
 };
 renderSidoGrid();
 
+/* Q1(구역) / Q2(시설) 답변에 따라 자동으로 연결할 VWorld Data API 서비스ID.
+   출처: 국토교통부 "용도지역지구 표준분류코드" 공식 매핑표 (2026.06.24 배포본) — 사용자 제공 자료로 검증됨.
+   건축법 시행령 별표1(건축물 용도)은 이 표준분류코드 체계에 없는 별도 영역이라 매핑이 없다(의도된 공백). */
+const ZONE_API_PRESETS = {
+  '지구단위계획구역': 'LT_C_UQ141',  // (연속주제)_국토계획/구역
+  '공공주택지구': 'LT_C_UD620',      // (연속주제)_공공주택/용도지구
+  '산업단지': 'LT_C_UH101',          // (연속주제)_산업입지/산업단지
+  '도시개발구역': 'LT_C_UD901',      // (연속주제)_도시개발/도시개발구역
+  '정비구역': 'LT_C_UD602',          // (연속주제)_도시및주거환경정비/정비구역
+  '택지개발지구': 'LT_C_UD301',      // (연속주제)_택지개발/택지개발예정구역
+  '공원': 'LT_C_UQ162'               // (연속주제)_국토계획/공간시설 (도시공원은 공간시설의 하위 코드)
+};
+const FACILITY_API_PRESETS = {
+  '교통시설': 'LT_C_UQ161',
+  '공간시설': 'LT_C_UQ162',
+  '유통·공급시설': 'LT_C_UQ163',
+  '공공·문화체육시설': 'LT_C_UQ164',
+  '방재시설': 'LT_C_UQ165',
+  '보건위생시설': 'LT_C_UQ166',
+  '환경기초시설': 'LT_C_UQ167'
+  // 건축물 용도(건축법 시행령 별표1)는 이 표준분류코드에 해당 없음 — 파일 업로드 권장
+};
+
 const KEYWORD_PRESETS = {
   '폐기물처리시설':'폐기물,자원순환,재활용,소각,매립,환경',
   '주차장':'주차장,주차',
@@ -945,17 +997,53 @@ const URBAN_FACILITY_SUB = {
   '공공·문화체육시설': ['학교','운동장','공공청사','문화시설','공공필요성이 인정되는 체육시설','도서관','연구시설','사회복지시설','공공직업훈련시설','청소년수련시설'],
   '방재시설': ['하천','유수지','저수지','방화설비','방풍설비','방수설비','사방설비','방조설비'],
   '보건위생시설': ['장사시설','도축장','종합의료시설'],
-  '환경기초시설': ['하수도','폐기물처리 및 재활용시설','빗물저장 및 이용시설','수질오염방지시설','폐차장']
+  '환경기초시설': ['하수도','공공하수처리시설','폐기물처리및재활용시설','광역폐기물처리시설','재활용시설','기타폐기물처리시설','수질오염방지시설','공공폐수처리시설','폐수수탁처리업시설','분뇨처리시설','가축분뇨공공처리시설','폐광폐수처리시설']
 };
+
+/* 용도지역지구 표준분류코드표에서 추출한 세부 코드값 매핑 (세분류 선택 시 attrFilter 자동 생성용) */
+const SUBTYPE_CODE_LOOKUP = {'공공주택지구':'UDL100','도심 공공주택 복합지구':'UDL200','정비구역미분류':'UDT000','정비구역':'UDT100','정비구역기타':'UDT999','도시개발구역':'UDW100','도시개발구역기타':'UDW999','산업단지미분류':'UHA000','국가산업단지':'UHA100','지방산업단지':'UHA200','일반산업단지':'UHA210','도시첨단산업단지':'UHA220','농공단지':'UHA300','특수지역':'UHA400','준산업단지':'UHA500','공장입지유도지구':'UHA600','재생사업지구':'UHA700','산업단지기타':'UHA999','용도구역미분류':'UQQ000','도시계획구역':'UQQ100','시가화조정구역':'UQQ200','지구단위계획구역':'UQQ300','제1종지구단위계획구역':'UQQ310','제2종지구단위계획구역':'UQQ320','주거용지':'UQQ321','상업용지':'UQQ322','공업용지':'UQQ323','녹지용지':'UQQ324','공공시설용지':'UQQ325','기타용지':'UQQ329','광역계획구역':'UQQ400','수산자원보호구역':'UQQ500','토지거래계약에관한허가구역':'UQQ600','개발밀도관리구역':'UQQ700','도시자연공원구역':'UQQ810','개발행위허가제한지역':'UQQ900','입지규제최소구역':'UQQ901','성장관리계획구역':'UQQ902','도시혁신구역':'UQQ903','복합용도구역':'UQQ904','도시군계획시설입체복합구역':'UQQ905','용도구역기타':'UQQ999','교통운수시설미분류':'UQS000','도로':'UQS100','일반도로':'UQS101','자동차전용도로':'UQS102','보행자전용도로':'UQS103','자전거전용도로':'UQS104','고가도로':'UQS105','지하도로':'UQS106','보행자우선도로':'UQS107','광로1류(폭 70m 이상)':'UQS111','광로2류(폭 50m~70m)':'UQS112','광로3류(폭 40m~50m)':'UQS113','대로1류(폭 35m~40m)':'UQS114','대로2류(폭 30m~35m)':'UQS115','대로3류(폭 25m~30m)':'UQS116','중로1류(폭 20m~25m)':'UQS117','중로2류(폭 15m~20m)':'UQS118','중로3류(폭 12m~15m)':'UQS119','소로1류(폭 10m~12m)':'UQS120','소로2류(폭 8m~10m)':'UQS121','소로3류(폭 8m 미만)':'UQS122','주간선도로':'UQS131','보조간선도로':'UQS132','집산도로':'UQS133','국지도로':'UQS134','도시고속도로':'UQS141','특수도로(보행자전용도로)':'UQS142','특수도로(자전거전용도로)':'UQS143','기타도로시설':'UQS190','주차장':'UQS200','노외주차장':'UQS210','기타주차장시설':'UQS290','자동차정류장':'UQS300','여객자동차터미널':'UQS310','물류터미널':'UQS320','공영차고지':'UQS330','기타자동차정류장':'UQS390','차량검사및면허시설':'UQS400','자동차검사시설':'UQS410','검사소':'UQS420','운전면허시험장':'UQS430','기타차량검사및면허시설':'UQS490','철도':'UQS500','일반철도':'UQS510','도시철도':'UQS520','고속철도':'UQS530','국유철도사업시설':'UQS540','기타철도시설':'UQS549','궤도':'UQS550','기타궤도시설':'UQS559','삭도':'UQS560','기타삭도시설':'UQS569','항만':'UQS700','항만시설':'UQS710','어항시설':'UQS720','기타항만시설':'UQS790','공항':'UQS800','공항시설':'UQS810','기타공항시설':'UQS890','기타교통시설':'UQS999','공간시설미분류':'UQT000','광장':'UQT100','교통광장':'UQT110','교차점광장':'UQT111','역전광장':'UQT112','주요시설광장':'UQT113','일반광장':'UQT120','중심대광장':'UQT121','근린광장':'UQT122','경관광장':'UQT130','지하광장':'UQT140','건축물부설광장':'UQT150','기타광장시설':'UQT190','공원':'UQT200','어린이공원':'UQT210','근린공원':'UQT220','문화공원':'UQT221','역사공원':'UQT222','도시자연공원':'UQT230','도시농업공원':'UQT231','묘지공원':'UQT240','체육공원':'UQT250','수변공원':'UQT251','방재공원':'UQT252','소공원':'UQT260','기타공원시설':'UQT290','녹지':'UQT300','완충녹지':'UQT310','경관녹지':'UQT320','연결녹지':'UQT330','기타녹지시설':'UQT390','유원지':'UQT400','기타유원지시설':'UQT490','공공공지':'UQT500','기타공공공지시설':'UQT590','기타도시공간시설':'UQT999','유통및공급시설미분류':'UQU000','시장':'UQU100','대규모점포및정기시장':'UQU110','대규모점포':'UQU111','임시시장':'UQU112','농수산물도매시장':'UQU120','농수산물공판장및농수산물종합유통센터':'UQU130','농수산물공판장':'UQU131','농수산물종합유통센터':'UQU132','가축시장':'UQU140','기타시장시설':'UQU199','유통업무설비':'UQU200','일반물류단지':'UQU210','기타유통업무설비':'UQU290','수도공급설비':'UQU300','취수시설':'UQU310','저수시설':'UQU320','정수시설':'UQU330','배수시설':'UQU340','전용관로상의도수시설및송수시설':'UQU350','기타수도공급설비':'UQU390','공동구':'UQU400','기타공동구시설':'UQU490','전기공급설비':'UQU500','발전시설':'UQU510','변전시설':'UQU520','송전선로':'UQU530','배전사업소':'UQU540','기타전기공급설비':'UQU590','가스공급설비':'UQU600','고압가스저장소':'UQU610','액화석유가스충전시설':'UQU620','가스공급시설':'UQU630','기타가스공급설비':'UQU690','열공급설비':'UQU700','열원시설':'UQU710','열수송시설':'UQU720','기타열공급설비':'UQU790','유류저장및송유설비':'UQU800','석유비축저장시설':'UQU810','송유관':'UQU820','유류저장소':'UQU830','송유시설':'UQU840','기타유류저장및송유설비':'UQU890','방송통신시설':'UQU900','무선설비':'UQU910','사업용전기통신설비':'UQU920','유선방송국설비':'UQU930','기타방송통신시설':'UQU990','기타유통및공급시설':'UQU999','공공문화체육시설미분류':'UQV000','공공청사':'UQV200','청사':'UQV210','공관':'UQV220','교정시설':'UQV230','교도소':'UQV231','구치소':'UQV232','소년원':'UQV233','소년분류심사원':'UQV234','기타공공청사시설':'UQV290','학교':'UQV300','유치원':'UQV310','초등학교':'UQV320','중학교':'UQV330','고등학교':'UQV340','대학':'UQV350','기타학교시설':'UQV390','도서관':'UQV400','공공도서관':'UQV410','전문도서관':'UQV420','특수도서관':'UQV430','기타도서관시설':'UQV490','연구시설':'UQV500','기타연구시설':'UQV590','문화시설':'UQV600','공연장':'UQV610','박물관':'UQV620','미술관':'UQV630','문화산업진흥시설':'UQV640','문화산업단지':'UQV650','과학관':'UQV660','기타문화시설':'UQV690','사회복지시설':'UQV700','기타사회복지시설':'UQV709','공공직업훈련시설':'UQV750','기타공공직업훈련시설':'UQV759','체육시설':'UQV800','공공체육시설':'UQV810','골프장':'UQV820','스키장':'UQV830','종합운동장':'UQV840','기타운동장시설':'UQV850','기타체육시설':'UQV890','청소년수련시설':'UQV910','기타청소년수련시설':'UQV990','기타공공문화복지시설':'UQV999','방재시설미분류':'UQW000','하천':'UQW100','운하':'UQW101','국가하천':'UQW110','지방1급하천':'UQW120','지방2급하천':'UQW130','소하천':'UQW140','기타하천시설':'UQW190','기타운하시설':'UQW199','저수지':'UQW200','댐':'UQW210','제방':'UQW220','기타저수지시설':'UQW290','방풍설비':'UQW300','방풍림시설':'UQW310','방풍담장시설':'UQW320','방풍망시설':'UQW330','기타방풍설비':'UQW390','방수설비':'UQW400','방수시설':'UQW420','기타방수설비':'UQW490','방화설비':'UQW500','소방용수시설':'UQW510','기타방화설비':'UQW590','사방설비':'UQW600','사방시설':'UQW610','기타사방설비':'UQW690','방조설비':'UQW700','방조제':'UQW710','기타방조설비':'UQW790','유수지':'UQW800','유수시설':'UQW810','저류시설':'UQW820','기타유수지시설':'UQW890','기타도시방재시설':'UQW999','보건위생시설미분류':'UQX000','도축장':'UQX100','기타도축장시설':'UQX190','종합의료시설':'UQX500','종합병원':'UQX510','기타종합의료시설':'UQX590','장사시설':'UQX800','국립묘지':'UQX805','공설묘지':'UQX810','사설묘지':'UQX815','기타공동묘지시설':'UQX820','공설화장시설':'UQX825','사설화장시설':'UQX830','기타화장시설':'UQX835','장례식장':'UQX840','기타장례식장시설':'UQX845','봉안시설':'UQX850','공설봉안시설':'UQX855','사설봉안시설':'UQX860','기타봉안시설':'UQX865','공설자연장지':'UQX870','법인등자연장지':'UQX875','기타보건위생시설':'UQX999','국토계획환경기초시설미분류':'UQY000','하수도':'UQY100','공공하수도중간선하수관로':'UQY110','공공하수처리시설':'UQY120','기타하수도시설':'UQY190','폐기물처리및재활용시설':'UQY200','광역폐기물처리시설':'UQY210','재활용시설':'UQY220','기타폐기물처리시설':'UQY290','수질오염방지시설':'UQY300','공공폐수처리시설':'UQY310','폐수수탁처리업시설':'UQY320','분뇨처리시설':'UQY330','가축분뇨공공처리시설':'UQY340','폐광폐수처리시설':'UQY350','기타수질오염방지시설':'UQY390','폐차장':'UQY400','기타폐차장시설':'UQY490','기타환경기초시설':'UQY999'};
+
+/* GIS건물통합정보(AL_D010) 건축물용도코드표 — 국가중점데이터 컬럼정의서(24.09.06 배포본)에서 추출.
+   VWorld 건축물정보 API(getBuildingUse)의 mainPrposCode는 이 코드를 5자리로 0-패딩한 값과 일치하는 것으로 보임(사용자 제공 예시 URL로 정황 확인, 100% 검증은 아님). */
+const BUILDING_USE_CODE_RAW = {'단독주택':'1000','다가구주택':'1003','공동주택':'2000','제1종근린생활시설':'3000','제2종근린생활시설':'4000','문화및집회시설':'5000','종교시설':'6000','판매시설':'7000','운수시설':'8000','의료시설':'9000','교육연구시설':'10000','노유자시설':'11000','수련시설':'12000','운동시설':'13000','업무시설':'14000','숙박시설':'15000','위락시설':'16000','공장':'17000','창고시설':'18000','위험물저장및처리시설':'19000','자동차관련시설':'20000','동.식물 관련시설':'21000','분뇨.쓰레기처리시설':'22000','교정및군사시설':'23000','방송통신시설':'24000','발전시설':'25000','묘지관련시설':'26000','관광휴게시설':'27000','가설건축물':'28000','장례식장':'29000'};
+function normLabel(s){ return String(s||'').replace(/[\s.·]/g,''); }
+const BUILDING_USE_CODE_LOOKUP = {};
+Object.keys(BUILDING_USE_CODE_RAW).forEach(k=>{ BUILDING_USE_CODE_LOOKUP[normLabel(k)] = BUILDING_USE_CODE_RAW[k].padStart(5,'0'); });
+
+/* 국가중점데이터 42종 중 SHP/파일코드가 확인된 20종 — "5. 추가입력사항"에서 선택창으로 제공.
+   출처: 국가중점데이터_컬럼정의서(24.09.06 배포본). 이 코드는 파일(다운로드) 식별코드이며,
+   VWorld 실시간 Data API(data=)의 코드와는 다른 체계이므로 API 자동조회에는 쓰지 않고 명칭/식별용으로만 사용. */
+const NATIONAL_PRIORITY_DATASETS = [
+  {name:'GIS건물통합정보', code:'AL_D010'},
+  {name:'GIS건물일반집합정보', code:'AL_D162'},
+  {name:'개별공시지가정보', code:'AL_D150'},
+  {name:'개별주택가격정보', code:'AL_D168'},
+  {name:'건축물연령정보', code:'AL_D196'},
+  {name:'공동주택가격정보', code:'AL_D166'},
+  {name:'도서(섬)정보', code:'AL_D158'},
+  {name:'법정구역정보', code:'AL_D001'},
+  {name:'부동산개발업정보', code:'AL_D177'},
+  {name:'부동산중개업정보', code:'AL_D170'},
+  {name:'연속지적도형정보', code:'AL_D002'},
+  {name:'용도별건물정보', code:'AL_D198'},
+  {name:'지가변동률정보', code:'AL_D203'},
+  {name:'지적도근점정보', code:'AL_D007'},
+  {name:'지적삼각보조점정보', code:'AL_D008'},
+  {name:'지적삼각점정보', code:'CH_D009'},
+  {name:'토지소유정보', code:'AL_D160'},
+  {name:'토지이용계획정보', code:'AL_D155'},
+  {name:'토지특성정보', code:'AL_D194'},
+  {name:'표준지공시지가정보', code:'AL_D152'}
+];
 
 const SUBZONE_PRESETS = {
   '지구단위계획구역': ['제1종지구단위계획구역','제2종지구단위계획구역','도시지역 지구단위계획구역','비도시지역 지구단위계획구역','주거형','산업·유통형','관광·휴양형','복합형'],
   '공공주택지구': ['국민임대주택지구','행복주택지구','영구임대주택지구','통합공공임대주택지구','신혼희망타운','일반형 공공주택지구'],
-  '산업단지': ['국가산업단지','일반산업단지','도시첨단산업단지','농공단지'],
+  '산업단지': ['국가산업단지','지방산업단지','일반산업단지','도시첨단산업단지','농공단지','특수지역','준산업단지','공장입지유도지구','재생사업지구'],
   '도시개발구역': ['수용·사용방식','환지방식','혼용방식','주거형','산업·유통형','복합형'],
   '정비구역': ['주거환경개선사업','재개발사업','재건축사업','가로주택정비사업','소규모재건축사업','도시환경정비사업'],
   '택지개발지구': ['국민임대주택단지','보금자리주택지구','일반택지개발지구','공공택지','민간택지'],
-  '공원': ['근린공원','어린이공원','체육공원','문화공원','수변공원','도시자연공원구역','도시농업공원','묘지공원']
+  '공원': ['어린이공원','근린공원','문화공원','역사공원','도시자연공원','도시농업공원','묘지공원','체육공원','수변공원','방재공원','소공원']
 };
 
 window.wizardZoneLabel = function(){ return wizard.zoneType==='__custom__' ? wizard.zoneCustom : wizard.zoneType; };
@@ -1020,6 +1108,7 @@ window.facilitySubzoneNeed = function(need, el){
   el.classList.add('active');
   if(!need){
     wizard.facilitySubTypes = [];
+    wizard.facilityAttrFilter = '';
     document.getElementById('wsub2b').style.display = 'none';
     revealStep(3);
     return;
@@ -1036,11 +1125,20 @@ window.facilitySubzoneNeed = function(need, el){
   document.getElementById('facilitySubCustomInput').value = '';
   document.getElementById('wsub2b').scrollIntoView({behavior:'smooth', block:'nearest'});
 };
+/* 선택된 세분류명(subTypes)을 표준분류코드 룩업과 대조해 VWorld attrFilter 문자열을 생성.
+   매칭되지 않는 항목(직접입력 등)은 조용히 건너뛴다. */
+function buildAttrFilter(subTypes){
+  const codes = (subTypes||[]).map(name => SUBTYPE_CODE_LOOKUP[name]).filter(Boolean);
+  if(codes.length===0) return '';
+  return codes.map(c=>`ucode:=:${c}`).join('|');
+}
+
 window.confirmFacilitySubzone = function(){
   const checked = Array.from(document.querySelectorAll('#facilitySubCheckGrid input:checked')).map(i=>i.value);
   const customVal = document.getElementById('facilitySubCustomInput').value.trim();
   const customList = customVal ? customVal.split(',').map(s=>s.trim()).filter(Boolean) : [];
   wizard.facilitySubTypes = [...checked, ...customList];
+  wizard.facilityAttrFilter = buildAttrFilter(wizard.facilitySubTypes);
   revealStep(3);
 };
 
@@ -1064,6 +1162,7 @@ window.subzoneNeed = function(need, el){
   el.classList.add('active');
   if(!need){
     wizard.zoneSubTypes = [];
+    wizard.zoneAttrFilter = '';
     document.getElementById('wsub1b').style.display = 'none';
     revealStep(2);
     return;
@@ -1083,6 +1182,7 @@ window.confirmSubzone = function(){
   const customVal = document.getElementById('subzoneCustomInput').value.trim();
   const customList = customVal ? customVal.split(',').map(s=>s.trim()).filter(Boolean) : [];
   wizard.zoneSubTypes = [...checked, ...customList];
+  wizard.zoneAttrFilter = buildAttrFilter(wizard.zoneSubTypes);
   revealStep(2);
 };
 
@@ -1127,6 +1227,49 @@ window.finishWizard = function(){
 
   document.getElementById('udesc1').textContent = zoneLbl+' 경계 (예: '+zoneLbl+')';
   document.getElementById('udesc2').textContent = '도시계획시설 결정 레이어 (예: '+facLbl+')';
+  const hint1 = document.getElementById('catalogHint1');
+  if(hint1) hint1.textContent = '검색어 추천: '+zoneLbl;
+  const hint2 = document.getElementById('catalogHint2');
+  if(hint2) hint2.textContent = '검색어 추천: '+facLbl;
+
+  // Q1/Q2 답변에 따라 확인된 VWorld 서비스ID 자동 연결
+  const zonePreset = ZONE_API_PRESETS[zoneLbl];
+  const autoHint1 = document.getElementById('autoLinkHint1');
+  const apiSvc1 = document.getElementById('uapi1_service');
+  const apiFilter1 = document.getElementById('uapi1_attrfilter');
+  apiFilter1.value = wizard.zoneAttrFilter || '';
+  if(zonePreset){
+    apiSvc1.value = zonePreset;
+    const filterNote1 = wizard.zoneAttrFilter ? ` 세분류 선택 반영 속성필터도 자동 입력했습니다.` : '';
+    if(autoHint1) autoHint1.innerHTML = `✅ "${zoneLbl}"는 확인된 서비스ID로 자동연결되었습니다 (<span style="font-family:'DM Mono',monospace">${zonePreset}</span>).${filterNote1} 인증키만 입력하면 바로 조회 가능합니다.`;
+  } else if(autoHint1){
+    autoHint1.innerHTML = `⚠️ "${zoneLbl}"는 확인된 VWorld 서비스ID가 없습니다. 🔍 카탈로그에서 찾아 직접 입력하거나 파일 업로드를 이용해주세요.`;
+  }
+  const facPreset = FACILITY_API_PRESETS[facLbl];
+  const autoHint2 = document.getElementById('autoLinkHint2');
+  const apiSvc2 = document.getElementById('uapi2_service');
+  const apiFilter2 = document.getElementById('uapi2_attrfilter');
+  apiFilter2.value = wizard.facilityAttrFilter || '';
+  if(facPreset){
+    apiSvc2.value = facPreset;
+    const filterNote2 = wizard.facilityAttrFilter ? ` 세분류 선택 반영 속성필터도 자동 입력했습니다.` : '';
+    if(autoHint2) autoHint2.innerHTML = `✅ "${facLbl}"는 확인된 서비스ID로 자동연결되었습니다 (<span style="font-family:'DM Mono',monospace">${facPreset}</span>).${filterNote2}`;
+  } else if(autoHint2){
+    autoHint2.innerHTML = `⚠️ "${facLbl}"는 확인된 VWorld 서비스ID가 없습니다(도시계획시설·건축물 데이터는 data.go.kr 별도 WFS인 경우가 많습니다). 🔍 카탈로그에서 찾아 직접 입력하거나 파일 업로드를 이용해주세요.`;
+  }
+
+  // Q2에서 "건축물 용도"를 선택한 경우, GIS건물통합정보 건축물용도코드로 카드4의 mainPrposCode 자동 채움
+  if(wizard.facilityKind === 'building_use'){
+    const buCode = BUILDING_USE_CODE_LOOKUP[normLabel(facLbl)];
+    const mainCodeEl = document.getElementById('uapi4_maincode');
+    const hint4 = document.getElementById('autoLinkHint4');
+    if(buCode && mainCodeEl){
+      mainCodeEl.value = buCode;
+      if(hint4) hint4.innerHTML = `✅ "${facLbl}"의 건축물용도코드 <span style="font-family:'DM Mono',monospace">${buCode}</span>를 mainPrposCode에 자동 입력했습니다. 법정동코드만 채우면 바로 조회 가능합니다.`;
+    } else if(hint4){
+      hint4.innerHTML = `⚠️ "${facLbl}"에 해당하는 건축물용도코드를 찾지 못했습니다 — mainPrposCode를 직접 입력하거나 비워두고 조회하세요.`;
+    }
+  }
   document.getElementById('colZoneHeader').textContent = '소재 '+zoneLbl;
   document.getElementById('colZoneHeaderCase').textContent = '소재 '+zoneLbl;
   const complexLabel = document.getElementById('c-complex-label');
@@ -1240,29 +1383,50 @@ function onLayerReady(n, fc, statusMsg){
     document.getElementById('ufield3').classList.add('show');
   } else if(n===4){
     populateSelect(document.getElementById('usel4_pnu'), keys, guessField(keys,['pnu','고유번호']));
-    populateSelect(document.getElementById('usel4_purps'), keys, guessField(keys,['주용도','purps']));
+    populateSelect(document.getElementById('usel4_purps'), keys, guessField(keys,['주용도','건축물용도명','용도명','purps']));
     populateSelect(document.getElementById('usel4_area'), keys, guessField(keys,['연면적','totar','area']));
     populateSelect(document.getElementById('usel4_apday'), keys, guessField(keys,['승인일','apr_day','useapr']));
     document.getElementById('ufield4').classList.add('show');
   }
   checkReady();
 }
-function checkReady(){
-  const ready = layers.industrial && layers.facility && layers.cadastre && layers.building;
-  document.getElementById('runBtn').disabled = !ready;
-  if(ready) runLog('모든 레이어 준비 완료 — 실행 버튼을 눌러 분석을 시작하세요');
+function isBuildingAutoApiMode(){
+  const apiTabActive = document.getElementById('upane4_api')?.classList.contains('show');
+  const autoChecked = document.getElementById('uapi4_auto')?.checked;
+  return !!(apiTabActive && autoChecked);
 }
+function checkReady(){
+  const buildingReady = !!layers.building || isBuildingAutoApiMode();
+  const ready = layers.industrial && layers.facility && layers.cadastre && buildingReady;
+  document.getElementById('runBtn').disabled = !ready;
+  if(ready){
+    runLog(isBuildingAutoApiMode() && !layers.building
+      ? '①②③ 준비 완료 — 건축물은 실행 시 필지별로 자동 조회됩니다'
+      : '모든 레이어 준비 완료 — 실행 버튼을 눌러 분석을 시작하세요');
+  }
+}
+window.toggleBuildingAutoMode = function(){
+  const auto = document.getElementById('uapi4_auto').checked;
+  document.getElementById('uapi4_autoWrap').style.display = auto ? 'block' : 'none';
+  document.getElementById('uapi4_manualWrap').style.display = auto ? 'none' : 'block';
+  checkReady();
+};
 
 /* ---------------- 2. 추가입력사항: 다중 데이터 추가 중첩·조인 ---------------- */
 let extraLayers = [];
 function escLite(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function extraCardTemplate(e){
+  const dsOptions = NATIONAL_PRIORITY_DATASETS.map(d=>`<option value="${d.name}|${d.code}">${d.name} (${d.code})</option>`).join('');
   return `
   <div class="upload-card" id="ecard_${e.uid}">
     <div class="extra-card-head">
       <input class="extra-label-input" id="elabel_${e.uid}" placeholder="데이터 명칭 (예: 인허가현황)" oninput="renameExtra('${e.uid}', this.value)">
       <button class="extra-remove-btn" title="삭제" onclick="removeExtraLayer('${e.uid}')">✕</button>
     </div>
+    <select class="api-input" id="epick_${e.uid}" onchange="pickNationalDataset('${e.uid}', this.value)" style="margin-bottom:4px">
+      <option value="">-- 국가중점데이터에서 선택 (선택사항) --</option>
+      ${dsOptions}
+    </select>
     <div class="src-toggle"><button class="src-tab active" onclick="setExtraSrcMode('${e.uid}','file',this)">📁 파일</button><button class="src-tab" onclick="setExtraSrcMode('${e.uid}','api',this)">🌐 API</button></div>
     <div class="src-pane show" id="epane_${e.uid}_file">
       <label class="upload-drop">파일 선택 (.zip)<input type="file" accept=".zip" onchange="handleExtraFile('${e.uid}', this.files[0])"></label>
@@ -1270,6 +1434,8 @@ function extraCardTemplate(e){
     <div class="src-pane" id="epane_${e.uid}_api">
       <input class="api-input" id="eapi_${e.uid}_service" placeholder="서비스ID (VWorld)">
       <button class="api-fetch-btn" onclick="apiFetchExtra('${e.uid}')">API로 조회</button>
+      <a class="catalog-link" href="https://www.vworld.kr/dtmk/dtmk_main_s001.do" target="_blank" rel="noopener">🔍 VWorld 카탈로그 열기</a>
+      <div class="catalog-hint" id="epickhint_${e.uid}">국가중점데이터에서 고르면 파일코드가 여기 표시됩니다 (다운로드 식별코드 — 실시간 API 코드와 다를 수 있어 파일 업로드를 권장합니다).</div>
     </div>
     <div class="upload-status" id="estatus_${e.uid}"></div>
     <div class="field-mini" id="efield_${e.uid}">
@@ -1300,6 +1466,17 @@ window.removeExtraLayer = function(uid){
   refreshExtraColumns();
 };
 window.renameExtra = function(uid, val){ const e=extraLayers.find(x=>x.uid===uid); if(e) e.label=val; };
+window.pickNationalDataset = function(uid, value){
+  if(!value) return;
+  const [name, code] = value.split('|');
+  const labelInput = document.getElementById('elabel_'+uid);
+  if(labelInput){ labelInput.value = name; renameExtra(uid, name); }
+  const hint = document.getElementById('epickhint_'+uid);
+  if(hint) hint.innerHTML = `"${name}"의 파일 식별코드는 <span style="font-family:'DM Mono',monospace">${code}</span>입니다. VWorld 다운로드 카탈로그에서 이 이름으로 검색해 zip을 받은 뒤 📁 파일 탭에 업로드하세요.`;
+  // API 서비스ID 칸에도 참고용으로 채워두되, 실시간 API 코드와 다를 수 있음을 위 안내로 명시함
+  const svcInput = document.getElementById('eapi_'+uid+'_service');
+  if(svcInput) svcInput.value = code;
+};
 window.setExtraSrcMode = function(uid, mode, el){
   el.parentElement.querySelectorAll('.src-tab').forEach(b=>b.classList.remove('active'));
   el.classList.add('active');
@@ -1392,6 +1569,7 @@ window.setSrcMode = function(n, mode, el){
   el.classList.add('active');
   document.getElementById('upane'+n+'_file').classList.toggle('show', mode==='file');
   document.getElementById('upane'+n+'_api').classList.toggle('show', mode==='api');
+  if(n===4) checkReady();
 };
 
 /* ---------------- BBOX 영역 지정 (지도 2회 클릭 — 선택사항, Q5 행정구역 선택과 동등) ---------------- */
@@ -1466,7 +1644,7 @@ function vworldJSONP(url, timeoutMs){
     document.body.appendChild(script);
   });
 }
-async function fetchVWorldPage(serviceId, page){
+async function fetchVWorldPage(serviceId, page, attrFilter){
   const key = document.getElementById('apiKey').value.trim();
   const domain = document.getElementById('apiDomain').value.trim();
   if(!key) throw new Error('API 인증키를 입력하세요');
@@ -1477,6 +1655,7 @@ async function fetchVWorldPage(serviceId, page){
   });
   // 조회 영역 지정은 선택사항입니다 — 지도 BBOX가 있으면 사용하고, 없으면 범위 제한 없이 조회합니다.
   if(window.apiBBox) params.set('geomFilter', `BOX(${window.apiBBox.join(',')})`);
+  if(attrFilter) params.set('attrFilter', attrFilter);
   if(domain) params.set('domain', domain);
   const url = 'https://api.vworld.kr/req/data?'+params.toString();
   const data = await vworldJSONP(url);
@@ -1486,20 +1665,85 @@ async function fetchVWorldPage(serviceId, page){
   }
   return data.response.result?.featureCollection || {type:'FeatureCollection', features:[]};
 }
+/* ---------------- VWorld 건축물 용도 조회 전용 API (ned/data/getBuildingUse) ----------------
+   Data API 2.0(/req/data)과는 완전히 다른 엔드포인트/응답 구조입니다.
+   도형(geometry)이 아니라 PNU·법정동 단위의 건축물 속성 목록을 돌려주며,
+   공공데이터포털 표준 응답 형식(response.body.items.item[])을 따르는 것으로 보입니다(비공식, 실사용 응답으로 확인 필요). */
+function pickField(obj, candidates){
+  if(!obj) return undefined;
+  for(const c of candidates){ if(obj[c]!==undefined && obj[c]!==null && obj[c]!=='') return obj[c]; }
+  const keys = Object.keys(obj);
+  for(const c of candidates){
+    const found = keys.find(k=>k.toLowerCase()===c.toLowerCase());
+    if(found && obj[found]!==undefined && obj[found]!==null && obj[found]!=='') return obj[found];
+  }
+  return undefined;
+}
+async function fetchBuildingUsePage(pnu, mainCode, detailCode, pageNo){
+  const key = document.getElementById('apiKey').value.trim();
+  const domain = document.getElementById('apiDomain').value.trim();
+  if(!key) throw new Error('API 인증키를 입력하세요');
+  if(!pnu) throw new Error('법정동코드 또는 PNU를 입력하세요');
+  const params = new URLSearchParams({
+    pnu, format:'json', numOfRows:'1000', pageNo:String(pageNo||1), key
+  });
+  if(mainCode) params.set('mainPrposCode', mainCode);
+  if(detailCode) params.set('detailPrposCode', detailCode);
+  if(domain) params.set('domain', domain);
+  const url = 'https://api.vworld.kr/ned/data/getBuildingUse?'+params.toString();
+  const data = await vworldJSONP(url, 12000);
+  const header = data?.response?.header;
+  if(header && header.resultCode && !['00','INFO-0'].includes(header.resultCode)){
+    throw new Error('응답 오류: '+(header.resultMsg||header.resultCode));
+  }
+  const body = data?.response?.body;
+  let items = body?.items?.item;
+  if(!items) items = [];
+  if(!Array.isArray(items)) items = [items];
+  const totalCount = Number(body?.totalCount || items.length);
+  return { items, totalCount };
+}
+window.apiFetchBuildingUse = async function(){
+  const pnu = document.getElementById('uapi4_pnu').value.trim();
+  const mainCode = document.getElementById('uapi4_maincode').value.trim();
+  const detailCode = document.getElementById('uapi4_detailcode').value.trim();
+  const statusEl = document.getElementById('ustatus4');
+  if(!pnu){ statusEl.textContent = '⚠️ 법정동코드 또는 PNU를 입력하세요'; return; }
+  statusEl.textContent = '조회 중...';
+  try{
+    let all = [], page = 1, total = Infinity;
+    while(all.length < total && page <= 10){
+      const { items, totalCount } = await fetchBuildingUsePage(pnu, mainCode, detailCode, page);
+      all = all.concat(items);
+      total = totalCount || all.length;
+      if(items.length === 0 || items.length < 1000) break;
+      page++;
+    }
+    if(all.length === 0){ statusEl.textContent = '⚠️ 조회 결과 0건 — 법정동코드·용도코드를 확인하세요'; return; }
+    // 응답 항목을 geometry 없는 pseudo-Feature로 변환 (기존 PNU 매칭 파이프라인은 geometry가 필요 없음)
+    const features = all.map(item => ({ type:'Feature', geometry:null, properties: item }));
+    onLayerReady(4, { type:'FeatureCollection', features }, '완료 — 건축물 '+all.length+'건 (VWorld 건축물정보 API)');
+  }catch(e){
+    console.error(e);
+    statusEl.textContent = '⚠️ '+e.message+' — 파일 업로드로 전환해 주세요';
+  }
+};
 window.apiFetchCard = async function(n){
   const serviceId = document.getElementById('uapi'+n+'_service').value.trim();
+  const attrFilterEl = document.getElementById('uapi'+n+'_attrfilter');
+  const attrFilter = attrFilterEl ? attrFilterEl.value.trim() : '';
   const statusEl = document.getElementById('ustatus'+n);
   if(!serviceId){ statusEl.textContent='⚠️ 서비스ID를 입력하세요'; return; }
   statusEl.textContent = '조회 중...';
   try{
     let all = [], page = 1;
     while(page<=5){
-      const fc = await fetchVWorldPage(serviceId, page);
+      const fc = await fetchVWorldPage(serviceId, page, attrFilter);
       all = all.concat(fc.features||[]);
       if(!fc.features || fc.features.length < 1000) break;
       page++;
     }
-    if(all.length===0){ statusEl.textContent = '⚠️ 조회 결과 0건 — BBOX 영역·서비스ID를 확인하세요'; return; }
+    if(all.length===0){ statusEl.textContent = '⚠️ 조회 결과 0건 — BBOX 영역·서비스ID·속성필터를 확인하세요'; return; }
     onLayerReady(n, {type:'FeatureCollection', features:all}, '완료 — 피처 '+all.length+'개 (VWorld API)');
   }catch(e){
     console.error(e);
@@ -1587,31 +1831,71 @@ async function runAnalysis(){
     }
   }
 
-  runLog('3/3 건축물 속성 매칭 중...');
+  runLog('3/3 건축물 속성 확인 중...');
   await new Promise(r=>setTimeout(r,30));
 
   const matchKeywords = (window.wizard && window.wizard.keywords)
     ? window.wizard.keywords.split(',').map(s=>s.trim()).filter(Boolean)
     : [];
-  stepA.forEach(item=>{
-    let matched=[];
-    if(item.pnu!=null){ matched = layers.building.features.filter(b=> b.properties && String(b.properties[pnuFieldBuilding])===String(item.pnu)); }
-    item.buildingCount = matched.length;
-    if(matched.length===0){ item.status='nobuild'; item.mainPurps='—'; item.totArea='—'; }
-    else{
-      let chosen = matched[0];
-      if(areaFieldBuilding){
-        chosen = matched.reduce((a,b)=>{
-          const av=parseFloat(a.properties[areaFieldBuilding])||0, bv=parseFloat(b.properties[areaFieldBuilding])||0;
-          return bv>av ? b : a;
-        }, matched[0]);
+
+  if(layers.building){
+    // 파일 업로드 또는 "법정동 전체 미리조회" 모드 — 업로드된 건축물 레이어를 PNU로 대조
+    stepA.forEach(item=>{
+      let matched=[];
+      if(item.pnu!=null){ matched = layers.building.features.filter(b=> b.properties && String(b.properties[pnuFieldBuilding])===String(item.pnu)); }
+      item.buildingCount = matched.length;
+      if(matched.length===0){ item.status='nobuild'; item.mainPurps='—'; item.totArea='—'; }
+      else{
+        let chosen = matched[0];
+        if(areaFieldBuilding){
+          chosen = matched.reduce((a,b)=>{
+            const av=parseFloat(a.properties[areaFieldBuilding])||0, bv=parseFloat(b.properties[areaFieldBuilding])||0;
+            return bv>av ? b : a;
+          }, matched[0]);
+        }
+        const purps = String(chosen.properties[purpsFieldBuilding] ?? '');
+        item.mainPurps = purps || '(용도정보없음)';
+        item.totArea = areaFieldBuilding ? (chosen.properties[areaFieldBuilding] ?? '—') : '—';
+        item.status = (matchKeywords.length>0 && matchKeywords.some(kw=>purps.includes(kw))) ? 'operating' : 'mismatch';
       }
-      const purps = String(chosen.properties[purpsFieldBuilding] ?? '');
-      item.mainPurps = purps || '(용도정보없음)';
-      item.totArea = areaFieldBuilding ? (chosen.properties[areaFieldBuilding] ?? '—') : '—';
-      item.status = (matchKeywords.length>0 && matchKeywords.some(kw=>purps.includes(kw))) ? 'operating' : 'mismatch';
+    });
+  } else if(isBuildingAutoApiMode()){
+    const mainCode = document.getElementById('uapi4_maincode').value.trim();
+    const detailCode = document.getElementById('uapi4_detailcode').value.trim();
+    const hasKey = !!document.getElementById('apiKey').value.trim();
+    if(!hasKey){
+      runLog('⚠️ 건축물 자동조회에는 VWorld API 인증키가 필요합니다 — 상단 API 설정에 인증키를 입력하거나 ④카드를 파일 업로드로 전환하세요.');
+      stepA.forEach(item=>{ item.buildingCount=0; item.status='nobuild'; item.mainPurps='(인증키 필요)'; item.totArea='—'; });
+    } else {
+    let done = 0;
+    for(const item of stepA){
+      done++;
+      if(done % 3 === 0 || done === stepA.length) runLog(`3/3 건축물 자동조회 중... (${done}/${stepA.length})`);
+      if(item.pnu==null){ item.buildingCount=0; item.status='nobuild'; item.mainPurps='—'; item.totArea='—'; continue; }
+      try{
+        const { items } = await fetchBuildingUsePage(String(item.pnu), mainCode, detailCode, 1);
+        item.buildingCount = items.length;
+        if(items.length===0){ item.status='nobuild'; item.mainPurps='—'; item.totArea='—'; }
+        else{
+          let chosen = items[0], chosenArea = -Infinity;
+          items.forEach(b=>{
+            const a = parseFloat(pickField(b, ['totArea','연면적','totarea','totAreaVal']))||0;
+            if(a>chosenArea){ chosenArea=a; chosen=b; }
+          });
+          const purps = String(pickField(chosen, ['mainPurpsCdNm','건축물용도명','mainPrposNm','mainPrposCdNm','buldPrposNm']) ?? '');
+          item.mainPurps = purps || '(용도정보없음)';
+          item.totArea = pickField(chosen, ['totArea','연면적','totarea']) ?? '—';
+          item.status = (matchKeywords.length>0 && matchKeywords.some(kw=>purps.includes(kw))) ? 'operating' : 'mismatch';
+        }
+      }catch(e){
+        console.error(e);
+        item.buildingCount = 0; item.status='nobuild'; item.mainPurps='(조회 오류)'; item.totArea='—';
+      }
     }
-  });
+    }
+  } else {
+    stepA.forEach(item=>{ item.buildingCount=0; item.status='nobuild'; item.mainPurps='(건축물 데이터 없음)'; item.totArea='—'; });
+  }
 
   const extras = activeExtraLayers();
   if(extras.length>0){
