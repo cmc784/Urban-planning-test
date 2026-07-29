@@ -10,7 +10,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://unpkg.com/shpjs@latest/dist/shp.js"></script>
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
@@ -202,16 +201,53 @@ input[type="range"] {
 .layer-empty { font-size:12px; color:var(--ink3); line-height:1.6; }
 .layer-list { display:flex; flex-direction:column; gap:3px; margin-top:4px; }
 .layer-item {
-  display:flex; align-items:center; gap:8px;
-  padding:6px 9px; border-radius:6px; cursor:pointer;
+  display:flex; flex-direction:column; align-items:stretch;
+  border-radius:6px; cursor:pointer; overflow:hidden;
   border:1px solid transparent; font-size:11px;
   transition:all .15s; background:var(--bg);
 }
 .layer-item:hover { border-color:var(--border); }
 .layer-item.selected { border-color:rgba(15,118,110,.25); background:var(--teal-light); }
+.layer-row { display:flex; align-items:center; gap:8px; padding:6px 9px; }
 .layer-swatch { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
 .layer-name { flex:1; font-family:'DM Mono',monospace; color:var(--ink2); }
 .layer-cnt { font-size:11.5px; color:var(--ink3); }
+
+/* 레이어별 스타일 편집 */
+.layer-color {
+  width:16px; height:16px; padding:0; flex-shrink:0;
+  border:1px solid var(--border); border-radius:3px; cursor:pointer; background:none;
+}
+.layer-color::-webkit-color-swatch-wrapper { padding:0; }
+.layer-color::-webkit-color-swatch { border:none; border-radius:2px; }
+.layer-color::-moz-color-swatch { border:none; border-radius:2px; }
+.layer-gear {
+  border:none; background:transparent; color:var(--ink3); cursor:pointer;
+  font-size:12px; padding:2px 5px; border-radius:4px; flex-shrink:0; transition:all .15s;
+}
+.layer-gear:hover { background:var(--border2); color:var(--ink); }
+.layer-gear.open { color:var(--teal); background:rgba(15,118,110,.12); }
+.layer-style-body {
+  display:none; padding:9px 9px 10px 33px;
+  border-top:1px dashed var(--border2); background:rgba(255,255,255,.55);
+}
+.layer-style-body.show { display:block; }
+.layer-style-row { display:flex; align-items:center; gap:7px; margin-bottom:7px; }
+.layer-style-row:last-child { margin-bottom:0; }
+.layer-style-row > label { font-size:10.5px; color:var(--ink3); width:40px; flex-shrink:0; }
+.layer-style-row input[type="range"] { flex:1; accent-color:var(--teal); }
+.layer-style-val { font-size:10.5px; font-family:'DM Mono',monospace; color:var(--ink3); width:34px; text-align:right; flex-shrink:0; }
+.mini-toggle {
+  width:24px; height:13px; border-radius:7px; background:var(--border);
+  position:relative; cursor:pointer; flex-shrink:0; transition:background .2s;
+}
+.mini-toggle.on { background:var(--teal); }
+.mini-toggle::after {
+  content:''; position:absolute; top:1.5px; left:1.5px;
+  width:10px; height:10px; border-radius:50%; background:#fff; transition:left .2s;
+}
+.mini-toggle.on::after { left:11.5px; }
+.layer-style-row input[type="range"]:disabled { opacity:.4; }
 
 /* 진행바 */
 .prog-wrap { display:none; margin-bottom:8px; }
@@ -580,7 +616,7 @@ window.APP_CONFIG = window.APP_CONFIG || { encodedKey: '', vworldKey: '' };
   <div class="topbar-left">
     <button class="back-btn" onclick="history.back()">← 돌아가기</button>
     <span class="topbar-title">위치도 생성</span>
-    <span class="topbar-badge" id="topbar-badge">DXF/SHP → 위성지도</span>
+    <span class="topbar-badge" id="topbar-badge">DXF → 위성지도</span>
   </div>
   <div class="step-bar" id="dxf-step-bar">
     <div class="step-item done" id="s1"><span class="step-dot"></span>업로드</div>
@@ -853,7 +889,7 @@ window.APP_CONFIG = window.APP_CONFIG || { encodedKey: '', vworldKey: '' };
 
     <!-- 1. 파일 업로드 -->
     <div class="panel">
-      <div class="panel-title">DXF / SHP 파일 업로드</div>
+      <div class="panel-title">DXF 파일 업로드</div>
       <div class="dropzone" id="dropzone">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -861,15 +897,12 @@ window.APP_CONFIG = window.APP_CONFIG || { encodedKey: '', vworldKey: '' };
           <line x1="12" y1="18" x2="12" y2="12"/>
           <polyline points="9,15 12,12 15,15"/>
         </svg>
-        <div class="dz-label"><strong>클릭</strong>하거나 DXF/SHP 파일을<br>드래그하세요</div>
-        <input type="file" id="dxf-input" accept=".dxf,.shp,.zip">
+        <div class="dz-label"><strong>클릭</strong>하거나 DXF 파일을<br>드래그하세요</div>
+        <input type="file" id="dxf-input" accept=".dxf">
       </div>
       <div class="file-chip" id="file-chip">
         <div class="fn" id="file-name"></div>
         <div class="fm" id="file-meta"></div>
-      </div>
-      <div style="font-size:10.5px;color:var(--ink3);margin-top:6px;line-height:1.5;">
-        SHP는 .dbf/.prj 등을 포함한 <strong>.zip</strong>으로 압축하거나, .shp 단일 파일로 업로드하세요.
       </div>
     </div>
 
@@ -896,10 +929,6 @@ window.APP_CONFIG = window.APP_CONFIG || { encodedKey: '', vworldKey: '' };
         </optgroup>
       </select>
       <div class="coord-info show">→ WGS84 자동 변환 후 위성지도 표시</div>
-      <div style="font-size:10.5px;color:var(--ink3);margin-top:4px;line-height:1.5;">
-        SHP 업로드 시 .prj에 좌표계가 명시되어 있어도 자동 인식하지 않습니다.<br>
-        위 목록에서 원본 SHP의 실제 좌표계를 직접 선택하세요.
-      </div>
     </div>
 
     <!-- 3. 레이어 -->
@@ -909,9 +938,12 @@ window.APP_CONFIG = window.APP_CONFIG || { encodedKey: '', vworldKey: '' };
       <div class="layer-list" id="layer-list"></div>
     </div>
 
-    <!-- 4. 구역계 스타일 -->
+    <!-- 4. 스타일 일괄 적용 (레이어별 스타일은 위 '레이어 선택'의 ⚙ 아이콘에서 개별 설정) -->
     <div class="panel">
-      <div class="panel-title">구역계 스타일</div>
+      <div class="panel-title">스타일 일괄 적용</div>
+      <div style="font-size:11px; color:var(--ink3); margin-bottom:8px; line-height:1.5;">
+        레이어별 색상/두께/채우기는 <strong style="color:var(--teal)">레이어 선택</strong>의 ⚙ 아이콘에서 각각 설정하세요. 아래 값은 선택된 모든 레이어에 한 번에 적용할 때 사용합니다.
+      </div>
       <div class="row2">
         <div>
           <label class="field-label">선 색상</label>
@@ -926,6 +958,9 @@ window.APP_CONFIG = window.APP_CONFIG || { encodedKey: '', vworldKey: '' };
       <label class="field-label">채우기 투명도</label>
       <input type="range" id="fill-opacity" min="0" max="0.4" value="0.08" step="0.01">
       <div class="range-val" id="fo-val">8%</div>
+      <button class="btn btn-outline" style="margin-top:10px;" onclick="applyStyleToSelectedLayers()">
+        ⤵&nbsp; 선택된 레이어에 일괄 적용
+      </button>
     </div>
 
     <!-- 5. 지도 설정 -->
@@ -1015,7 +1050,7 @@ window.APP_CONFIG = window.APP_CONFIG || { encodedKey: '', vworldKey: '' };
     <div class="map-empty" id="map-empty">
       <div class="map-empty-icon">🗺️</div>
       <div class="map-empty-text" id="map-empty-text">
-        DXF/SHP 파일을 업로드하고<br>
+        DXF 파일을 업로드하고<br>
         <strong>위치도 생성</strong>을 클릭하세요
       </div>
     </div>
@@ -1163,6 +1198,7 @@ proj4.defs([
 
 /* ── 전역 상태 ── */
 let map, dxfData = null, drawnLayers = [], selectedLayers = new Set();
+let layerStyles = {}; // { [layerName]: { color, weight, fillOn, fillOpacity } }
 let northCtrl = null, scaleCtrl = null;
 let showNorth = true, showScale = true, showTitle = true;
 let currentTileSat = null, currentTileLabel = null, currentTileBase = null;
@@ -1225,6 +1261,12 @@ function buildVworldUrl(type, key) {
 
 /* ── 지도 초기화 ── */
 map = L.map('map', { center:[36.5, 127.5], zoom:7, zoomControl:false, attributionControl:true });
+
+// DXF 선형/폴리곤 전용 캔버스 렌더러.
+// (html2canvas는 Leaflet 기본 SVG 렌더러의 pane 변환(translate3d)을
+//  올바르게 캡처하지 못해 PNG/PDF 출력 시 선형이 누락되는 문제가 있어,
+//  DXF 레이어만 canvas 렌더러로 그려 항상 캡처되도록 함)
+const dxfRenderer = L.canvas({ padding: 0.5 });
 
 // 기본: Esri World Imagery (API 키 불필요, 즉시 로딩)
 currentTileSat = L.tileLayer(ESRI_SAT, {
@@ -1394,136 +1436,29 @@ dropzone.addEventListener('drop', e => {
 fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
 
 function handleFile(file) {
-  const lower = file.name.toLowerCase();
-  const isDxf = lower.endsWith('.dxf');
-  const isShp = lower.endsWith('.shp');
-  const isZip = lower.endsWith('.zip');
-
-  if (!isDxf && !isShp && !isZip) {
-    toast('DXF, SHP, 또는 SHP가 포함된 ZIP 파일만 지원합니다.', 'error'); return;
+  if (!file.name.toLowerCase().endsWith('.dxf')) {
+    toast('DXF 파일만 지원합니다.', 'error'); return;
   }
-
   document.getElementById('file-name').textContent = file.name;
   document.getElementById('file-meta').textContent = `${(file.size/1024).toFixed(1)} KB`;
   document.getElementById('file-chip').classList.add('show');
+  setStep(2); setProgress(true, 'DXF 파싱 중...', 25);
 
-  if (isDxf) {
-    setStep(2); setProgress(true, 'DXF 파싱 중...', 25);
-    const reader = new FileReader();
-    reader.onload = e => {
-      try {
-        dxfData = parseDXF(e.target.result);
-        renderLayerList(dxfData.layers);
-        setProgress(true, '파싱 완료', 100);
-        setTimeout(() => setProgress(false), 500);
-        document.getElementById('btn-gen').disabled = false;
-        toast(`${dxfData.entities.length}개 엔티티, ${dxfData.layers.size}개 레이어 인식`, 'success');
-      } catch(err) {
-        setProgress(false);
-        toast('파싱 오류: ' + err.message, 'error');
-      }
-    };
-    reader.readAsText(file, 'euc-kr');
-  } else {
-    // SHP 또는 ZIP(SHP+DBF+PRJ 묶음)
-    setStep(2); setProgress(true, 'SHP 파싱 중...', 25);
-    const reader = new FileReader();
-    reader.onload = async e => {
-      try {
-        dxfData = await parseSHP(e.target.result, isShp);
-        renderLayerList(dxfData.layers);
-        setProgress(true, '파싱 완료', 100);
-        setTimeout(() => setProgress(false), 500);
-        document.getElementById('btn-gen').disabled = false;
-        toast(`${dxfData.entities.length}개 엔티티, ${dxfData.layers.size}개 레이어 인식`, 'success');
-      } catch(err) {
-        setProgress(false);
-        toast('SHP 파싱 오류: ' + err.message, 'error');
-      }
-    };
-    reader.readAsArrayBuffer(file);
-  }
-}
-
-/* ── SHP 파서 (shpjs 라이브러리 사용) ──
-   .shp 단일 파일 또는 .shp/.dbf/.prj를 포함한 .zip 모두 지원.
-   결과를 DXF 파서와 동일한 { entities, layers } 형식으로 변환하여
-   이후 로직(generateMap 등)을 그대로 재사용한다. */
-async function parseSHP(arrayBuffer, isSingleShp) {
-  if (typeof shp === 'undefined') {
-    throw new Error('shpjs 라이브러리를 불러오지 못했습니다. 네트워크 연결을 확인하세요.');
-  }
-
-  // shpjs는 GeoJSON(FeatureCollection)을 반환한다.
-  // .shp 단일 파일은 shp.parseShp, .zip은 shp() 통합 함수로 처리.
-  let geojson;
-  if (isSingleShp) {
-    const coords = shp.parseShp(arrayBuffer); // geometry만 반환 (속성 없음)
-    geojson = { type: 'FeatureCollection', features: coords.map(geom => ({ type:'Feature', properties:{}, geometry: geomToGeoJSON(geom) })) };
-  } else {
-    geojson = await shp(arrayBuffer); // zip → FeatureCollection (or array of them)
-  }
-
-  // shp()가 여러 레이어(배열)를 반환하는 경우 합치기
-  const collections = Array.isArray(geojson) ? geojson : [geojson];
-
-  const entities = [], layers = new Map();
-
-  function addEnt(type, layer, pts) {
-    const e = { type, layer: layer || '0', pts };
-    entities.push(e);
-    if (!layers.has(e.layer)) layers.set(e.layer, []);
-    layers.get(e.layer).push(e);
-  }
-
-  function ringToPts(ring) {
-    return ring.map(([x, y]) => ({ x, y }));
-  }
-
-  collections.forEach((fc, fcIdx) => {
-    const fcName = (fc && fc.fileName) ? fc.fileName : `SHP${fcIdx + 1}`;
-    (fc.features || []).forEach(feat => {
-      const geom = feat.geometry;
-      if (!geom) return;
-      // 속성 중 레이어명으로 쓸만한 필드가 있으면 사용, 없으면 파일명 사용
-      const props = feat.properties || {};
-      const layerName = props.LAYER || props.layer || props.Layer || fcName;
-
-      switch (geom.type) {
-        case 'Polygon':
-          geom.coordinates.forEach(ring => addEnt('LWPOLYLINE', layerName, ringToPts(ring)));
-          break;
-        case 'MultiPolygon':
-          geom.coordinates.forEach(poly => poly.forEach(ring => addEnt('LWPOLYLINE', layerName, ringToPts(ring))));
-          break;
-        case 'LineString':
-          addEnt('LWPOLYLINE', layerName, ringToPts(geom.coordinates));
-          break;
-        case 'MultiLineString':
-          geom.coordinates.forEach(line => addEnt('LWPOLYLINE', layerName, ringToPts(line)));
-          break;
-        case 'Point':
-          addEnt('POINT', layerName, [{ x: geom.coordinates[0], y: geom.coordinates[1] }]);
-          break;
-        case 'MultiPoint':
-          geom.coordinates.forEach(([x, y]) => addEnt('POINT', layerName, [{ x, y }]));
-          break;
-      }
-    });
-  });
-
-  if (entities.length === 0) {
-    throw new Error('SHP에서 도형을 찾지 못했습니다.');
-  }
-
-  return { entities, layers };
-}
-
-/* shp.parseShp()가 반환하는 raw geometry 객체를 GeoJSON geometry로 보정.
-   (버전에 따라 이미 GeoJSON 형태로 오는 경우 그대로 통과시킴) */
-function geomToGeoJSON(geom) {
-  if (geom && geom.type && geom.coordinates) return geom; // 이미 GeoJSON
-  return geom;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      dxfData = parseDXF(e.target.result);
+      renderLayerList(dxfData.layers);
+      setProgress(true, '파싱 완료', 100);
+      setTimeout(() => setProgress(false), 500);
+      document.getElementById('btn-gen').disabled = false;
+      toast(`${dxfData.entities.length}개 엔티티, ${dxfData.layers.size}개 레이어 인식`, 'success');
+    } catch(err) {
+      setProgress(false);
+      toast('파싱 오류: ' + err.message, 'error');
+    }
+  };
+  reader.readAsText(file, 'euc-kr');
 }
 
 /* ── DXF 파서 ── */
@@ -1623,38 +1558,142 @@ function toLatLng(x, y, epsg) {
 /* ── 레이어 목록 렌더링 ── */
 const LAYER_COLORS = ['#e03030','#1a6abb','#16a34a','#b45309','#7c3aed','#0f766e','#be185d','#334155'];
 
+function defaultLayerStyle(color) {
+  return { color, weight: 2, fillOn: true, fillOpacity: 0.08 };
+}
+
 function renderLayerList(layers) {
   document.getElementById('layer-empty').style.display = 'none';
   const list = document.getElementById('layer-list');
   list.innerHTML = '';
+  layerStyles = {};
+  selectedLayers.clear();
   let ci = 0;
   layers.forEach((ents, name) => {
     const color = LAYER_COLORS[ci++ % LAYER_COLORS.length];
+    layerStyles[name] = defaultLayerStyle(color);
     selectedLayers.add(name);
+
     const item = document.createElement('div');
     item.className = 'layer-item selected';
     item.dataset.layer = name;
-    item.innerHTML = `
-      <div class="layer-swatch" style="background:${color}"></div>
+
+    const row = document.createElement('div');
+    row.className = 'layer-row';
+    row.innerHTML = `
+      <input type="color" class="layer-color" value="${color}" title="레이어 색상">
       <div class="layer-name">${name}</div>
-      <div class="layer-cnt">${ents.length}</div>`;
-    item.addEventListener('click', () => {
+      <div class="layer-cnt">${ents.length}</div>
+      <button type="button" class="layer-gear" title="스타일 설정">⚙</button>`;
+
+    const body = document.createElement('div');
+    body.className = 'layer-style-body';
+    body.innerHTML = `
+      <div class="layer-style-row">
+        <label>선 두께</label>
+        <input type="range" class="layer-weight" min="1" max="6" step="0.5" value="2">
+        <div class="layer-style-val layer-weight-val">2px</div>
+      </div>
+      <div class="layer-style-row">
+        <label>채우기</label>
+        <div class="mini-toggle on layer-fill-toggle"></div>
+        <input type="range" class="layer-fillopacity" min="0" max="0.6" step="0.01" value="0.08">
+        <div class="layer-style-val layer-fillopacity-val">8%</div>
+      </div>`;
+
+    // 레이어 선택 토글 (색상/기어/스타일영역 클릭은 제외)
+    row.addEventListener('click', (e) => {
+      if (e.target.closest('.layer-color') || e.target.closest('.layer-gear')) return;
       if (selectedLayers.has(name)) { selectedLayers.delete(name); item.classList.remove('selected'); }
       else { selectedLayers.add(name); item.classList.add('selected'); }
     });
+
+    // 색상 변경
+    const colorInput = row.querySelector('.layer-color');
+    colorInput.addEventListener('click', e => e.stopPropagation());
+    colorInput.addEventListener('input', () => {
+      layerStyles[name].color = colorInput.value;
+    });
+
+    // 스타일 패널 펼치기/접기
+    const gearBtn = row.querySelector('.layer-gear');
+    gearBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      const showing = body.classList.toggle('show');
+      gearBtn.classList.toggle('open', showing);
+    });
+
+    // 선 두께
+    const weightInput = body.querySelector('.layer-weight');
+    const weightVal = body.querySelector('.layer-weight-val');
+    weightInput.addEventListener('click', e => e.stopPropagation());
+    weightInput.addEventListener('input', () => {
+      layerStyles[name].weight = parseFloat(weightInput.value);
+      weightVal.textContent = weightInput.value + 'px';
+    });
+
+    // 채우기 on/off
+    const fillToggle = body.querySelector('.layer-fill-toggle');
+    const fillOpacityInput = body.querySelector('.layer-fillopacity');
+    const fillOpacityVal = body.querySelector('.layer-fillopacity-val');
+    fillToggle.addEventListener('click', e => {
+      e.stopPropagation();
+      const on = fillToggle.classList.toggle('on');
+      layerStyles[name].fillOn = on;
+      fillOpacityInput.disabled = !on;
+    });
+
+    // 채우기 투명도
+    fillOpacityInput.addEventListener('click', e => e.stopPropagation());
+    fillOpacityInput.addEventListener('input', () => {
+      layerStyles[name].fillOpacity = parseFloat(fillOpacityInput.value);
+      fillOpacityVal.textContent = Math.round(fillOpacityInput.value * 100) + '%';
+    });
+
+    item.appendChild(row);
+    item.appendChild(body);
     list.appendChild(item);
   });
 }
 
+/* ── 전역 스타일값을 선택된 모든 레이어에 일괄 적용 ── */
+function applyStyleToSelectedLayers() {
+  if (!dxfData) { toast('DXF 파일을 먼저 업로드하세요.', 'error'); return; }
+  const color = document.getElementById('line-color').value;
+  const weight = parseFloat(document.getElementById('line-weight').value);
+  const fillOpacity = parseFloat(document.getElementById('fill-opacity').value);
+  const fillOn = fillOpacity > 0;
+
+  if (selectedLayers.size === 0) { toast('적용할 레이어를 먼저 선택하세요.', 'error'); return; }
+
+  selectedLayers.forEach(name => {
+    layerStyles[name] = { color, weight, fillOn, fillOpacity };
+  });
+
+  // 화면에 표시된 각 레이어 아이템의 컨트롤 값도 동기화
+  document.querySelectorAll('.layer-item').forEach(item => {
+    const name = item.dataset.layer;
+    if (!selectedLayers.has(name)) return;
+    const row = item.querySelector('.layer-row');
+    const body = item.querySelector('.layer-style-body');
+    row.querySelector('.layer-color').value = color;
+    body.querySelector('.layer-weight').value = weight;
+    body.querySelector('.layer-weight-val').textContent = weight + 'px';
+    body.querySelector('.layer-fillopacity').value = fillOpacity;
+    body.querySelector('.layer-fillopacity').disabled = !fillOn;
+    body.querySelector('.layer-fillopacity-val').textContent = Math.round(fillOpacity * 100) + '%';
+    body.querySelector('.layer-fill-toggle').classList.toggle('on', fillOn);
+  });
+
+  toast(`${selectedLayers.size}개 레이어에 스타일을 적용했습니다.`, 'success');
+}
+
 /* ── 위치도 생성 ── */
 async function generateMap() {
-  if (!dxfData) { toast('DXF/SHP 파일을 먼저 업로드하세요.', 'error'); return; }
+  if (!dxfData) { toast('DXF 파일을 먼저 업로드하세요.', 'error'); return; }
   setStep(3); setProgress(true, '좌표 변환 중...', 30);
 
   const epsg = document.getElementById('src-crs').value;
-  const lineColor = document.getElementById('line-color').value;
-  const lineWeight = parseFloat(document.getElementById('line-weight').value);
-  const fillOpacity = parseFloat(document.getElementById('fill-opacity').value);
 
   drawnLayers.forEach(l => map.removeLayer(l));
   drawnLayers = [];
@@ -1664,6 +1703,7 @@ async function generateMap() {
 
   dxfData.entities.forEach(ent => {
     if (!selectedLayers.has(ent.layer)) return;
+    const style = layerStyles[ent.layer] || defaultLayerStyle('#e03030');
     const latlngs = ent.pts
       .filter(p => p.y !== null && !isNaN(p.x) && !isNaN(p.y))
       .map(p => toLatLng(p.x, p.y, epsg))
@@ -1673,11 +1713,12 @@ async function generateMap() {
     allLL.push(...latlngs);
 
     const isClosed = latlngs[0][0] === latlngs[latlngs.length-1][0];
+    const useFill = isClosed && style.fillOn && style.fillOpacity > 0;
     let layer;
-    if (isClosed && fillOpacity > 0) {
-      layer = L.polygon(latlngs, { color:lineColor, weight:lineWeight, fillColor:lineColor, fillOpacity, opacity:1 });
+    if (useFill) {
+      layer = L.polygon(latlngs, { renderer:dxfRenderer, color:style.color, weight:style.weight, fillColor:style.color, fillOpacity:style.fillOpacity, opacity:1 });
     } else {
-      layer = L.polyline(latlngs, { color:lineColor, weight:lineWeight, opacity:1 });
+      layer = L.polyline(latlngs, { renderer:dxfRenderer, color:style.color, weight:style.weight, opacity:1 });
     }
     layer.addTo(map);
     drawnLayers.push(layer);
@@ -1772,6 +1813,10 @@ function getPaperMM() {
 }
 
 async function captureMap() {
+  // Leaflet 캔버스 렌더러는 requestAnimationFrame으로 비동기 페인팅되므로
+  // 캡처 전에 렌더링이 끝날 시간을 확보한다.
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+  await new Promise(r => setTimeout(r, 120));
   return html2canvas(document.getElementById('map'), { useCORS:true, allowTaint:true, logging:false, scale:2 });
 }
 
@@ -1833,7 +1878,7 @@ async function exportPDF() {
 function resetAll() {
   dxfData = null;
   drawnLayers.forEach(l => map.removeLayer(l));
-  drawnLayers = []; selectedLayers.clear();
+  drawnLayers = []; selectedLayers.clear(); layerStyles = {};
   document.getElementById('layer-list').innerHTML = '';
   document.getElementById('layer-empty').style.display = '';
   document.getElementById('file-chip').classList.remove('show');
