@@ -1021,6 +1021,12 @@ window.APP_CONFIG = window.APP_CONFIG || { encodedKey: '', vworldKey: '' };
     <!-- 6. 실행 / 출력 -->
     <div class="panel">
       <div class="panel-title">실행 및 출력</div>
+      <label class="field-label">출력 화질</label>
+      <select id="export-quality">
+        <option value="2">표준 (2x, 빠름)</option>
+        <option value="3" selected>고화질 (3x, 권장)</option>
+        <option value="4">초고화질 (4x, 느림/고사양)</option>
+      </select>
       <div class="prog-wrap" id="prog-wrap">
         <div class="prog-bg"><div class="prog-fill" id="prog-fill"></div></div>
         <div class="prog-label" id="prog-label">처리 중...</div>
@@ -1817,11 +1823,14 @@ async function captureMap() {
   // 캡처 전에 렌더링이 끝날 시간을 확보한다.
   await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
   await new Promise(r => setTimeout(r, 120));
-  return html2canvas(document.getElementById('map'), { useCORS:true, allowTaint:true, logging:false, scale:2 });
+  const scaleSel = document.getElementById('export-quality');
+  const scale = scaleSel ? parseInt(scaleSel.value) : 2;
+  return html2canvas(document.getElementById('map'), { useCORS:true, allowTaint:true, logging:false, scale, imageTimeout:15000 });
 }
 
 async function exportPNG() {
-  toast('PNG 캡처 중...', '');
+  const scale = document.getElementById('export-quality').value;
+  toast(scale === '4' ? 'PNG 캡처 중... (초고화질, 다소 시간이 걸릴 수 있어요)' : 'PNG 캡처 중...', '');
   setProgress(true, 'PNG 렌더링 중...', 50);
   try {
     const canvas = await captureMap();
@@ -1860,7 +1869,7 @@ async function exportPDF() {
     pdf.text(new Date().toLocaleDateString('ko-KR'), ps.w - 8, 7.5, { align:'right' });
 
     // 지도 이미지
-    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    const imgData = canvas.toDataURL('image/jpeg', 0.98);
     pdf.addImage(imgData, 'JPEG', 2, TH + 1, ps.w - 4, ps.h - TH - 4);
 
     // 하단 크레딧
