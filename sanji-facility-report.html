@@ -4549,6 +4549,16 @@ function getBojeonUnionJsts() {
   return result;
 }
 
+// ── Step5 전용 면적 헬퍼 ─────────────────────────────────
+// JSTS 자체 getArea() 대신, Step1(필지구적면적)에서 쓰는 calcArea()를 그대로 재사용
+// → 투영좌표계: Shoelace 공식 / 지리좌표계: turf.area(geodesic) — Step1과 완전히 동일한 산식으로 오차 제거
+function calcAreaJsts(jstsGeom) {
+  if (!jstsGeom || jstsGeom.isEmpty()) return 0;
+  try {
+    return calcArea(getJstsWriter().write(jstsGeom));
+  } catch (e) { return 0; }
+}
+
 // ── 토지이용계획 매칭: forestResultRows × forestLanduseFileLoaded.layers ──
 // ── 토지이용계획 매칭: forestResultRows × forestLanduseFileLoaded.layers ──
 // 각 필지의 보정 편입면적(B)을 레이어별 교차면적 비율로 배분 → forestLanduseMap[pnu].areas
@@ -4576,7 +4586,7 @@ async function runForestLanduseMatch() {
 
     const pg = ringsToJsts(r.rings, reader);
     let parcelArea = 0;
-    try { parcelArea = pg ? pg.getArea() : 0; } catch (e) { parcelArea = 0; }
+    try { parcelArea = pg ? calcAreaJsts(pg) : 0; } catch (e) { parcelArea = 0; }
 
     if (!pg || parcelArea <= 0) {
       forestLanduseMap[pnu] = { areas: {}, unclassified: B, split: {}, unclassifiedSplit: hasGubunData ? { bojeon: 0, junbojeon: B } : null };
@@ -4597,11 +4607,11 @@ async function runForestLanduseMatch() {
       let ia = 0, interGeom = null;
       try {
         interGeom = pg.intersection(lp.jg);
-        if (interGeom && !interGeom.isEmpty()) ia = interGeom.getArea();
+        if (interGeom && !interGeom.isEmpty()) ia = calcAreaJsts(interGeom);
       } catch (e) {
         try {
           interGeom = pg.buffer(0).intersection(lp.jg.buffer(0));
-          if (interGeom && !interGeom.isEmpty()) ia = interGeom.getArea();
+          if (interGeom && !interGeom.isEmpty()) ia = calcAreaJsts(interGeom);
         } catch (e2) { ia = 0; interGeom = null; }
       }
       if (ia > 0) {
@@ -4611,11 +4621,11 @@ async function runForestLanduseMatch() {
           let ib = 0;
           try {
             const bInter = interGeom.intersection(bojeonJsts);
-            if (bInter && !bInter.isEmpty()) ib = bInter.getArea();
+            if (bInter && !bInter.isEmpty()) ib = calcAreaJsts(bInter);
           } catch (e3) {
             try {
               const bInter = interGeom.buffer(0).intersection(bojeonJsts.buffer(0));
-              if (bInter && !bInter.isEmpty()) ib = bInter.getArea();
+              if (bInter && !bInter.isEmpty()) ib = calcAreaJsts(bInter);
             } catch (e4) { ib = 0; }
           }
           rawIb[lp.label] = (rawIb[lp.label] || 0) + ib;
@@ -4639,9 +4649,9 @@ async function runForestLanduseMatch() {
       let rawBojeonInPg = 0;
       try {
         const bAll = pg.intersection(bojeonJsts);
-        if (bAll && !bAll.isEmpty()) rawBojeonInPg = bAll.getArea();
+        if (bAll && !bAll.isEmpty()) rawBojeonInPg = calcAreaJsts(bAll);
       } catch (e) {
-        try { const bAll = pg.buffer(0).intersection(bojeonJsts.buffer(0)); if (bAll && !bAll.isEmpty()) rawBojeonInPg = bAll.getArea(); } catch (e2) {}
+        try { const bAll = pg.buffer(0).intersection(bojeonJsts.buffer(0)); if (bAll && !bAll.isEmpty()) rawBojeonInPg = calcAreaJsts(bAll); } catch (e2) {}
       }
       const rawJunbojeonInPg = Math.max(0, parcelArea - rawBojeonInPg);
 
