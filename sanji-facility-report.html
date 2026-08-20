@@ -4571,7 +4571,12 @@ async function runForestLanduseMatch() {
   const reader = getJstsReader();
   const layers = forestLanduseFileLoaded.layers;
   const bojeonJsts   = getBojeonUnionJsts();
-  const hasGubunData = !!bojeonJsts && Object.keys(forestGubunMap).length > 0;
+  // 산지구분도가 업로드되어 Step4 매칭 결과(forestGubunMap)가 있으면 항상 보전/준보전 세분화를 켠다.
+  // (bojeonJsts는 산지구분도 중 보전산지(임업용/공익용) 라벨만 union한 것이라, 산지구분도에
+  //  보전산지 폴리곤이 하나도 없고 준보전산지만 있는 경우 null이 되는데, 그런 경우에도 세분화
+  //  표기가 유지되어야 하므로 bojeonJsts 존재 여부와 무관하게 판단한다 — 아래 배분 로직은
+  //  bojeonJsts가 null이어도 전량 준보전으로 안전하게 처리됨)
+  const hasGubunData = !!forestGubunFileLoaded && Object.keys(forestGubunMap).length > 0;
   forestLanduseSplitOn = hasGubunData;
 
   let matched = 0, unmatched = 0;
