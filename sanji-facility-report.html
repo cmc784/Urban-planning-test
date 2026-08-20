@@ -4606,6 +4606,27 @@ function reconcileLanduseRow(targetBojeon, targetJunbojeon, layerValsRaw, unclas
   return { layers, unclassified: unclass };
 }
 
+// ── Step5 필지 1건에 대한 "최종 보정값(reconciled)" 계산 (화면 요약/상세, 엑셀 데이터/합계에서 공통 사용) ──
+// 화면 상세표·엑셀 데이터행은 reconcileLanduseRow()로 보정된 값을 쓰지만, 화면 요약표와 엑셀 합계행은
+// 과거에 lm.split 원본(raw, 미보정) 값을 따로 합산했기 때문에 "필지별 보정 합계"와 "전체 합계"가
+// 서로 다른 기준으로 계산되어 소수점 반올림만큼 어긋나는 문제가 있었음.
+// → 항상 이 함수 하나로 계산한 동일한 reconciled 값을 화면/엑셀의 행(row)과 합계(total) 모두에 사용해
+//   "필지별 합 = 전체 합계"가 항상 정확히 성립하도록 함.
+function getLanduseRowReconciled(r, bjVal) {
+  const pnu = String(r.pnu || '').padStart(19, '0');
+  const lm  = forestLanduseMap[pnu] || {};
+  const areas = lm.areas || {};
+  const sp    = lm.split || {};
+  const hasSplit = forestLanduseSplitOn;
+  const layerValsRaw = FOREST_LANDUSE_LAYERS.map(name =>
+    hasSplit ? (sp[name] || { bojeon: 0, junbojeon: 0 }) : { bojeon: 0, junbojeon: (areas[name] || 0) });
+  const unclassValRaw = hasSplit ? (lm.unclassifiedSplit || { bojeon: 0, junbojeon: 0 }) : { bojeon: 0, junbojeon: (lm.unclassified || 0) };
+  const gAreas = hasSplit ? (forestGubunMap[pnu]?.areas || {}) : {};
+  const targetBojeon    = hasSplit ? ((gAreas['임업용산지'] || 0) + (gAreas['공익용산지'] || 0)) : 0;
+  const targetJunbojeon = hasSplit ? (gAreas['준보전산지'] || 0) : (bjVal || 0);
+  return reconcileLanduseRow(targetBojeon, targetJunbojeon, layerValsRaw, unclassValRaw);
+}
+
 // ── 토지이용계획 매칭: forestResultRows × forestLanduseFileLoaded.layers ──
 // ── 토지이용계획 매칭: forestResultRows × forestLanduseFileLoaded.layers ──
 // 각 필지의 보정 편입면적(B)을 레이어별 교차면적 비율로 배분 → forestLanduseMap[pnu].areas
@@ -4765,24 +4786,24 @@ function renderForestLanduseSummary() {
   if (!forestLanduseFileLoaded || FOREST_LANDUSE_LAYERS.length === 0) { if (card) card.style.display = 'none'; return; }
   if (card) card.style.display = 'block';
 
-  const hasSplit = forestLanduseSplitOn;   // Step4 산지구분도 매칭으로 실제 보전/준보전 세분화 값이 있는지
   const sums = {}; FOREST_LANDUSE_LAYERS.forEach(n => sums[n] = { area: 0, count: 0, bojeon: 0, junbojeon: 0 });
   let unclassSum = 0, unclassBojeon = 0, unclassJunbojeon = 0, totalArea = 0;
   forestResultRows.forEach(r => {
     const pnu = String(r.pnu || '').padStart(19, '0');
     const lm  = forestLanduseMap[pnu] || {};
     const areas = lm.areas || {};
-    totalArea += getFarmBojeong(r);
-    FOREST_LANDUSE_LAYERS.forEach(n => {
+    const B = getFarmBojeong(r);
+    totalArea += B;
+    // 상세표·엑셀과 동일하게 "필지별 보정(reconciled)" 값을 집계해야 요약표 합계가 상세표 합과 정확히 일치함
+    const rec = getLanduseRowReconciled(r, B);
+    FOREST_LANDUSE_LAYERS.forEach((n, idx) => {
       const a = areas[n] || 0;
       if (a > 0) { sums[n].area += a; sums[n].count++; }
-      // Step4 매칭 결과가 있으면 실제 보전/준보전 값을, 없으면 전량을 준보전산지로 집계 (열은 항상 표기)
-      const s = hasSplit ? ((lm.split || {})[n] || { bojeon: 0, junbojeon: 0 }) : { bojeon: 0, junbojeon: a };
+      const s = rec.layers[idx] || { bojeon: 0, junbojeon: 0 };
       sums[n].bojeon += s.bojeon; sums[n].junbojeon += s.junbojeon;
     });
     unclassSum += (lm.unclassified || 0);
-    const us = hasSplit ? (lm.unclassifiedSplit || { bojeon: 0, junbojeon: 0 }) : { bojeon: 0, junbojeon: (lm.unclassified || 0) };
-    unclassBojeon += us.bojeon; unclassJunbojeon += us.junbojeon;
+    unclassBojeon += rec.unclassified.bojeon; unclassJunbojeon += rec.unclassified.junbojeon;
   });
   const fmtN = v => (Math.round(v*10)/10).toLocaleString(undefined,{minimumFractionDigits:1,maximumFractionDigits:1});
 
@@ -4857,21 +4878,10 @@ function renderForestLanduseDetailTable() {
     const linked= extra['area'] ? parseFloat(String(extra['area']).replace(/,/g,'')) : null;
     const bj    = calcBojeong(r, linked);
     const bjVal = (bj!=null && !isNaN(bj)) ? bj : r.pyeonipArea;
-    const lm    = forestLanduseMap[pnu] || {};
-    const areas = lm.areas || {};
     let cells;
     {
-      const sp    = lm.split || {};
-      // Step4 매칭 결과가 있으면 실제 보전/준보전 값을, 없으면 전량을 준보전산지로 표기 (열은 항상 표기)
-      const layerValsRaw = FOREST_LANDUSE_LAYERS.map(name =>
-        hasSplit ? (sp[name] || { bojeon: 0, junbojeon: 0 }) : { bojeon: 0, junbojeon: (areas[name] || 0) });
-      const unclassValRaw = hasSplit ? (lm.unclassifiedSplit || { bojeon: 0, junbojeon: 0 }) : { bojeon: 0, junbojeon: (lm.unclassified || 0) };
-      // 필지별 반올림 오차 보정: 시설별 보전/준보전 합계를 Step4 산지구분 합계(보전=임업용+공익용, 준보전)와
-      // 각각 정확히 일치시키고, 남는 차이는 해당 카테고리의 미분류 항목에 합산
-      const gAreas = hasSplit ? (forestGubunMap[pnu]?.areas || {}) : {};
-      const targetBojeon    = hasSplit ? ((gAreas['임업용산지'] || 0) + (gAreas['공익용산지'] || 0)) : 0;
-      const targetJunbojeon = hasSplit ? (gAreas['준보전산지'] || 0) : bjVal;
-      const rec = reconcileLanduseRow(targetBojeon, targetJunbojeon, layerValsRaw, unclassValRaw);
+      // 화면 요약표/엑셀 데이터·합계행과 동일한 getLanduseRowReconciled()로 계산해 항상 서로 일치시킴
+      const rec = getLanduseRowReconciled(r, bjVal);
       cells = rec.layers.map(s => `<td class="td-mono td-right">${fmt(s.bojeon)}</td><td class="td-mono td-right">${fmt(s.junbojeon)}</td>`).join('');
       cells += `<td class="td-mono td-right">${fmt(rec.unclassified.bojeon)}</td><td class="td-mono td-right">${fmt(rec.unclassified.junbojeon)}</td>`;
     }
@@ -4916,6 +4926,9 @@ function exportForestExcel() {
 
   const r1 = v => (v==null || isNaN(v)) ? v : Math.round(v * 10000) / 10000;   // 소수 자릿수 보존 (부동소수 잡음만 제거)
   const r1Land = v => (v==null || isNaN(v)) ? v : Math.round(v * 10) / 10;    // Step5 토지이용계획 면적은 소수점 1자리로 반올림
+  // 토지이용계획 합계행 누적용 — 반드시 각 데이터행에 실제로 기록되는 값(reconciled)을 그대로 더해야
+  // "합계" 행이 개별 필지 행들의 합과 정확히 일치함 (과거엔 합계행만 별도로 raw 값을 다시 합산해 어긋났음)
+  const luTotals = { layers: FOREST_LANDUSE_LAYERS.map(() => ({ bojeon: 0, junbojeon: 0 })), unclassified: { bojeon: 0, junbojeon: 0 } };
   const data = forestResultRows.map((r, i) => {
     const pnu   = String(r.pnu || '').padStart(19, '0');
     const extra = (typeof ldLinkExtra !== 'undefined' ? ldLinkExtra[pnu] : null) || {};
@@ -4943,20 +4956,11 @@ function exportForestExcel() {
       row.push(forestGubunMap[pnu]?.label || '준보전산지');
     }
     if (hasLanduse) {
-      const lm = forestLanduseMap[pnu] || {};
-      const areas = lm.areas || {};
-      const sp    = lm.split    || {};
-      const layerValsRaw = FOREST_LANDUSE_LAYERS.map(name =>
-        landuseHasRealSplit ? (sp[name] || { bojeon: 0, junbojeon: 0 }) : { bojeon: 0, junbojeon: (areas[name]||0) });
-      const unclassValRaw = landuseHasRealSplit ? (lm.unclassifiedSplit || { bojeon: 0, junbojeon: 0 }) : { bojeon: 0, junbojeon: (lm.unclassified||0) };
-      // 필지별 반올림 오차 보정: 시설별 보전/준보전 합계를 Step4 산지구분 합계(보전=임업용+공익용, 준보전)와
-      // 각각 정확히 일치시키고, 남는 차이는 해당 카테고리의 미분류 항목에 합산
-      const gAreasLu = landuseHasRealSplit ? (forestGubunMap[pnu]?.areas || {}) : {};
-      const targetBojeonLu    = landuseHasRealSplit ? ((gAreasLu['임업용산지'] || 0) + (gAreasLu['공익용산지'] || 0)) : 0;
-      const targetJunbojeonLu = landuseHasRealSplit ? (gAreasLu['준보전산지'] || 0) : bjVal;
-      const rec = reconcileLanduseRow(targetBojeonLu, targetJunbojeonLu, layerValsRaw, unclassValRaw);
-      rec.layers.forEach(s => row.push(s.bojeon, s.junbojeon));
+      // 화면 요약표/상세표와 동일한 getLanduseRowReconciled()로 계산 + 합계행용 누적(luTotals)까지 동시에 처리
+      const rec = getLanduseRowReconciled(r, bjVal);
+      rec.layers.forEach((s, idx) => { row.push(s.bojeon, s.junbojeon); luTotals.layers[idx].bojeon += s.bojeon; luTotals.layers[idx].junbojeon += s.junbojeon; });
       row.push(rec.unclassified.bojeon, rec.unclassified.junbojeon);
+      luTotals.unclassified.bojeon += rec.unclassified.bojeon; luTotals.unclassified.junbojeon += rec.unclassified.junbojeon;
     }
     return row;
   });
@@ -4993,20 +4997,10 @@ function exportForestExcel() {
       tot.push(gsum, r1(cat['임업용산지']), r1(cat['공익용산지']), r1(cat['준보전산지']));
     }
     if (hasLanduse) {
-      const sums = {}; FOREST_LANDUSE_LAYERS.forEach(n => sums[n] = { bojeon: 0, junbojeon: 0 });
-      let unclassBojeon = 0, unclassJunbojeon = 0;
-      forestResultRows.forEach(r => {
-        const p = String(r.pnu||'').padStart(19,'0');
-        const lm = forestLanduseMap[p] || {}; const sp = lm.split || {}; const areas = lm.areas || {};
-        FOREST_LANDUSE_LAYERS.forEach(n => {
-          const s = landuseHasRealSplit ? (sp[n]||{bojeon:0,junbojeon:0}) : { bojeon: 0, junbojeon: (areas[n]||0) };
-          sums[n].bojeon += s.bojeon; sums[n].junbojeon += s.junbojeon;
-        });
-        const us = landuseHasRealSplit ? (lm.unclassifiedSplit || { bojeon:0, junbojeon:0 }) : { bojeon: 0, junbojeon: (lm.unclassified||0) };
-        unclassBojeon += us.bojeon; unclassJunbojeon += us.junbojeon;
-      });
-      FOREST_LANDUSE_LAYERS.forEach(n => tot.push(r1Land(sums[n].bojeon), r1Land(sums[n].junbojeon)));
-      tot.push(r1Land(unclassBojeon), r1Land(unclassJunbojeon));
+      // luTotals는 위 data.map()에서 각 필지 행에 실제로 기록한 reconciled 값을 그대로 누적한 것이므로,
+      // 이 합계행은 항상 개별 필지 행들의 합과 정확히 일치함
+      luTotals.layers.forEach(s => tot.push(r1Land(s.bojeon), r1Land(s.junbojeon)));
+      tot.push(r1Land(luTotals.unclassified.bojeon), r1Land(luTotals.unclassified.junbojeon));
     }
     data.push(tot);
   }
