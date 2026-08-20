@@ -4583,6 +4583,29 @@ function calcAreaJsts(jstsGeom) {
   } catch (e) { return 0; }
 }
 
+// ── Step5 필지별 반올림 오차 보정 ─────────────────────────
+// 레이어별(보전/준보전) 면적을 소수점 1자리로 반올림해 표시/출력하면, 필지 하나의 시설별 면적합계가
+// Step4 "산지구분 합계"(보전산지=임업용+공익용, 준보전산지)와 0.1~0.2㎡ 정도 미세하게 어긋나는 경우가
+// 생김(개별 반올림 누적 오차). → 보전/준보전 각각을 독립적으로 Step4 산지구분 합계값과 정확히
+// 일치시키고, 남는 차이는 해당 카테고리(보전 또는 준보전)의 미분류 항목에 그대로 더해서 보정함.
+// 즉 "시설별(보전) 면적합계 + 미분류-보전산지 = 산지구분 보전산지 합계",
+//    "시설별(준보전) 면적합계 + 미분류-준보전산지 = 산지구분 준보전산지 합계" 가 항상 정확히 성립.
+// (Step1~4 로직 및 요약/합계 집계는 원본 raw 값을 그대로 사용하므로 영향 없음)
+function roundLand(v) { return (v == null || isNaN(v)) ? 0 : Math.round(v * 10) / 10; }
+function reconcileLanduseRow(targetBojeon, targetJunbojeon, layerValsRaw, unclassValRaw) {
+  const layers = (layerValsRaw || []).map(v => ({ bojeon: roundLand(v && v.bojeon), junbojeon: roundLand(v && v.junbojeon) }));
+  const unclass = { bojeon: roundLand(unclassValRaw && unclassValRaw.bojeon), junbojeon: roundLand(unclassValRaw && unclassValRaw.junbojeon) };
+  const tBojeon    = roundLand(targetBojeon);
+  const tJunbojeon = roundLand(targetJunbojeon);
+  const sumBojeon    = layers.reduce((s, v) => s + v.bojeon, 0)    + unclass.bojeon;
+  const sumJunbojeon = layers.reduce((s, v) => s + v.junbojeon, 0) + unclass.junbojeon;
+  const diffBojeon    = Math.round((tBojeon    - sumBojeon)    * 10) / 10;
+  const diffJunbojeon = Math.round((tJunbojeon - sumJunbojeon) * 10) / 10;
+  if (diffBojeon    !== 0) unclass.bojeon    = Math.round((unclass.bojeon    + diffBojeon)    * 10) / 10;
+  if (diffJunbojeon !== 0) unclass.junbojeon = Math.round((unclass.junbojeon + diffJunbojeon) * 10) / 10;
+  return { layers, unclassified: unclass };
+}
+
 // ── 토지이용계획 매칭: forestResultRows × forestLanduseFileLoaded.layers ──
 // ── 토지이용계획 매칭: forestResultRows × forestLanduseFileLoaded.layers ──
 // 각 필지의 보정 편입면적(B)을 레이어별 교차면적 비율로 배분 → forestLanduseMap[pnu].areas
@@ -4840,12 +4863,17 @@ function renderForestLanduseDetailTable() {
     {
       const sp    = lm.split || {};
       // Step4 매칭 결과가 있으면 실제 보전/준보전 값을, 없으면 전량을 준보전산지로 표기 (열은 항상 표기)
-      cells = FOREST_LANDUSE_LAYERS.map(name => {
-        const s  = hasSplit ? (sp[name] || { bojeon: 0, junbojeon: 0 }) : { bojeon: 0, junbojeon: (areas[name] || 0) };
-        return `<td class="td-mono td-right">${fmt(s.bojeon)}</td><td class="td-mono td-right">${fmt(s.junbojeon)}</td>`;
-      }).join('');
-      const us  = hasSplit ? (lm.unclassifiedSplit || { bojeon: 0, junbojeon: 0 }) : { bojeon: 0, junbojeon: (lm.unclassified || 0) };
-      cells += `<td class="td-mono td-right">${fmt(us.bojeon)}</td><td class="td-mono td-right">${fmt(us.junbojeon)}</td>`;
+      const layerValsRaw = FOREST_LANDUSE_LAYERS.map(name =>
+        hasSplit ? (sp[name] || { bojeon: 0, junbojeon: 0 }) : { bojeon: 0, junbojeon: (areas[name] || 0) });
+      const unclassValRaw = hasSplit ? (lm.unclassifiedSplit || { bojeon: 0, junbojeon: 0 }) : { bojeon: 0, junbojeon: (lm.unclassified || 0) };
+      // 필지별 반올림 오차 보정: 시설별 보전/준보전 합계를 Step4 산지구분 합계(보전=임업용+공익용, 준보전)와
+      // 각각 정확히 일치시키고, 남는 차이는 해당 카테고리의 미분류 항목에 합산
+      const gAreas = hasSplit ? (forestGubunMap[pnu]?.areas || {}) : {};
+      const targetBojeon    = hasSplit ? ((gAreas['임업용산지'] || 0) + (gAreas['공익용산지'] || 0)) : 0;
+      const targetJunbojeon = hasSplit ? (gAreas['준보전산지'] || 0) : bjVal;
+      const rec = reconcileLanduseRow(targetBojeon, targetJunbojeon, layerValsRaw, unclassValRaw);
+      cells = rec.layers.map(s => `<td class="td-mono td-right">${fmt(s.bojeon)}</td><td class="td-mono td-right">${fmt(s.junbojeon)}</td>`).join('');
+      cells += `<td class="td-mono td-right">${fmt(rec.unclassified.bojeon)}</td><td class="td-mono td-right">${fmt(rec.unclassified.junbojeon)}</td>`;
     }
     return `<tr>
       <td class="td-mono" style="font-size:10px">${escHtml(r.pnu)}</td>
@@ -4918,12 +4946,17 @@ function exportForestExcel() {
       const lm = forestLanduseMap[pnu] || {};
       const areas = lm.areas || {};
       const sp    = lm.split    || {};
-      FOREST_LANDUSE_LAYERS.forEach(name => {
-        const s  = landuseHasRealSplit ? (sp[name] || { bojeon: 0, junbojeon: 0 }) : { bojeon: 0, junbojeon: (areas[name]||0) };
-        row.push(r1Land(s.bojeon), r1Land(s.junbojeon));
-      });
-      const us  = landuseHasRealSplit ? (lm.unclassifiedSplit || { bojeon: 0, junbojeon: 0 }) : { bojeon: 0, junbojeon: (lm.unclassified||0) };
-      row.push(r1Land(us.bojeon), r1Land(us.junbojeon));
+      const layerValsRaw = FOREST_LANDUSE_LAYERS.map(name =>
+        landuseHasRealSplit ? (sp[name] || { bojeon: 0, junbojeon: 0 }) : { bojeon: 0, junbojeon: (areas[name]||0) });
+      const unclassValRaw = landuseHasRealSplit ? (lm.unclassifiedSplit || { bojeon: 0, junbojeon: 0 }) : { bojeon: 0, junbojeon: (lm.unclassified||0) };
+      // 필지별 반올림 오차 보정: 시설별 보전/준보전 합계를 Step4 산지구분 합계(보전=임업용+공익용, 준보전)와
+      // 각각 정확히 일치시키고, 남는 차이는 해당 카테고리의 미분류 항목에 합산
+      const gAreasLu = landuseHasRealSplit ? (forestGubunMap[pnu]?.areas || {}) : {};
+      const targetBojeonLu    = landuseHasRealSplit ? ((gAreasLu['임업용산지'] || 0) + (gAreasLu['공익용산지'] || 0)) : 0;
+      const targetJunbojeonLu = landuseHasRealSplit ? (gAreasLu['준보전산지'] || 0) : bjVal;
+      const rec = reconcileLanduseRow(targetBojeonLu, targetJunbojeonLu, layerValsRaw, unclassValRaw);
+      rec.layers.forEach(s => row.push(s.bojeon, s.junbojeon));
+      row.push(rec.unclassified.bojeon, rec.unclassified.junbojeon);
     }
     return row;
   });
