@@ -1250,11 +1250,11 @@ window.addEventListener('DOMContentLoaded', function() {
         ondragover="dragOver(event,'forestLanduseDropZone')" ondragleave="dragLeave('forestLanduseDropZone')"
         ondrop="dropForestLanduse(event)">
         <div class="upload-icon">🏗️</div>
-        <div class="upload-title" id="forestLanduseTitle">토지이용계획 SHP 업로드</div>
-        <div class="upload-desc">ZIP 파일 (.shp/.dbf 포함)<br>드래그&드롭도 가능합니다</div>
+        <div class="upload-title" id="forestLanduseTitle">토지이용계획 SHP/DXF 업로드</div>
+        <div class="upload-desc">SHP: ZIP 파일 (.shp/.dbf 포함) · CAD: .dxf 파일 (레이어명 기준 자동 인식)<br>드래그&드롭도 가능합니다</div>
         <label class="upload-label">📎 파일 선택</label>
       </div>
-      <input type="file" id="forestLanduseFile" accept=".zip" style="display:none" onchange="handleForestLanduseFile(event)">
+      <input type="file" id="forestLanduseFile" accept=".zip,.dxf" style="display:none" onchange="handleForestLanduseFile(event)">
       <div id="forest-landuse-status" style="margin-top:10px;font-size:12px;color:var(--ink3)"></div>
     </div>
 
@@ -1265,7 +1265,6 @@ window.addEventListener('DOMContentLoaded', function() {
 
     <div class="sec-card" id="forest-landuse-detail-card" style="display:none;padding:16px 20px">
       <div class="sec-card-title"><div class="dot" style="background:#6d28d9"></div>③ 필지별 레이어 교차 면적</div>
-      <div id="forest-landuse-detail-note" style="font-size:11px;color:var(--ink3);padding:0 0 8px 0"></div>
       <div class="table-wrap">
         <table class="result" style="min-width:900px" id="forest-landuse-result-table">
           <thead id="forest-landuse-result-thead"></thead>
@@ -1343,11 +1342,7 @@ function isProjected(geojson) {
 // (sessionStorage 용량 절약: 홀 제외, 소수점 1자리 반올림)
 function extractRings(geo) {
   if (!geo) return [];
-  // r.rings는 화면 표시용이 아니라 Step4/5의 면적 재계산(ringsToJsts→calcArea)에 그대로 재사용된다.
-  // 과거 0.1m 단위 반올림은 Step1의 정확한 편입구적면적(반올림 전 좌표로 계산)과 Step4/5 재계산 결과 사이에
-  // 필지마다 최대 ±1㎡ 안팎의 오차를 유발했다 (특히 경계선에 걸친 얇은 부분편입 필지에서 두드러짐).
-  // → 좌표는 원본 정밀도 그대로 보존하고, 부동소수 계산 잡음(1e-9 이하)만 제거한다.
-  const round1 = c => [Math.round(c[0]*1e9)/1e9, Math.round(c[1]*1e9)/1e9];
+  const round1 = c => [Math.round(c[0]*10)/10, Math.round(c[1]*10)/10];
   const rings = [];
 
   switch (geo.type) {
@@ -1448,26 +1443,7 @@ const JIMOK_CHARS = '전답대도임잡구목묘철사창종천학유장과주�
 function switchMode(mode) {} // xlsx 모드 제거됨
 
 // ─── SHP 스텝 이동 ─────────────────────────────────────
-// Step5(토지이용계획)의 보전/준보전 세분화 표시를 위해서는 Step4에서 산지구분도 매칭이 선행되어야 함
-function hasForestGubunData() {
-  return typeof forestGubunMap !== 'undefined' && Object.keys(forestGubunMap).length > 0;
-}
-
 function shpGoStep(n) {
-  if (n === 5 && !hasForestGubunData()) {
-    showToast('⚠️ Step4에서 산지구분도(보전/준보전) 매칭을 먼저 완료해야 Step5로 이동할 수 있습니다.');
-    const gubunCheck = document.getElementById('forest-opt-gubun');
-    const gubunArea  = document.getElementById('forest-gubun-upload-area');
-    if (gubunCheck) { gubunCheck.checked = true; }
-    if (gubunArea)  { gubunArea.style.display = 'block'; }
-    const dz = document.getElementById('forestGubunDropZone');
-    if (dz) {
-      dz.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      dz.style.outline = '2px solid var(--red)';
-      setTimeout(() => { dz.style.outline = ''; }, 2000);
-    }
-    return;
-  }
   for (let i = 1; i <= 5; i++) {
     const panel = document.getElementById(`shp-panel${i}`);
     const sp    = document.getElementById(`shp-sp${i}`);
@@ -4267,18 +4243,18 @@ function getForestResultBbox(marginM = 200) {
 // ── 필지 rings → JSTS geometry (구멍 포함 Polygon, 실패 시 링 union) ──
 function ringsToJsts(rings, reader) {
   if (!rings || !rings.length) return null;
-  // extractRings()는 홀(내부링)을 저장하지 않고, MultiPolygon의 경우 조각별 외곽선만 개별 항목으로 저장한다.
-  // 따라서 rings 배열의 각 항목은 항상 "독립된 폴리곤의 외곽선"이며, 절대 이전 항목의 "홀"이 아니다.
-  // { type:'Polygon', coordinates: rings } 로 한 번에 읽으면 rings[1] 이후가 홀로 잘못 해석되어
-  // (서로 떨어진 조각을 하나의 폴리곤 구멍처럼 처리) buffer(0) 복구 시 면적이 원본보다 작게 깨지는 문제가 있었음.
-  // → 항상 각 ring을 별개 폴리곤으로 읽어 union한다 (ring이 1개뿐이면 union 없이 그대로 반환되어 기존 동작과 동일).
+  try {
+    const g = reader.read({ type:'Polygon', coordinates: rings }).buffer(0);
+    if (g && !g.isEmpty()) return g;
+  } catch (e) { /* fallback */ }
+  // fallback: 양수면적 링만 개별 폴리곤으로 union
   let acc = null;
   for (const ring of rings) {
     try {
       const p = reader.read({ type:'Polygon', coordinates:[ring] }).buffer(0);
       if (!p || p.isEmpty()) continue;
       acc = acc ? acc.union(p) : p;
-    } catch (e) { /* skip broken ring */ }
+    } catch (e) {}
   }
   return acc;
 }
@@ -4375,10 +4351,13 @@ async function processForestLanduseFile(file) {
   const status = document.getElementById('forest-landuse-status');
   const dz     = document.getElementById('forestLanduseDropZone');
   const title  = document.getElementById('forestLanduseTitle');
+  const lname  = file.name.toLowerCase();
+  const isZip  = lname.endsWith('.zip');
+  const isDxf  = lname.endsWith('.dxf');
 
-  if (!file.name.toLowerCase().endsWith('.zip')) {
-    if (status) status.innerHTML = `<span style="color:var(--red)">⚠️ ZIP 파일만 업로드 가능합니다.</span>`;
-    showToast('⚠️ ZIP 파일만 업로드 가능합니다.');
+  if (!isZip && !isDxf) {
+    if (status) status.innerHTML = `<span style="color:var(--red)">⚠️ ZIP(SHP) 또는 DXF 파일만 업로드 가능합니다.</span>`;
+    showToast('⚠️ ZIP(SHP) 또는 DXF 파일만 업로드 가능합니다.');
     return;
   }
   if (!forestResultRows || forestResultRows.length === 0) {
@@ -4392,128 +4371,420 @@ async function processForestLanduseFile(file) {
   if (title) title.textContent = file.name;
 
   try {
-    const buf = await file.arrayBuffer();
-    const entries = listZipFiles(buf);
-    const shpEntry = entries.find(e => e.name.toLowerCase().endsWith('.shp'));
-    const dbfEntry = entries.find(e => e.name.toLowerCase().endsWith('.dbf'));
-
-    if (!shpEntry || !dbfEntry) {
-      if (status) status.innerHTML = `<span style="color:var(--red)">⚠️ ZIP 안에 .shp 또는 .dbf 파일이 없습니다.</span>`;
-      showToast('⚠️ ZIP 구성을 확인해주세요 (.shp/.dbf 필요)');
-      return;
+    if (isZip) {
+      await processForestLanduseShpZip(file, status);
+    } else {
+      await processForestLanduseDxf(file, status);
     }
-
-    // ── SHP/DBF 파싱 ──
-    const shpBuf = await extractZipEntry(buf, shpEntry);
-    const dbfBuf = await extractZipEntry(buf, dbfEntry);
-    const geoms  = parseShp(shpBuf);   // [GeoJSON Polygon/MultiPolygon | null]
-    const recs   = parseDbf(dbfBuf);   // [{필드:값}]
-
-    // ── Layer 필드 탐지 (대소문자 무관) ──
-    const sample = recs.find(Boolean) || {};
-    const layerKey = Object.keys(sample).find(k => k.toLowerCase() === 'layer')
-                   || Object.keys(sample).find(k => k.toLowerCase().includes('layer'));
-    if (!layerKey) {
-      if (status) status.innerHTML = `<span style="color:var(--red)">⚠️ DBF에 Layer 필드가 없습니다. (필드: ${escHtml(Object.keys(sample).join(', '))})</span>`;
-      showToast('⚠️ Layer 필드를 찾을 수 없습니다.');
-      return;
-    }
-
-    // ── 레이어명별 geometry 그룹핑 (프로젝트 범위 밖 폴리곤은 제외 — 성능) ──
-    const groups = {};   // layerName → [geo, geo, ...]
-    const n = Math.min(geoms.length, recs.length);
-    const projectBboxLu = getForestResultBbox();
-    let skippedOutsideLu = 0;
-    for (let i = 0; i < n; i++) {
-      const geo = geoms[i]; const rec = recs[i];
-      if (!geo || !rec) continue;
-      if (projectBboxLu) {
-        const b = geoBbox(geo);
-        if (!bboxOverlap(projectBboxLu, b)) { skippedOutsideLu++; continue; }
-      }
-      const name = String(rec[layerKey] ?? '').trim() || '미지정레이어';
-      (groups[name] = groups[name] || []).push(geo);
-    }
-
-    // ── 레이어별 디졸브(Union) — 폴리곤이 많아도 캐스케이드 union으로 빠르게 처리 ──
-    const reader = getJstsReader();
-    const layers = [];
-    for (const [name, geoArr] of Object.entries(groups)) {
-      const jgList = [];
-      for (const geo of geoArr) {
-        try {
-          const jg = reader.read(geo).buffer(0);
-          if (jg && !jg.isEmpty()) jgList.push(jg);
-        } catch (e) { /* skip broken polygon */ }
-      }
-      const acc = unionJstsList(jgList);
-      if (!acc || acc.isEmpty()) continue;
-      const env = acc.getEnvelopeInternal();
-      layers.push({
-        label: name,
-        jg: acc,
-        bbox: [env.getMinX(), env.getMinY(), env.getMaxX(), env.getMaxY()],
-        count: geoArr.length
-      });
-    }
-
-    if (layers.length === 0) {
-      if (status) status.innerHTML = `<span style="color:var(--red)">⚠️ 인식 가능한 레이어 폴리곤이 없습니다.</span>`;
-      showToast('⚠️ 토지이용계획 폴리곤을 인식하지 못했습니다.');
-      forestLanduseFileLoaded = null;
-      return;
-    }
-
-    // ── 좌표계(bbox) 겹침 확인 — 필지 rings 전체 bbox와 비교 ──
-    let parcelBbox = null;
-    for (const r of forestResultRows) {
-      if (!r.rings || !r.rings.length) continue;
-      const b = geoBbox({ type: 'Polygon', coordinates: r.rings });
-      if (!parcelBbox) parcelBbox = b;
-      else {
-        parcelBbox[0] = Math.min(parcelBbox[0], b[0]); parcelBbox[1] = Math.min(parcelBbox[1], b[1]);
-        parcelBbox[2] = Math.max(parcelBbox[2], b[2]); parcelBbox[3] = Math.max(parcelBbox[3], b[3]);
-      }
-    }
-    let overallBbox = null;
-    layers.forEach(lp => {
-      if (!overallBbox) overallBbox = lp.bbox.slice();
-      else {
-        overallBbox[0] = Math.min(overallBbox[0], lp.bbox[0]); overallBbox[1] = Math.min(overallBbox[1], lp.bbox[1]);
-        overallBbox[2] = Math.max(overallBbox[2], lp.bbox[2]); overallBbox[3] = Math.max(overallBbox[3], lp.bbox[3]);
-      }
-    });
-    const bboxOk = parcelBbox && overallBbox && bboxOverlap(parcelBbox, overallBbox);
-
-    FOREST_LANDUSE_LAYERS = layers.map(l => l.label).sort((a, b) => a.localeCompare(b, 'ko', { numeric: true }));
-    forestLanduseFileLoaded = { fileName: file.name, layers };
-
-    if (!bboxOk) {
-      if (status) status.innerHTML =
-        `<span style="color:var(--red)">⚠️ 필지와 토지이용계획 SHP의 좌표 범위가 겹치지 않습니다 — 두 파일의 좌표계가 다를 수 있습니다. (레이어 ${layers.length}개 인식됨)</span>`;
-      showToast('⚠️ 좌표계 불일치 가능성 — bbox가 겹치지 않습니다.');
-      renderForestLanduse();  // 인식된 레이어 목록은 요약에 표시(매칭은 0으로)
-      return;
-    }
-
-    // ── 매칭 실행 ──
-    if (status) status.innerHTML = `<span style="color:var(--ink3)">⏳ 토지이용계획 교차분석 중... (필지 ${forestResultRows.length} × 레이어 ${layers.length}개)</span>`;
-    await new Promise(r => requestAnimationFrame(r));
-    const res = await runForestLanduseMatch();
-
-    if (status) {
-      status.innerHTML =
-        `<span style="color:var(--green)">✅ ${escHtml(file.name)} 매칭 완료</span> · ` +
-        `레이어 ${layers.length}개(${escHtml(layers.map(l => `${l.label}:${l.count}`).join(', '))}${skippedOutsideLu>0?`, 범위 밖 ${skippedOutsideLu}개 제외`:''}) · ` +
-        `매칭필지 ${res.matched}/${forestResultRows.length}` +
-        (res.unmatched > 0 ? ` · <span style="color:var(--amber)">레이어 미겹침 ${res.unmatched}필지 → 미분류 처리</span>` : '');
-    }
-    showToast(`✅ 토지이용계획 매칭 완료 — 레이어 ${layers.length}개`);
   } catch (err) {
     console.error(err);
     if (status) status.innerHTML = `<span style="color:var(--red)">⚠️ 파일을 읽을 수 없습니다: ${escHtml(err.message||'')}</span>`;
-    showToast('⚠️ 토지이용계획 ZIP 파일 처리 중 오류가 발생했습니다.');
+    showToast('⚠️ 토지이용계획 파일 처리 중 오류가 발생했습니다.');
   }
+}
+
+// ── SHP(ZIP) 경로: 기존 방식 ──────────────────────────
+async function processForestLanduseShpZip(file, status) {
+  const buf = await file.arrayBuffer();
+  const entries = listZipFiles(buf);
+  const shpEntry = entries.find(e => e.name.toLowerCase().endsWith('.shp'));
+  const dbfEntry = entries.find(e => e.name.toLowerCase().endsWith('.dbf'));
+
+  if (!shpEntry || !dbfEntry) {
+    if (status) status.innerHTML = `<span style="color:var(--red)">⚠️ ZIP 안에 .shp 또는 .dbf 파일이 없습니다.</span>`;
+    showToast('⚠️ ZIP 구성을 확인해주세요 (.shp/.dbf 필요)');
+    return;
+  }
+
+  // ── SHP/DBF 파싱 ──
+  const shpBuf = await extractZipEntry(buf, shpEntry);
+  const dbfBuf = await extractZipEntry(buf, dbfEntry);
+  const geoms  = parseShp(shpBuf);   // [GeoJSON Polygon/MultiPolygon | null]
+  const recs   = parseDbf(dbfBuf);   // [{필드:값}]
+
+  // ── Layer 필드 탐지 (대소문자 무관) ──
+  const sample = recs.find(Boolean) || {};
+  const layerKey = Object.keys(sample).find(k => k.toLowerCase() === 'layer')
+                 || Object.keys(sample).find(k => k.toLowerCase().includes('layer'));
+  if (!layerKey) {
+    if (status) status.innerHTML = `<span style="color:var(--red)">⚠️ DBF에 Layer 필드가 없습니다. (필드: ${escHtml(Object.keys(sample).join(', '))})</span>`;
+    showToast('⚠️ Layer 필드를 찾을 수 없습니다.');
+    return;
+  }
+
+  // ── 레이어명별 geometry 그룹핑 (프로젝트 범위 밖 폴리곤은 제외 — 성능) ──
+  const groups = {};   // layerName → [geo, geo, ...]
+  const n = Math.min(geoms.length, recs.length);
+  const projectBboxLu = getForestResultBbox();
+  let skippedOutsideLu = 0;
+  for (let i = 0; i < n; i++) {
+    const geo = geoms[i]; const rec = recs[i];
+    if (!geo || !rec) continue;
+    if (projectBboxLu) {
+      const b = geoBbox(geo);
+      if (!bboxOverlap(projectBboxLu, b)) { skippedOutsideLu++; continue; }
+    }
+    const name = String(rec[layerKey] ?? '').trim() || '미지정레이어';
+    (groups[name] = groups[name] || []).push(geo);
+  }
+
+  await finishForestLanduseGroups(groups, file.name, skippedOutsideLu, status);
+}
+
+// ── DXF 파일 인코딩 자동 판별 후 텍스트로 읽기 ──
+// 한글 AutoCAD(R14~2004 등 구버전)는 EUC-KR(CP949)로 텍스트를 저장하는 경우가 대부분이라
+// UTF-8로 그대로 읽으면 레이어명 한글이 깨짐(치환문자 �). UTF-8 디코딩을 fatal 모드로 먼저 시도해
+// 실패하면(=EUC-KR일 가능성 높음) EUC-KR로 재디코딩한다.
+// DXF 2007+(AC1021 이상)는 유니코드를 \U+XXXX 이스케이프로 저장하므로 별도로 실제 문자로 복원한다.
+async function readDxfText(file) {
+  const buf = await file.arrayBuffer();
+  let text;
+  try {
+    text = new TextDecoder('utf-8', { fatal: true }).decode(buf);
+  } catch (e) {
+    try {
+      text = new TextDecoder('euc-kr').decode(buf);
+    } catch (e2) {
+      text = new TextDecoder('utf-8').decode(buf); // 최후 폴백
+    }
+  }
+  // \U+AC00 형태의 유니코드 이스케이프를 실제 문자로 복원 (DXF 2007+)
+  return text.replace(/\\U\+([0-9A-Fa-f]{4})/g, (m, hex) => String.fromCharCode(parseInt(hex, 16)));
+}
+
+// ── DXF 경로: LWPOLYLINE/POLYLINE/HATCH를 레이어별로 그룹핑 ──
+async function processForestLanduseDxf(file, status) {
+  const text = await readDxfText(file);
+  const { results, skippedHatchEdges } = extractDxfLayerRings(text);
+
+  if (!results.length) {
+    if (status) status.innerHTML = `<span style="color:var(--red)">⚠️ DXF에서 닫힌 폴리곤(LWPOLYLINE/POLYLINE/HATCH)을 찾지 못했습니다.</span>`;
+    showToast('⚠️ DXF에서 인식 가능한 폴리곤이 없습니다.');
+    return;
+  }
+
+  // ── 레이어명별 그룹핑 (프로젝트 범위 밖 폴리곤은 제외 — 성능) ──
+  const groups = {};
+  const projectBboxLu = getForestResultBbox();
+  let skippedOutsideLu = 0;
+  for (const { layer, ring } of results) {
+    if (!ring || ring.length < 4) continue;
+    const geo = { type: 'Polygon', coordinates: [ring] };
+    if (projectBboxLu) {
+      const b = geoBbox(geo);
+      if (!bboxOverlap(projectBboxLu, b)) { skippedOutsideLu++; continue; }
+    }
+    const name = String(layer || '').trim() || '미지정레이어';
+    (groups[name] = groups[name] || []).push(geo);
+  }
+
+  if (skippedHatchEdges > 0) {
+    showToast(`⚠️ 스플라인/타원 경계를 가진 HATCH ${skippedHatchEdges}개는 건너뛰었습니다.`);
+  }
+
+  await finishForestLanduseGroups(groups, file.name, skippedOutsideLu, status);
+}
+
+// ── 공통 마무리: 레이어별 Union → bbox 좌표계 확인 → 필지 교차매칭 ──
+// SHP(ZIP) 경로와 DXF 경로가 동일하게 사용
+async function finishForestLanduseGroups(groups, fileName, skippedOutsideLu, status) {
+  // ── 레이어별 디졸브(Union) — 폴리곤이 많아도 캐스케이드 union으로 빠르게 처리 ──
+  const reader = getJstsReader();
+  const layers = [];
+  for (const [name, geoArr] of Object.entries(groups)) {
+    const jgList = [];
+    for (const geo of geoArr) {
+      try {
+        const jg = reader.read(geo).buffer(0);
+        if (jg && !jg.isEmpty()) jgList.push(jg);
+      } catch (e) { /* skip broken polygon */ }
+    }
+    const acc = unionJstsList(jgList);
+    if (!acc || acc.isEmpty()) continue;
+    const env = acc.getEnvelopeInternal();
+    layers.push({
+      label: name,
+      jg: acc,
+      bbox: [env.getMinX(), env.getMinY(), env.getMaxX(), env.getMaxY()],
+      count: geoArr.length
+    });
+  }
+
+  if (layers.length === 0) {
+    if (status) status.innerHTML = `<span style="color:var(--red)">⚠️ 인식 가능한 레이어 폴리곤이 없습니다.</span>`;
+    showToast('⚠️ 토지이용계획 폴리곤을 인식하지 못했습니다.');
+    forestLanduseFileLoaded = null;
+    return;
+  }
+
+  // ── 좌표계(bbox) 겹침 확인 — 필지 rings 전체 bbox와 비교 ──
+  let parcelBbox = null;
+  for (const r of forestResultRows) {
+    if (!r.rings || !r.rings.length) continue;
+    const b = geoBbox({ type: 'Polygon', coordinates: r.rings });
+    if (!parcelBbox) parcelBbox = b;
+    else {
+      parcelBbox[0] = Math.min(parcelBbox[0], b[0]); parcelBbox[1] = Math.min(parcelBbox[1], b[1]);
+      parcelBbox[2] = Math.max(parcelBbox[2], b[2]); parcelBbox[3] = Math.max(parcelBbox[3], b[3]);
+    }
+  }
+  let overallBbox = null;
+  layers.forEach(lp => {
+    if (!overallBbox) overallBbox = lp.bbox.slice();
+    else {
+      overallBbox[0] = Math.min(overallBbox[0], lp.bbox[0]); overallBbox[1] = Math.min(overallBbox[1], lp.bbox[1]);
+      overallBbox[2] = Math.max(overallBbox[2], lp.bbox[2]); overallBbox[3] = Math.max(overallBbox[3], lp.bbox[3]);
+    }
+  });
+  const bboxOk = parcelBbox && overallBbox && bboxOverlap(parcelBbox, overallBbox);
+
+  FOREST_LANDUSE_LAYERS = layers.map(l => l.label).sort((a, b) => a.localeCompare(b, 'ko', { numeric: true }));
+  forestLanduseFileLoaded = { fileName, layers };
+
+  if (!bboxOk) {
+    if (status) status.innerHTML =
+      `<span style="color:var(--red)">⚠️ 필지와 토지이용계획 파일의 좌표 범위가 겹치지 않습니다 — 두 파일의 좌표계가 다를 수 있습니다. (레이어 ${layers.length}개 인식됨)</span>`;
+    showToast('⚠️ 좌표계 불일치 가능성 — bbox가 겹치지 않습니다.');
+    renderForestLanduse();  // 인식된 레이어 목록은 요약에 표시(매칭은 0으로)
+    return;
+  }
+
+  // ── 매칭 실행 ──
+  if (status) status.innerHTML = `<span style="color:var(--ink3)">⏳ 토지이용계획 교차분석 중... (필지 ${forestResultRows.length} × 레이어 ${layers.length}개)</span>`;
+  await new Promise(r => requestAnimationFrame(r));
+  const res = await runForestLanduseMatch();
+
+  if (status) {
+    status.innerHTML =
+      `<span style="color:var(--green)">✅ ${escHtml(fileName)} 매칭 완료</span> · ` +
+      `레이어 ${layers.length}개(${escHtml(layers.map(l => `${l.label}:${l.count}`).join(', '))}${skippedOutsideLu>0?`, 범위 밖 ${skippedOutsideLu}개 제외`:''}) · ` +
+      `매칭필지 ${res.matched}/${forestResultRows.length}` +
+      (res.unmatched > 0 ? ` · <span style="color:var(--amber)">레이어 미겹침 ${res.unmatched}필지 → 미분류 처리</span>` : '');
+  }
+  showToast(`✅ 토지이용계획 매칭 완료 — 레이어 ${layers.length}개`);
+}
+
+// ═══════════════════════════════════════════════════════
+// DXF 파서 (ASCII DXF) — LWPOLYLINE / POLYLINE / HATCH(경계) 지원
+// SHP과 동일하게 레이어명(그룹코드 8) 기준으로 폴리곤을 추출
+// ═══════════════════════════════════════════════════════
+
+function parseDxfPairs(text) {
+  const lines = text.split(/\r\n|\r|\n/);
+  const pairs = [];
+  for (let i = 0; i + 1 < lines.length; i += 2) {
+    const code = parseInt(lines[i].trim(), 10);
+    const value = lines[i + 1] !== undefined ? lines[i + 1].trim() : '';
+    if (!isNaN(code)) pairs.push([code, value]);
+  }
+  return pairs;
+}
+
+// bulge(호 곡률) → 3점(시작,정점,끝)으로 원을 추정해 호를 다각선으로 근사
+function bulgeApex(p1, p2, bulge) {
+  const mx = (p1[0] + p2[0]) / 2, my = (p1[1] + p2[1]) / 2;
+  const dx = p2[0] - p1[0], dy = p2[1] - p1[1];
+  return [mx - (bulge * dy) / 2, my + (bulge * dx) / 2];
+}
+
+function circleFrom3Points(a, b, c) {
+  const ax = a[0], ay = a[1], bx = b[0], by = b[1], cx = c[0], cy = c[1];
+  const d = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by));
+  if (Math.abs(d) < 1e-9) return null;
+  const ux = ((ax*ax+ay*ay)*(by-cy) + (bx*bx+by*by)*(cy-ay) + (cx*cx+cy*cy)*(ay-by)) / d;
+  const uy = ((ax*ax+ay*ay)*(cx-bx) + (bx*bx+by*by)*(ax-cx) + (cx*cx+cy*cy)*(bx-ax)) / d;
+  const r = Math.hypot(ax - ux, ay - uy);
+  return { cx: ux, cy: uy, r };
+}
+
+function norm2pi(a) { let v = a; while (v < 0) v += 2*Math.PI; while (v >= 2*Math.PI) v -= 2*Math.PI; return v; }
+
+// p1→p2 사이 bulge 세그먼트를 다각선 점들로 반환 (p1 제외, p2 포함)
+function bulgeSegmentPoints(p1, p2, bulge, segLenM) {
+  if (!bulge) return [p2];
+  const apex = bulgeApex(p1, p2, bulge);
+  const circ = circleFrom3Points(p1, apex, p2);
+  if (!circ || !isFinite(circ.r) || circ.r > 1e7) return [p2]; // 사실상 직선
+  const start = norm2pi(Math.atan2(p1[1]-circ.cy, p1[0]-circ.cx));
+  const end   = norm2pi(Math.atan2(p2[1]-circ.cy, p2[0]-circ.cx));
+  const mid   = norm2pi(Math.atan2(apex[1]-circ.cy, apex[0]-circ.cx));
+  let ccwSweep = end - start; if (ccwSweep < 0) ccwSweep += 2*Math.PI;
+  const midInCcw = (() => { let m = mid - start; if (m < 0) m += 2*Math.PI; return m <= ccwSweep + 1e-9; })();
+  const sweep = midInCcw ? ccwSweep : ccwSweep - 2*Math.PI;
+  const arcLen = Math.abs(sweep) * circ.r;
+  const nseg = Math.max(2, Math.ceil(arcLen / (segLenM || 2)));
+  const pts = [];
+  for (let i = 1; i <= nseg; i++) {
+    const t = start + sweep * (i / nseg);
+    pts.push([circ.cx + circ.r*Math.cos(t), circ.cy + circ.r*Math.sin(t)]);
+  }
+  pts[pts.length-1] = p2.slice();
+  return pts;
+}
+
+function closeRingDxf(pts) {
+  const first = pts[0], last = pts[pts.length-1];
+  if (Math.hypot(first[0]-last[0], first[1]-last[1]) > 1e-6) pts.push(first.slice());
+  return pts;
+}
+
+// {x,y,bulge}[] → ring(좌표배열). 닫힌 폴리라인이 아니면 폴리곤으로 쓰지 않음(null)
+function polyVertsToRing(verts, closed) {
+  // bulge(호)가 있으면 2개 정점만으로도 닫힌 폴리곤(예: 원)이 될 수 있음
+  if (!closed || verts.length < 2) return null;
+  const ring = [[verts[0].x, verts[0].y]];
+  for (let i = 0; i < verts.length; i++) {
+    const cur = verts[i], next = verts[(i+1) % verts.length];
+    const seg = bulgeSegmentPoints([cur.x, cur.y], [next.x, next.y], cur.bulge || 0, 2);
+    ring.push(...seg);
+  }
+  return closeRingDxf(ring);
+}
+
+// 메인: DXF 텍스트 → { results:[{layer, ring}], skippedHatchEdges }
+function extractDxfLayerRings(text) {
+  const pairs = parseDxfPairs(text);
+  const n = pairs.length;
+  const results = [];
+  let skippedHatchEdges = 0;
+  let i = 0;
+
+  while (i < n) {
+    const code = pairs[i][0], val = pairs[i][1];
+
+    if (code === 0 && val === 'LWPOLYLINE') {
+      let layer = '미지정레이어', closed = false;
+      const verts = [];
+      let curX = null, curY = null, curBulge = 0;
+      i++;
+      while (i < n && pairs[i][0] !== 0) {
+        const [c, v] = pairs[i];
+        if (c === 8) layer = v;
+        else if (c === 70) closed = (parseInt(v, 10) & 1) === 1;
+        else if (c === 10) { if (curX !== null) { verts.push({ x: curX, y: curY, bulge: curBulge }); curBulge = 0; } curX = parseFloat(v); }
+        else if (c === 20) curY = parseFloat(v);
+        else if (c === 42) curBulge = parseFloat(v);
+        i++;
+      }
+      if (curX !== null) verts.push({ x: curX, y: curY, bulge: curBulge });
+      const ring = polyVertsToRing(verts, closed);
+      if (ring) results.push({ layer, ring });
+      continue;
+    }
+
+    if (code === 0 && val === 'POLYLINE') {
+      let layer = '미지정레이어', closed = false;
+      i++;
+      while (i < n && !(pairs[i][0] === 0 && (pairs[i][1] === 'VERTEX' || pairs[i][1] === 'SEQEND'))) {
+        const [c, v] = pairs[i];
+        if (c === 8) layer = v;
+        else if (c === 70) closed = (parseInt(v, 10) & 1) === 1;
+        i++;
+      }
+      const verts = [];
+      while (i < n && pairs[i][0] === 0 && pairs[i][1] === 'VERTEX') {
+        i++;
+        let vx = null, vy = null, vb = 0;
+        while (i < n && pairs[i][0] !== 0) {
+          const [c, v] = pairs[i];
+          if (c === 10) vx = parseFloat(v);
+          else if (c === 20) vy = parseFloat(v);
+          else if (c === 42) vb = parseFloat(v);
+          i++;
+        }
+        if (vx !== null) verts.push({ x: vx, y: vy, bulge: vb });
+      }
+      if (i < n && pairs[i][0] === 0 && pairs[i][1] === 'SEQEND') i++;
+      const ring = polyVertsToRing(verts, closed);
+      if (ring) results.push({ layer, ring });
+      continue;
+    }
+
+    if (code === 0 && val === 'HATCH') {
+      let layer = '미지정레이어';
+      i++;
+      const rings = [];
+      while (i < n && pairs[i][0] !== 0) {
+        const [c, v] = pairs[i];
+        if (c === 8) { layer = v; i++; continue; }
+        if (c === 92) {
+          const pathFlag = parseInt(v, 10);
+          i++;
+          if (pathFlag & 2) {
+            // 폴리라인 경계 (72:불지플래그, 73:닫힘, 93:정점수)
+            let hasBulge = false, numVerts = 0;
+            while (i < n) {
+              const [cc, vv] = pairs[i];
+              if (cc === 72) { hasBulge = vv === '1'; i++; }
+              else if (cc === 73) { i++; } // HATCH 경계는 항상 닫힘으로 취급
+              else if (cc === 93) { numVerts = parseInt(vv, 10); i++; break; }
+              else break;
+            }
+            const verts = [];
+            for (let k = 0; k < numVerts; k++) {
+              let vx = null, vy = null, vb = 0;
+              if (pairs[i] && pairs[i][0] === 10) { vx = parseFloat(pairs[i][1]); i++; }
+              if (pairs[i] && pairs[i][0] === 20) { vy = parseFloat(pairs[i][1]); i++; }
+              if (hasBulge && pairs[i] && pairs[i][0] === 42) { vb = parseFloat(pairs[i][1]); i++; }
+              if (vx !== null) verts.push({ x: vx, y: vy, bulge: vb });
+            }
+            const ring = polyVertsToRing(verts, true);
+            if (ring) rings.push(ring);
+          } else {
+            // 직선/호 edge 목록 — 스플라인/타원이 섞인 경계는 스킵
+            let numEdges = 0;
+            if (pairs[i] && pairs[i][0] === 93) { numEdges = parseInt(pairs[i][1], 10); i++; }
+            const pts = [];
+            let ok = true;
+            for (let e = 0; e < numEdges; e++) {
+              if (!(pairs[i] && pairs[i][0] === 72)) { ok = false; break; }
+              const edgeType = parseInt(pairs[i][1], 10); i++;
+              if (edgeType === 1) { // 직선
+                let x1, y1, x2, y2;
+                if (pairs[i] && pairs[i][0] === 10) { x1 = parseFloat(pairs[i][1]); i++; }
+                if (pairs[i] && pairs[i][0] === 20) { y1 = parseFloat(pairs[i][1]); i++; }
+                if (pairs[i] && pairs[i][0] === 11) { x2 = parseFloat(pairs[i][1]); i++; }
+                if (pairs[i] && pairs[i][0] === 21) { y2 = parseFloat(pairs[i][1]); i++; }
+                if (pts.length === 0) pts.push([x1, y1]);
+                pts.push([x2, y2]);
+              } else if (edgeType === 2) { // 호
+                let cx, cy, r, a1, a2, ccw = true;
+                if (pairs[i] && pairs[i][0] === 10) { cx = parseFloat(pairs[i][1]); i++; }
+                if (pairs[i] && pairs[i][0] === 20) { cy = parseFloat(pairs[i][1]); i++; }
+                if (pairs[i] && pairs[i][0] === 40) { r = parseFloat(pairs[i][1]); i++; }
+                if (pairs[i] && pairs[i][0] === 50) { a1 = parseFloat(pairs[i][1]) * Math.PI/180; i++; }
+                if (pairs[i] && pairs[i][0] === 51) { a2 = parseFloat(pairs[i][1]) * Math.PI/180; i++; }
+                if (pairs[i] && pairs[i][0] === 73) { ccw = pairs[i][1] === '1'; i++; }
+                let sweep = a2 - a1;
+                if (ccw) { while (sweep < 0) sweep += 2*Math.PI; }
+                else { while (sweep > 0) sweep -= 2*Math.PI; }
+                const arcLen = Math.abs(sweep) * r;
+                const nseg = Math.max(2, Math.ceil(arcLen / 2));
+                const startPt = [cx + r*Math.cos(a1), cy + r*Math.sin(a1)];
+                if (pts.length === 0) pts.push(startPt);
+                for (let s = 1; s <= nseg; s++) {
+                  const t = a1 + sweep * (s / nseg);
+                  pts.push([cx + r*Math.cos(t), cy + r*Math.sin(t)]);
+                }
+              } else {
+                ok = false; // 스플라인(4)/타원(3) 등 — 미지원
+              }
+            }
+            if (ok && pts.length >= 3) rings.push(closeRingDxf(pts));
+            else skippedHatchEdges++;
+          }
+        } else {
+          i++;
+        }
+      }
+      rings.forEach(ring => results.push({ layer, ring }));
+      continue;
+    }
+
+    i++;
+  }
+
+  return { results, skippedHatchEdges };
 }
 
 // ── 여러 JSTS geometry를 하나로 union — 폴리곤 수가 많으면 캐스케이드(분할정복) union이 훨씬 빠름 ──
@@ -4583,50 +4854,6 @@ function calcAreaJsts(jstsGeom) {
   } catch (e) { return 0; }
 }
 
-// ── Step5 필지별 반올림 오차 보정 ─────────────────────────
-// 레이어별(보전/준보전) 면적을 소수점 1자리로 반올림해 표시/출력하면, 필지 하나의 시설별 면적합계가
-// Step4 "산지구분 합계"(보전산지=임업용+공익용, 준보전산지)와 0.1~0.2㎡ 정도 미세하게 어긋나는 경우가
-// 생김(개별 반올림 누적 오차). → 보전/준보전 각각을 독립적으로 Step4 산지구분 합계값과 정확히
-// 일치시키고, 남는 차이는 해당 카테고리(보전 또는 준보전)의 미분류 항목에 그대로 더해서 보정함.
-// 즉 "시설별(보전) 면적합계 + 미분류-보전산지 = 산지구분 보전산지 합계",
-//    "시설별(준보전) 면적합계 + 미분류-준보전산지 = 산지구분 준보전산지 합계" 가 항상 정확히 성립.
-// (Step1~4 로직 및 요약/합계 집계는 원본 raw 값을 그대로 사용하므로 영향 없음)
-function roundLand(v) { return (v == null || isNaN(v)) ? 0 : Math.round(v * 10) / 10; }
-function reconcileLanduseRow(targetBojeon, targetJunbojeon, layerValsRaw, unclassValRaw) {
-  const layers = (layerValsRaw || []).map(v => ({ bojeon: roundLand(v && v.bojeon), junbojeon: roundLand(v && v.junbojeon) }));
-  const unclass = { bojeon: roundLand(unclassValRaw && unclassValRaw.bojeon), junbojeon: roundLand(unclassValRaw && unclassValRaw.junbojeon) };
-  const tBojeon    = roundLand(targetBojeon);
-  const tJunbojeon = roundLand(targetJunbojeon);
-  const sumBojeon    = layers.reduce((s, v) => s + v.bojeon, 0)    + unclass.bojeon;
-  const sumJunbojeon = layers.reduce((s, v) => s + v.junbojeon, 0) + unclass.junbojeon;
-  const diffBojeon    = Math.round((tBojeon    - sumBojeon)    * 10) / 10;
-  const diffJunbojeon = Math.round((tJunbojeon - sumJunbojeon) * 10) / 10;
-  if (diffBojeon    !== 0) unclass.bojeon    = Math.round((unclass.bojeon    + diffBojeon)    * 10) / 10;
-  if (diffJunbojeon !== 0) unclass.junbojeon = Math.round((unclass.junbojeon + diffJunbojeon) * 10) / 10;
-  return { layers, unclassified: unclass };
-}
-
-// ── Step5 필지 1건에 대한 "최종 보정값(reconciled)" 계산 (화면 요약/상세, 엑셀 데이터/합계에서 공통 사용) ──
-// 화면 상세표·엑셀 데이터행은 reconcileLanduseRow()로 보정된 값을 쓰지만, 화면 요약표와 엑셀 합계행은
-// 과거에 lm.split 원본(raw, 미보정) 값을 따로 합산했기 때문에 "필지별 보정 합계"와 "전체 합계"가
-// 서로 다른 기준으로 계산되어 소수점 반올림만큼 어긋나는 문제가 있었음.
-// → 항상 이 함수 하나로 계산한 동일한 reconciled 값을 화면/엑셀의 행(row)과 합계(total) 모두에 사용해
-//   "필지별 합 = 전체 합계"가 항상 정확히 성립하도록 함.
-function getLanduseRowReconciled(r, bjVal) {
-  const pnu = String(r.pnu || '').padStart(19, '0');
-  const lm  = forestLanduseMap[pnu] || {};
-  const areas = lm.areas || {};
-  const sp    = lm.split || {};
-  const hasSplit = forestLanduseSplitOn;
-  const layerValsRaw = FOREST_LANDUSE_LAYERS.map(name =>
-    hasSplit ? (sp[name] || { bojeon: 0, junbojeon: 0 }) : { bojeon: 0, junbojeon: (areas[name] || 0) });
-  const unclassValRaw = hasSplit ? (lm.unclassifiedSplit || { bojeon: 0, junbojeon: 0 }) : { bojeon: 0, junbojeon: (lm.unclassified || 0) };
-  const gAreas = hasSplit ? (forestGubunMap[pnu]?.areas || {}) : {};
-  const targetBojeon    = hasSplit ? ((gAreas['임업용산지'] || 0) + (gAreas['공익용산지'] || 0)) : 0;
-  const targetJunbojeon = hasSplit ? (gAreas['준보전산지'] || 0) : (bjVal || 0);
-  return reconcileLanduseRow(targetBojeon, targetJunbojeon, layerValsRaw, unclassValRaw);
-}
-
 // ── 토지이용계획 매칭: forestResultRows × forestLanduseFileLoaded.layers ──
 // ── 토지이용계획 매칭: forestResultRows × forestLanduseFileLoaded.layers ──
 // 각 필지의 보정 편입면적(B)을 레이어별 교차면적 비율로 배분 → forestLanduseMap[pnu].areas
@@ -4657,11 +4884,7 @@ async function runForestLanduseMatch() {
     try { parcelArea = pg ? calcAreaJsts(pg) : 0; } catch (e) { parcelArea = 0; }
 
     if (!pg || parcelArea <= 0) {
-      // 필지 geometry가 없어 비율보정 자체가 불가능한 케이스
-      // → "보정전"은 원본 편입구적면적(r.pyeonipArea)을 그대로 사용 (B는 대장면적 연계 등으로 원본과 다를 수 있으므로 raw 값으로 부적절)
-      const rawFallback = (typeof r.pyeonipArea === 'number' && !isNaN(r.pyeonipArea)) ? r.pyeonipArea : 0;
-      forestLanduseMap[pnu] = { areas: {}, unclassified: B, split: {}, unclassifiedSplit: hasGubunData ? { bojeon: 0, junbojeon: B } : null,
-        areasRaw: {}, unclassifiedRaw: rawFallback, splitRaw: {}, unclassifiedSplitRaw: hasGubunData ? { bojeon: 0, junbojeon: rawFallback } : null };
+      forestLanduseMap[pnu] = { areas: {}, unclassified: B, split: {}, unclassifiedSplit: hasGubunData ? { bojeon: 0, junbojeon: B } : null };
       unmatched++;
       if ((idx + 1) % CHUNK === 0 || idx === total - 1) {
         if (statusEl) statusEl.innerHTML = `<span style="color:var(--ink3)">⏳ 교차분석 중... ${idx+1}/${total}필지</span>`;
@@ -4707,16 +4930,10 @@ async function runForestLanduseMatch() {
 
     const unclassifiedArea = Math.max(0, parcelArea - interSum);
     const areas = {};
-    const areasRaw = {};   // 보정 전(원본 교차면적) — 비율보정 적용 전 값
-    FOREST_LANDUSE_LAYERS.forEach(name => {
-      areasRaw[name] = rawIa[name] || 0;
-      areas[name] = B * (rawIa[name] || 0) / parcelArea;
-    });
+    FOREST_LANDUSE_LAYERS.forEach(name => { areas[name] = B * (rawIa[name] || 0) / parcelArea; });
     const unclassified = B * unclassifiedArea / parcelArea;
-    const unclassifiedRaw = unclassifiedArea;   // 보정 전 미분류 면적
 
     let split = {}, unclassifiedSplit = null;
-    let splitRaw = {}, unclassifiedSplitRaw = null;   // 보정 전(원본 교차면적 기준) 보전/준보전 값
     if (hasGubunData) {
       // Step4에서 이미 산출된 필지의 최종 보전/준보전 면적(B로 배분·반올림 완료된 값)을 기준으로,
       // 각 레이어의 raw 교차비율에 따라 재배분 → 합계가 항상 보전/준보전 최종값과 일치
@@ -4734,7 +4951,6 @@ async function runForestLanduseMatch() {
       const rawJunbojeonInPg = Math.max(0, parcelArea - rawBojeonInPg);
 
       let sumLayerBojeon = 0, sumLayerJunbojeon = 0;
-      let sumRawIb = 0, sumRawIj = 0;
       FOREST_LANDUSE_LAYERS.forEach(name => {
         const ibRaw = rawIb[name] || 0;
         const iaRaw = rawIa[name] || 0;
@@ -4744,23 +4960,16 @@ async function runForestLanduseMatch() {
         const layerBojeon    = aBojeonFinal    * bShare;
         const layerJunbojeon = aJunbojeonFinal * jShare;
         split[name] = { bojeon: layerBojeon, junbojeon: layerJunbojeon };
-        splitRaw[name] = { bojeon: ibRaw, junbojeon: ijRaw };   // 보정 전(원본 교차면적) 보전/준보전
         sumLayerBojeon    += layerBojeon;
         sumLayerJunbojeon += layerJunbojeon;
-        sumRawIb += ibRaw;
-        sumRawIj += ijRaw;
       });
       unclassifiedSplit = {
         bojeon:    Math.max(0, aBojeonFinal    - sumLayerBojeon),
         junbojeon: Math.max(0, aJunbojeonFinal - sumLayerJunbojeon)
       };
-      unclassifiedSplitRaw = {
-        bojeon:    Math.max(0, rawBojeonInPg    - sumRawIb),
-        junbojeon: Math.max(0, rawJunbojeonInPg - sumRawIj)
-      };
     }
 
-    forestLanduseMap[pnu] = { areas, unclassified, split, unclassifiedSplit, areasRaw, unclassifiedRaw, splitRaw, unclassifiedSplitRaw };
+    forestLanduseMap[pnu] = { areas, unclassified, split, unclassifiedSplit };
     if (interSum > 0) matched++; else unmatched++;
 
     if ((idx + 1) % CHUNK === 0 || idx === total - 1) {
@@ -4786,28 +4995,31 @@ function renderForestLanduseSummary() {
   if (!forestLanduseFileLoaded || FOREST_LANDUSE_LAYERS.length === 0) { if (card) card.style.display = 'none'; return; }
   if (card) card.style.display = 'block';
 
+  const splitOn = forestLanduseSplitOn;
   const sums = {}; FOREST_LANDUSE_LAYERS.forEach(n => sums[n] = { area: 0, count: 0, bojeon: 0, junbojeon: 0 });
   let unclassSum = 0, unclassBojeon = 0, unclassJunbojeon = 0, totalArea = 0;
   forestResultRows.forEach(r => {
     const pnu = String(r.pnu || '').padStart(19, '0');
     const lm  = forestLanduseMap[pnu] || {};
     const areas = lm.areas || {};
-    const B = getFarmBojeong(r);
-    totalArea += B;
-    // 상세표·엑셀과 동일하게 "필지별 보정(reconciled)" 값을 집계해야 요약표 합계가 상세표 합과 정확히 일치함
-    const rec = getLanduseRowReconciled(r, B);
-    FOREST_LANDUSE_LAYERS.forEach((n, idx) => {
+    totalArea += getFarmBojeong(r);
+    FOREST_LANDUSE_LAYERS.forEach(n => {
       const a = areas[n] || 0;
       if (a > 0) { sums[n].area += a; sums[n].count++; }
-      const s = rec.layers[idx] || { bojeon: 0, junbojeon: 0 };
-      sums[n].bojeon += s.bojeon; sums[n].junbojeon += s.junbojeon;
+      if (splitOn) {
+        const s = (lm.split || {})[n] || { bojeon: 0, junbojeon: 0 };
+        sums[n].bojeon += s.bojeon; sums[n].junbojeon += s.junbojeon;
+      }
     });
     unclassSum += (lm.unclassified || 0);
-    unclassBojeon += rec.unclassified.bojeon; unclassJunbojeon += rec.unclassified.junbojeon;
+    if (splitOn) {
+      const us = lm.unclassifiedSplit || { bojeon: 0, junbojeon: 0 };
+      unclassBojeon += us.bojeon; unclassJunbojeon += us.junbojeon;
+    }
   });
   const fmtN = v => (Math.round(v*10)/10).toLocaleString(undefined,{minimumFractionDigits:1,maximumFractionDigits:1});
 
-  {
+  if (splitOn) {
     el.innerHTML = `<table class="farm-stat-table">
       <thead><tr><th>레이어(용도구분)</th><th>필지 수</th><th>보전산지(㎡)</th><th>준보전산지(㎡)</th><th>합계(㎡)</th><th>비율</th></tr></thead>
       <tbody>
@@ -4835,24 +5047,49 @@ function renderForestLanduseSummary() {
           <td>100%</td>
         </tr>
       </tbody>
-    </table>`;
+    </table>
+    <div style="font-size:11px;color:var(--ink3);padding:6px 10px">※ 필지의 보정 편입면적을 레이어별 × 산지구분별(보전/준보전) 교차면적 비율로 배분 · 미분류는 어느 레이어와도 겹치지 않는(비어있는) 부분 (필지 수는 중복 계상)</div>`;
+  } else {
+    const rows = FOREST_LANDUSE_LAYERS.map(n => [n, sums[n]]);
+    el.innerHTML = `<table class="farm-stat-table">
+      <thead><tr><th>레이어(용도구분)</th><th>필지 수</th><th>면적(㎡)</th><th>비율</th></tr></thead>
+      <tbody>
+        ${rows.map(([label, g]) => `<tr>
+          <td style="text-align:left;padding-left:18px">${escHtml(label)}</td>
+          <td>${g.count.toLocaleString()}필지</td>
+          <td>${fmtN(g.area)}</td>
+          <td>${totalArea>0?(g.area/totalArea*100).toFixed(1):'0.0'}%</td>
+        </tr>`).join('')}
+        <tr>
+          <td style="text-align:left;padding-left:18px;color:var(--ink3)">미분류</td>
+          <td>-</td>
+          <td>${fmtN(unclassSum)}</td>
+          <td>${totalArea>0?(unclassSum/totalArea*100).toFixed(1):'0.0'}%</td>
+        </tr>
+        <tr class="farm-total">
+          <td style="text-align:left;padding-left:18px">합계 (전체 산지 편입면적)</td>
+          <td>${forestResultRows.length.toLocaleString()}필지</td>
+          <td>${fmtN(totalArea)}</td>
+          <td>100%</td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="font-size:11px;color:var(--ink3);padding:6px 10px">※ 필지의 보정 편입면적을 레이어별 교차면적 비율로 배분 · 어느 레이어와도 겹치지 않는(비어있는) 부분은 미분류로 표기 (필지 수는 중복 계상) · Step4에서 산지구분도를 매칭하면 보전/준보전 세분화가 표시됩니다</div>`;
   }
 }
 
 function renderForestLanduseDetailTable() {
   const card  = document.getElementById('forest-landuse-detail-card');
-  const note  = document.getElementById('forest-landuse-detail-note');
   const thead = document.getElementById('forest-landuse-result-thead');
   const tbody = document.getElementById('forest-landuse-result-body');
   if (!thead || !tbody) return;
   if (!forestLanduseFileLoaded || FOREST_LANDUSE_LAYERS.length === 0) { if (card) card.style.display = 'none'; return; }
   if (card) card.style.display = 'block';
-  if (note) note.innerHTML = '';
 
-  const hasSplit = forestLanduseSplitOn;   // Step4 산지구분도 매칭으로 실제 보전/준보전 세분화 값이 있는지
+  const splitOn = forestLanduseSplitOn;
   const fmt = v => (v == null || isNaN(v) || v <= 0) ? '-' : Number(v).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
-  {
+  if (splitOn) {
     let row1 = `<tr class="th-main">`
       + `<th rowspan="2">PNU</th><th rowspan="2">연번</th><th rowspan="2">지번</th><th rowspan="2">지목</th>`
       + `<th rowspan="2" style="background:#1a3a6e;color:white">편입면적 보정(㎡)</th>`;
@@ -4861,14 +5098,19 @@ function renderForestLanduseDetailTable() {
     let row2 = `<tr class="th-main">`;
     const subCount = FOREST_LANDUSE_LAYERS.length + 1;
     for (let i = 0; i < subCount; i++) {
-      row2 += `<th style="background:#8b5cf6;color:white;font-weight:600">보전</th><th style="background:#a78bfa;color:white;font-weight:600">준보전</th>`;
+      row2 += `<th style="background:#8b5cf6;color:white;font-weight:600">보전산지</th><th style="background:#a78bfa;color:white;font-weight:600">준보전산지</th>`;
     }
     row2 += `</tr>`;
     thead.innerHTML = row1 + row2;
+  } else {
+    let h = `<tr class="th-main"><th>PNU</th><th>연번</th><th>지번</th><th>지목</th><th style="background:#1a3a6e;color:white">편입면적 보정(㎡)</th>`;
+    FOREST_LANDUSE_LAYERS.forEach(name => { h += `<th style="background:#6d28d9;color:white">${escHtml(name)}(㎡)</th>`; });
+    h += `<th style="background:#6d28d9;color:white">미분류(㎡)</th></tr>`;
+    thead.innerHTML = h;
   }
 
   if (forestResultRows.length === 0) {
-    const colCount = 5 + (FOREST_LANDUSE_LAYERS.length + 1) * 2;
+    const colCount = 5 + (splitOn ? (FOREST_LANDUSE_LAYERS.length + 1) * 2 : FOREST_LANDUSE_LAYERS.length + 1);
     tbody.innerHTML = `<tr><td colspan="${colCount}" style="padding:30px;text-align:center;color:var(--ink3)">데이터가 없습니다</td></tr>`;
     return;
   }
@@ -4878,12 +5120,20 @@ function renderForestLanduseDetailTable() {
     const linked= extra['area'] ? parseFloat(String(extra['area']).replace(/,/g,'')) : null;
     const bj    = calcBojeong(r, linked);
     const bjVal = (bj!=null && !isNaN(bj)) ? bj : r.pyeonipArea;
+    const lm    = forestLanduseMap[pnu] || {};
+    const areas = lm.areas || {};
     let cells;
-    {
-      // 화면 요약표/엑셀 데이터·합계행과 동일한 getLanduseRowReconciled()로 계산해 항상 서로 일치시킴
-      const rec = getLanduseRowReconciled(r, bjVal);
-      cells = rec.layers.map(s => `<td class="td-mono td-right">${fmt(s.bojeon)}</td><td class="td-mono td-right">${fmt(s.junbojeon)}</td>`).join('');
-      cells += `<td class="td-mono td-right">${fmt(rec.unclassified.bojeon)}</td><td class="td-mono td-right">${fmt(rec.unclassified.junbojeon)}</td>`;
+    if (splitOn) {
+      const sp = lm.split || {};
+      cells = FOREST_LANDUSE_LAYERS.map(name => {
+        const s = sp[name] || { bojeon: 0, junbojeon: 0 };
+        return `<td class="td-mono td-right">${fmt(s.bojeon)}</td><td class="td-mono td-right">${fmt(s.junbojeon)}</td>`;
+      }).join('');
+      const us = lm.unclassifiedSplit || { bojeon: 0, junbojeon: 0 };
+      cells += `<td class="td-mono td-right">${fmt(us.bojeon)}</td><td class="td-mono td-right">${fmt(us.junbojeon)}</td>`;
+    } else {
+      cells = FOREST_LANDUSE_LAYERS.map(name => `<td class="td-mono td-right">${fmt(areas[name])}</td>`).join('')
+        + `<td class="td-mono td-right">${fmt(lm.unclassified)}</td>`;
     }
     return `<tr>
       <td class="td-mono" style="font-size:10px">${escHtml(r.pnu)}</td>
@@ -4906,8 +5156,7 @@ function exportForestExcel() {
   const includeGubun = document.getElementById('forest-opt-gubun')?.checked;
   const hasGubun = includeGubun && Object.keys(forestGubunMap).length > 0;
   const hasLanduse = Object.keys(forestLanduseMap).length > 0;   // Step 5에서 업로드되면 자동 포함
-  const landuseSplitOn = hasLanduse;                                // 레이어 열은 Step4 매칭 여부와 무관하게 항상 보전/준보전 2열로 표기
-  const landuseHasRealSplit = hasLanduse && forestLanduseSplitOn;   // 실제 Step4 매칭값 존재 여부 (없으면 전량 준보전으로 채움)
+  const landuseSplitOn = hasLanduse && forestLanduseSplitOn;      // Step4 산지구분 매칭 결과가 있으면 보전/준보전 세분화
 
   const BASE_HEADS  = ['PNU','연번','시도','시군구','읍면동','대장구분',
                        '지번','지목','필지구적면적(㎡)','편입구적면적(㎡)','편입면적 보정(㎡)','편입구분'];
@@ -4917,18 +5166,16 @@ function exportForestExcel() {
     ? ['산지구분 합계(㎡)','보전산지-임업용(㎡)','보전산지-공익용(㎡)','준보전산지(㎡)']
     : (includeGubun ? ['산지구분'] : []);
   // 토지이용계획 레이어별 면적 (Step 5, Layer 필드명 그대로 헤더에 사용) + 미분류
-  // 레이어당 [보전산지,준보전산지] 2개 컬럼으로 항상 분리 (Step4 미매칭 시 전량 준보전산지로 표기)
+  // landuseSplitOn이면 레이어별로 보전산지/준보전산지 2개 컬럼으로 분리
   const LANDUSE_HEADS = hasLanduse
-    ? [...FOREST_LANDUSE_LAYERS.flatMap(n => [`${n}-보전산지(㎡)`, `${n}-준보전산지(㎡)`]),
-       '미분류-보전산지(㎡)', '미분류-준보전산지(㎡)']
+    ? (landuseSplitOn
+        ? [...FOREST_LANDUSE_LAYERS.flatMap(n => [`${n}-보전산지(㎡)`, `${n}-준보전산지(㎡)`]), '미분류-보전산지(㎡)', '미분류-준보전산지(㎡)']
+        : [...FOREST_LANDUSE_LAYERS.map(n => `${n}(㎡)`), '미분류(㎡)'])
     : [];
   const ALL_HEADS = [...BASE_HEADS, ...OWNER_HEADS, ...GUBUN_HEADS, ...LANDUSE_HEADS];
 
   const r1 = v => (v==null || isNaN(v)) ? v : Math.round(v * 10000) / 10000;   // 소수 자릿수 보존 (부동소수 잡음만 제거)
   const r1Land = v => (v==null || isNaN(v)) ? v : Math.round(v * 10) / 10;    // Step5 토지이용계획 면적은 소수점 1자리로 반올림
-  // 토지이용계획 합계행 누적용 — 반드시 각 데이터행에 실제로 기록되는 값(reconciled)을 그대로 더해야
-  // "합계" 행이 개별 필지 행들의 합과 정확히 일치함 (과거엔 합계행만 별도로 raw 값을 다시 합산해 어긋났음)
-  const luTotals = { layers: FOREST_LANDUSE_LAYERS.map(() => ({ bojeon: 0, junbojeon: 0 })), unclassified: { bojeon: 0, junbojeon: 0 } };
   const data = forestResultRows.map((r, i) => {
     const pnu   = String(r.pnu || '').padStart(19, '0');
     const extra = (typeof ldLinkExtra !== 'undefined' ? ldLinkExtra[pnu] : null) || {};
@@ -4956,11 +5203,20 @@ function exportForestExcel() {
       row.push(forestGubunMap[pnu]?.label || '준보전산지');
     }
     if (hasLanduse) {
-      // 화면 요약표/상세표와 동일한 getLanduseRowReconciled()로 계산 + 합계행용 누적(luTotals)까지 동시에 처리
-      const rec = getLanduseRowReconciled(r, bjVal);
-      rec.layers.forEach((s, idx) => { row.push(s.bojeon, s.junbojeon); luTotals.layers[idx].bojeon += s.bojeon; luTotals.layers[idx].junbojeon += s.junbojeon; });
-      row.push(rec.unclassified.bojeon, rec.unclassified.junbojeon);
-      luTotals.unclassified.bojeon += rec.unclassified.bojeon; luTotals.unclassified.junbojeon += rec.unclassified.junbojeon;
+      const lm = forestLanduseMap[pnu] || {};
+      if (landuseSplitOn) {
+        const sp = lm.split || {};
+        FOREST_LANDUSE_LAYERS.forEach(name => {
+          const s = sp[name] || { bojeon: 0, junbojeon: 0 };
+          row.push(r1Land(s.bojeon), r1Land(s.junbojeon));
+        });
+        const us = lm.unclassifiedSplit || { bojeon: 0, junbojeon: 0 };
+        row.push(r1Land(us.bojeon), r1Land(us.junbojeon));
+      } else {
+        const areas = lm.areas || {};
+        FOREST_LANDUSE_LAYERS.forEach(name => row.push(r1Land(areas[name]||0)));
+        row.push(r1Land(lm.unclassified||0));
+      }
     }
     return row;
   });
@@ -4997,37 +5253,50 @@ function exportForestExcel() {
       tot.push(gsum, r1(cat['임업용산지']), r1(cat['공익용산지']), r1(cat['준보전산지']));
     }
     if (hasLanduse) {
-      // luTotals는 위 data.map()에서 각 필지 행에 실제로 기록한 reconciled 값을 그대로 누적한 것이므로,
-      // 이 합계행은 항상 개별 필지 행들의 합과 정확히 일치함
-      luTotals.layers.forEach(s => tot.push(r1Land(s.bojeon), r1Land(s.junbojeon)));
-      tot.push(r1Land(luTotals.unclassified.bojeon), r1Land(luTotals.unclassified.junbojeon));
+      if (landuseSplitOn) {
+        const sums = {}; FOREST_LANDUSE_LAYERS.forEach(n => sums[n] = { bojeon: 0, junbojeon: 0 });
+        let unclassBojeon = 0, unclassJunbojeon = 0;
+        forestResultRows.forEach(r => {
+          const p = String(r.pnu||'').padStart(19,'0');
+          const lm = forestLanduseMap[p] || {}; const sp = lm.split || {};
+          FOREST_LANDUSE_LAYERS.forEach(n => { const s = sp[n]||{bojeon:0,junbojeon:0}; sums[n].bojeon += s.bojeon; sums[n].junbojeon += s.junbojeon; });
+          const us = lm.unclassifiedSplit || { bojeon:0, junbojeon:0 };
+          unclassBojeon += us.bojeon; unclassJunbojeon += us.junbojeon;
+        });
+        FOREST_LANDUSE_LAYERS.forEach(n => tot.push(r1Land(sums[n].bojeon), r1Land(sums[n].junbojeon)));
+        tot.push(r1Land(unclassBojeon), r1Land(unclassJunbojeon));
+      } else {
+        const sums = {}; FOREST_LANDUSE_LAYERS.forEach(n => sums[n] = 0);
+        let unclassSum = 0;
+        forestResultRows.forEach(r => {
+          const p = String(r.pnu||'').padStart(19,'0');
+          const lm = forestLanduseMap[p] || {}; const areas = lm.areas || {};
+          FOREST_LANDUSE_LAYERS.forEach(n => sums[n] += (areas[n]||0));
+          unclassSum += (lm.unclassified||0);
+        });
+        FOREST_LANDUSE_LAYERS.forEach(n => tot.push(r1Land(sums[n])));
+        tot.push(r1Land(unclassSum));
+      }
     }
     data.push(tot);
   }
 
   let ws;
-  if (hasLanduse) {
-    // 2행 헤더: 1행에 레이어명(또는 산지구분) 병합 셀, 2행에 세부 서브헤더
+  if (landuseSplitOn) {
+    // 2행 헤더: 1행에 레이어명 병합 셀, 2행에 보전산지/준보전산지 서브헤더
     const fixedCount = BASE_HEADS.length + OWNER_HEADS.length + GUBUN_HEADS.length;
     const headerRow1 = [...BASE_HEADS, ...OWNER_HEADS, ...GUBUN_HEADS];
     const headerRow2 = new Array(fixedCount).fill('');
-    const subLabels = landuseSplitOn
-      ? ['보전산지', '준보전산지']
-      : [''];
-    const groupSpan = subLabels.length;
-    FOREST_LANDUSE_LAYERS.forEach(name => {
-      headerRow1.push(`${name}(㎡)`, ...new Array(groupSpan - 1).fill(''));
-      headerRow2.push(...subLabels);
-    });
-    headerRow1.push('미분류(㎡)', ...new Array(groupSpan - 1).fill(''));
-    headerRow2.push(...subLabels);
+    FOREST_LANDUSE_LAYERS.forEach(name => { headerRow1.push(`${name}(㎡)`, ''); headerRow2.push('보전산지', '준보전산지'); });
+    headerRow1.push('미분류(㎡)', '');
+    headerRow2.push('보전산지', '준보전산지');
 
     ws = XLSX.utils.aoa_to_sheet([headerRow1, headerRow2, ...data]);
     const merges = [];
     for (let c = 0; c < fixedCount; c++) merges.push({ s: { r: 0, c }, e: { r: 1, c } });   // 고정 컬럼: 세로 병합
     let c = fixedCount;
-    FOREST_LANDUSE_LAYERS.forEach(() => { merges.push({ s: { r: 0, c: c }, e: { r: 0, c: c + groupSpan - 1 } }); c += groupSpan; });  // 레이어명: 가로 병합
-    merges.push({ s: { r: 0, c: c }, e: { r: 0, c: c + groupSpan - 1 } });   // 미분류: 가로 병합
+    FOREST_LANDUSE_LAYERS.forEach(() => { merges.push({ s: { r: 0, c: c }, e: { r: 0, c: c + 1 } }); c += 2; });  // 레이어명: 가로 병합
+    merges.push({ s: { r: 0, c: c }, e: { r: 0, c: c + 1 } });   // 미분류: 가로 병합
     ws['!merges'] = merges;
     ws['!cols'] = headerRow1.map(h => ({ wch: (h && h.length > 8) ? 16 : 12 }));
   } else {
