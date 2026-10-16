@@ -3,1101 +3,733 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>프로젝트 상세</title>
+<title>대체산림자원조성비 산출</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
 
 :root {
-  --bg: #f4f2ee;
-  --white: #fff;
-  --ink: #1a1a1a;
-  --ink2: #444;
-  --ink3: #888;
-  --border: #ddd9d0;
-  --border2: #eceae4;
-  --green: #1a5c3a;
-  --green-light: #e6f2eb;
-  --green-mid: #2e7d52;
-  --blue: #1a3a6e;
-  --blue-light: #e8f0fc;
-  --amber: #b45309;
-  --amber-light: #fef3cd;
-  --red: #b91c1c;
-  --red-light: #fee2e2;
-  --purple: #5b21b6;
-  --purple-light: #ede9fe;
-  --teal: #0f766e;
-  --teal-light: #ccfbf1;
-  --shadow: 0 1px 4px rgba(0,0,0,0.07);
-  --shadow-md: 0 4px 20px rgba(0,0,0,0.10);
-  --shadow-lg: 0 8px 32px rgba(0,0,0,0.13);
+  --bg:#f4f2ee; --white:#fff; --ink:#1a1a1a; --ink2:#444; --ink3:#888;
+  --border:#ddd9d0; --border2:#eceae4;
+  --green:#1a5c3a; --green-light:#e6f2eb; --green-mid:#2e7d52;
+  --blue:#1a3a6e; --blue-light:#e8f0fc;
+  --amber:#b45309; --amber-light:#fef3cd;
+  --red:#b91c1c; --red-light:#fee2e2;
+  --teal:#0f766e; --teal-light:#ccfbf1;
+  --shadow:0 1px 4px rgba(0,0,0,0.07); --shadow-md:0 4px 16px rgba(0,0,0,0.10);
 }
-
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--ink); min-height:100vh; }
 
-/* TOPBAR */
-.topbar {
-  background:var(--green); color:white;
-  padding:0 28px; height:54px;
-  display:flex; align-items:center; justify-content:space-between;
-  position:sticky; top:0; z-index:200;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-}
-.topbar-left { display:flex; align-items:center; gap:12px; }
-.back-btn {
-  background:rgba(255,255,255,0.15); border:none; color:white;
-  padding:6px 14px; border-radius:7px; font-size:12px; font-weight:700;
-  cursor:pointer; font-family:'Noto Sans KR',sans-serif;
-  display:flex; align-items:center; gap:5px; transition:background 0.15s;
-}
-.back-btn:hover { background:rgba(255,255,255,0.28); }
+.topbar { background:var(--green); color:white; padding:0 24px; height:52px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:200; }
+.topbar-left { display:flex; align-items:center; gap:10px; }
+.back-btn { background:rgba(255,255,255,0.15); border:none; color:white; padding:5px 12px; border-radius:6px; font-size:12px; cursor:pointer; font-family:inherit; font-weight:600; }
+.back-btn:hover { background:rgba(255,255,255,0.25); }
 .topbar-title { font-size:15px; font-weight:700; }
-.topbar-badge {
-  background:rgba(255,255,255,0.18); border-radius:5px;
-  padding:3px 10px; font-size:11px; font-weight:600;
-}
+.btn-top { padding:6px 14px; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; border:1px solid rgba(255,255,255,0.3); background:rgba(255,255,255,0.15); color:white; }
+.btn-top:hover { background:rgba(255,255,255,0.25); }
 
-/* MAIN */
-.main { max-width:1100px; margin:0 auto; padding:32px 20px 80px; }
+.main { max-width:1200px; margin:0 auto; padding:28px 20px 80px; }
 
-/* PROJECT HEADER */
-.project-header {
-  background:var(--white); border:1px solid var(--border);
-  border-radius:14px; padding:24px 28px; margin-bottom:28px;
-  box-shadow:var(--shadow-md);
-  display:flex; align-items:flex-start; justify-content:space-between; gap:20px;
-  flex-wrap:wrap;
-}
-.project-header-left { flex:1; min-width:200px; }
-.project-eyebrow {
-  font-size:10px; font-weight:700; text-transform:uppercase;
-  letter-spacing:1px; color:var(--ink3); font-family:'DM Mono',monospace;
-  margin-bottom:6px;
-}
-.project-title {
-  font-size:22px; font-weight:800; color:var(--ink);
-  margin-bottom:10px; line-height:1.3;
-}
-.project-meta { display:flex; gap:18px; flex-wrap:wrap; }
-.meta-chip {
-  display:flex; align-items:center; gap:5px;
-  font-size:12px; color:var(--ink3);
-}
-.meta-chip strong { color:var(--ink2); font-weight:600; }
+.step-progress { display:flex; align-items:center; background:var(--white); border:1px solid var(--border); border-radius:12px; padding:18px 24px; margin-bottom:24px; box-shadow:var(--shadow); }
+.sp-item { display:flex; flex-direction:column; align-items:center; gap:6px; flex:1; }
+.sp-circle { width:36px; height:36px; border-radius:50%; border:2px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:800; font-family:'DM Mono',monospace; background:var(--bg); color:var(--ink3); transition:all 0.3s; }
+.sp-item.active .sp-circle { background:var(--green); border-color:var(--green); color:white; }
+.sp-item.done .sp-circle { background:var(--ink); border-color:var(--ink); color:white; }
+.sp-label { font-size:11px; font-weight:600; color:var(--ink3); text-align:center; }
+.sp-item.active .sp-label { color:var(--green); font-weight:800; }
+.sp-item.done .sp-label { color:var(--ink); }
+.sp-line { height:2px; flex:0.6; background:var(--border); margin-bottom:20px; }
+.sp-line.done { background:var(--ink); }
 
-.project-header-right { display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
+.sec-card { background:var(--white); border:1px solid var(--border); border-radius:12px; padding:22px 24px; margin-bottom:16px; box-shadow:var(--shadow); }
+.sec-card-title { font-size:13px; font-weight:700; color:var(--ink3); text-transform:uppercase; letter-spacing:0.8px; font-family:'DM Mono',monospace; margin-bottom:14px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.sec-card-title .dot { width:6px; height:6px; border-radius:50%; background:var(--green); }
+.sec-card-title .sub { font-size:11px; font-weight:400; text-transform:none; letter-spacing:0; font-family:'Noto Sans KR',sans-serif; }
 
-/* STATUS BADGE */
-.status-badge {
-  display:inline-flex; align-items:center; gap:4px;
-  padding:5px 12px; border-radius:20px; font-size:12px; font-weight:700;
-}
-.s-진행중 { background:#dbeafe; color:#1d4ed8; }
-.s-검토중 { background:var(--amber-light); color:var(--amber); }
-.s-완료   { background:var(--green-light); color:var(--green); }
-.s-보류   { background:#f3f4f6; color:#6b7280; }
+.alert { border-radius:8px; padding:12px 16px; font-size:13px; line-height:1.7; margin-bottom:14px; display:flex; gap:10px; }
+.alert-icon { font-size:16px; flex-shrink:0; margin-top:1px; }
+.alert-blue { background:var(--blue-light); color:#1a2a5e; border:1px solid #b8ccf0; }
+.alert-green { background:var(--green-light); color:#1a4a2e; border:1px solid #b8dfc6; }
+.alert-amber { background:var(--amber-light); color:#7a3a09; border:1px solid #f0d89a; }
+.alert-red { background:var(--red-light); color:#7f1d1d; border:1px solid #fca5a5; }
 
-/* STATS ROW */
-.stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:28px; }
-.stat-card {
-  background:var(--white); border:1px solid var(--border);
-  border-radius:10px; padding:14px 18px; box-shadow:var(--shadow);
-}
+.upload-box { border:2px dashed var(--border); border-radius:10px; padding:28px 20px; text-align:center; cursor:pointer; transition:all 0.2s; background:var(--bg); }
+.upload-box:hover, .upload-box.drag-over { border-color:var(--green); background:var(--green-light); }
+.upload-box.done { border-color:var(--green); border-style:solid; background:var(--green-light); }
+.upload-icon { font-size:30px; margin-bottom:8px; }
+.upload-title { font-size:14px; font-weight:700; margin-bottom:4px; }
+.upload-desc { font-size:12px; color:var(--ink3); line-height:1.6; }
+.upload-label { display:inline-block; margin-top:12px; padding:8px 18px; background:var(--green); color:white; border-radius:7px; font-size:12px; font-weight:700; cursor:pointer; }
+
+/* 기준 단가 */
+.rate-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+.rate-box { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:12px 14px; }
+.rate-box label { display:block; font-size:11px; color:var(--ink3); font-weight:600; margin-bottom:6px; }
+.rate-box .rate-input-wrap { display:flex; align-items:baseline; gap:4px; }
+.rate-box input { width:100%; border:none; background:transparent; font-size:18px; font-weight:800; font-family:'DM Mono',monospace; color:var(--ink); outline:none; text-align:right; }
+.rate-box .unit { font-size:11px; color:var(--ink3); white-space:nowrap; }
+.rate-box:focus-within { border-color:var(--green); background:var(--white); }
+.rate-meta { display:flex; align-items:center; gap:10px; margin-top:12px; flex-wrap:wrap; font-size:12px; color:var(--ink3); }
+.rate-meta input[type=text] { padding:5px 10px; border:1px solid var(--border); border-radius:6px; font-size:12px; font-family:inherit; width:160px; outline:none; }
+.rate-meta input[type=text]:focus { border-color:var(--green); }
+.formula { margin-top:14px; padding:10px 14px; background:#fafaf7; border:1px solid var(--border2); border-radius:8px; font-size:12px; color:var(--ink2); font-family:'DM Mono',monospace; line-height:1.8; }
+
+/* 테이블 */
+.table-wrap { overflow-x:auto; border-radius:10px; border:1px solid var(--border); }
+table.grid { width:100%; border-collapse:collapse; background:var(--white); font-size:12px; }
+table.grid th { background:var(--ink); color:white; padding:8px 10px; text-align:center; font-size:11px; font-weight:700; font-family:'DM Mono',monospace; white-space:nowrap; border-right:1px solid rgba(255,255,255,0.12); position:sticky; top:0; }
+table.grid th.sub { background:#2a2a2a; color:rgba(255,255,255,0.8); font-weight:600; }
+table.grid th:last-child { border-right:none; }
+table.grid td { padding:8px 10px; border-bottom:1px solid var(--border2); border-right:1px solid var(--border2); text-align:center; color:var(--ink2); white-space:nowrap; vertical-align:middle; }
+table.grid td:last-child { border-right:none; }
+table.grid tr:hover td { background:#faf9f6; }
+table.grid tr.excluded td { color:#bbb; background:#fafafa; }
+table.grid tr.total td { background:var(--green-light); color:var(--green); font-weight:800; border-top:2px solid var(--green); font-family:'DM Mono',monospace; }
+.num { text-align:right !important; font-family:'DM Mono',monospace; }
+.mono { font-family:'DM Mono',monospace; font-size:11px; }
+.left { text-align:left !important; }
+.cell-input { width:64px; padding:4px 6px; border:1px solid var(--border); border-radius:5px; font-family:'DM Mono',monospace; font-size:12px; text-align:right; outline:none; }
+.cell-input:focus { border-color:var(--green); }
+.cell-input:disabled { background:#f3f3f3; color:#bbb; }
+.chk { width:15px; height:15px; accent-color:var(--green); cursor:pointer; }
+.tag { display:inline-block; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:700; }
+.tag-red { background:var(--red-light); color:var(--red); }
+.tag-amber { background:var(--amber-light); color:var(--amber); }
+
+/* 결과 카드 */
+.stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
+.stat-card { background:var(--white); border:1px solid var(--border); border-radius:10px; padding:14px 18px; box-shadow:var(--shadow); }
 .stat-label { font-size:10px; color:var(--ink3); font-weight:700; text-transform:uppercase; letter-spacing:0.6px; margin-bottom:5px; font-family:'DM Mono',monospace; }
 .stat-val { font-size:20px; font-weight:800; font-family:'DM Mono',monospace; }
+.stat-val.big { color:var(--green); }
 .stat-unit { font-size:11px; color:var(--ink3); margin-left:2px; font-weight:400; font-family:'Noto Sans KR',sans-serif; }
 
-/* SECTION TITLE */
-.section-title {
-  font-size:11px; font-weight:800; text-transform:uppercase;
-  letter-spacing:1px; color:var(--ink3); font-family:'DM Mono',monospace;
-  margin-bottom:14px; display:flex; align-items:center; gap:8px;
-}
-.section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+.toolbar { display:flex; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+.search { padding:8px 12px; border:1px solid var(--border); border-radius:7px; font-size:12px; font-family:inherit; outline:none; min-width:220px; }
+.search:focus { border-color:var(--green); }
+.btn-sm { padding:8px 14px; border-radius:7px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; border:1px solid var(--border); background:var(--white); color:var(--ink2); }
+.btn-sm:hover { background:var(--green); color:white; border-color:var(--green); }
+.btn-primary { padding:10px 24px; border:none; border-radius:8px; background:var(--green); color:white; font-size:13px; font-weight:700; font-family:inherit; cursor:pointer; }
+.btn-primary:hover { background:var(--green-mid); }
+.btn-primary:disabled { background:#aaa; cursor:not-allowed; }
+.btn-dark { background:var(--ink); }
+.btn-dark:hover { background:#333; }
+.nav-btns { display:flex; justify-content:flex-end; gap:8px; margin-top:4px; }
 
-/* WORK GRID */
-.work-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:32px; }
+.hidden { display:none !important; }
 
-.work-card {
-  background:var(--white); border:1px solid var(--border);
-  border-radius:14px; padding:22px; cursor:pointer;
-  transition:all 0.2s; box-shadow:var(--shadow);
-  display:flex; flex-direction:column; gap:12px;
-  position:relative; overflow:hidden;
-  text-decoration:none; color:inherit;
-}
-.work-card::before {
-  content:''; position:absolute; top:0; left:0; right:0;
-  height:3px; border-radius:14px 14px 0 0;
-  transition:height 0.2s;
-}
-.work-card:hover { transform:translateY(-3px); box-shadow:var(--shadow-lg); border-color:transparent; }
-.work-card:hover::before { height:4px; }
-
-.wc-green::before  { background:var(--green); }
-.wc-blue::before   { background:var(--blue); }
-.wc-amber::before  { background:var(--amber); }
-.wc-purple::before { background:var(--purple); }
-.wc-teal::before   { background:var(--teal); }
-.wc-red::before    { background:var(--red); }
-
-.work-card:hover.wc-green  { border-color:var(--green-light);  background:linear-gradient(160deg,#fff 60%,var(--green-light)); }
-.work-card:hover.wc-blue   { border-color:var(--blue-light);   background:linear-gradient(160deg,#fff 60%,var(--blue-light)); }
-.work-card:hover.wc-amber  { border-color:var(--amber-light);  background:linear-gradient(160deg,#fff 60%,var(--amber-light)); }
-.work-card:hover.wc-purple { border-color:var(--purple-light); background:linear-gradient(160deg,#fff 60%,var(--purple-light)); }
-.work-card:hover.wc-teal   { border-color:var(--teal-light);   background:linear-gradient(160deg,#fff 60%,var(--teal-light)); }
-.work-card:hover.wc-red    { border-color:var(--red-light);    background:linear-gradient(160deg,#fff 60%,var(--red-light)); }
-
-.wc-icon { font-size:28px; }
-.wc-top { display:flex; align-items:flex-start; justify-content:space-between; }
-
-.wc-badge {
-  font-size:9px; font-weight:800; padding:3px 8px;
-  border-radius:10px; text-transform:uppercase; letter-spacing:0.5px;
-  font-family:'DM Mono',monospace;
-}
-.badge-ready  { background:var(--green-light);  color:var(--green); }
-.badge-soon   { background:var(--amber-light);  color:var(--amber); }
-.badge-plan   { background:#f3f4f6; color:#6b7280; }
-
-.wc-title { font-size:15px; font-weight:800; color:var(--ink); }
-.wc-desc  { font-size:12px; color:var(--ink3); line-height:1.65; }
-
-.wc-footer {
-  margin-top:auto; padding-top:10px; border-top:1px solid var(--border2);
-  display:flex; align-items:center; justify-content:space-between;
-}
-.wc-tag { font-size:10px; font-family:'DM Mono',monospace; color:var(--ink3); }
-.wc-arrow { font-size:14px; color:var(--ink3); transition:transform 0.2s; }
-.work-card:hover .wc-arrow { transform:translateX(4px); }
-
-/* COMING SOON OVERLAY */
-.work-card.coming-soon { cursor:default; opacity:0.7; }
-.work-card.coming-soon:hover { transform:none; box-shadow:var(--shadow); }
-
-/* RECENT ACTIVITY */
-.activity-list { display:flex; flex-direction:column; gap:0; }
-.activity-item {
-  display:flex; align-items:center; gap:14px;
-  padding:12px 0; border-bottom:1px solid var(--border2);
-}
-.activity-item:last-child { border-bottom:none; }
-.activity-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
-.activity-dot.green  { background:var(--green); }
-.activity-dot.blue   { background:var(--blue); }
-.activity-dot.amber  { background:var(--amber); }
-.activity-text { flex:1; font-size:12px; color:var(--ink2); }
-.activity-text strong { color:var(--ink); font-weight:700; }
-.activity-time { font-size:11px; color:var(--ink3); font-family:'DM Mono',monospace; white-space:nowrap; }
-
-/* MEMO CARD */
-.memo-card {
-  background:var(--white); border:1px solid var(--border);
-  border-radius:12px; padding:18px 20px; box-shadow:var(--shadow);
-}
-.memo-text { font-size:13px; color:var(--ink2); line-height:1.7; }
-
-/* GRID 2COL */
-.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px; }
-
-/* PASSWORD GATE */
-.pw-gate {
-  position:fixed; inset:0; background:var(--bg);
-  z-index:500; display:flex; align-items:center; justify-content:center;
-  padding:20px;
-}
-.pw-gate.hidden { display:none; }
-.pw-box {
-  background:var(--white); border:1px solid var(--border);
-  border-radius:20px; padding:40px 36px; width:100%; max-width:420px;
-  box-shadow:var(--shadow-lg); text-align:center;
-}
-.pw-lock-icon {
-  font-size:44px; margin-bottom:16px; display:block;
-}
-.pw-box h2 {
-  font-size:18px; font-weight:800; color:var(--ink); margin-bottom:6px;
-}
-.pw-box p {
-  font-size:13px; color:var(--ink3); margin-bottom:28px; line-height:1.6;
-}
-.pw-input-wrap {
-  position:relative; margin-bottom:12px;
-}
-.pw-input-wrap input {
-  width:100%; padding:12px 44px 12px 16px;
-  border:1.5px solid var(--border); border-radius:10px;
-  font-size:15px; font-family:'Noto Sans KR',sans-serif;
-  outline:none; transition:border 0.15s; color:var(--ink);
-  background:var(--white);
-}
-.pw-input-wrap input:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(26,92,58,0.1); }
-.pw-input-wrap input.error { border-color:var(--red); }
-.pw-eye-btn {
-  position:absolute; right:12px; top:50%; transform:translateY(-50%);
-  background:none; border:none; cursor:pointer; font-size:18px;
-  color:var(--ink3); padding:4px; line-height:1;
-}
-.pw-error-msg {
-  font-size:12px; color:var(--red); text-align:left;
-  margin-bottom:16px; display:none; padding-left:2px;
-}
-.pw-error-msg.show { display:block; }
-.pw-submit-btn {
-  width:100%; padding:12px; background:var(--green); color:white;
-  border:none; border-radius:10px; font-size:14px; font-weight:700;
-  font-family:'Noto Sans KR',sans-serif; cursor:pointer; transition:background 0.15s;
-}
-.pw-submit-btn:hover { background:var(--green-mid); }
-.pw-back-btn {
-  display:inline-block; margin-top:16px; font-size:12px;
-  color:var(--ink3); cursor:pointer; text-decoration:underline;
-  background:none; border:none; font-family:'Noto Sans KR',sans-serif;
-}
-.pw-back-btn:hover { color:var(--ink); }
-.main-content { display:none; }
-.main-content.visible { display:block; }
-
-/* ===== FAR/BCR 계산 모달 ===== */
-.far-overlay {
-  position:fixed; inset:0; background:rgba(0,0,0,0.5);
-  z-index:600; display:flex; align-items:center; justify-content:center;
-  padding:20px; opacity:0; pointer-events:none; transition:opacity 0.2s;
-}
-.far-overlay.open { opacity:1; pointer-events:auto; }
-.far-modal {
-  background:var(--white); border:1px solid var(--border);
-  border-radius:18px; width:100%; max-width:620px;
-  box-shadow:var(--shadow-lg); overflow:hidden;
-  transform:translateY(16px); transition:transform 0.25s;
-  max-height:90vh; overflow-y:auto;
-}
-.far-overlay.open .far-modal { transform:translateY(0); }
-
-.far-mhead {
-  padding:20px 24px 16px; border-bottom:1px solid var(--border2);
-  display:flex; align-items:center; justify-content:space-between;
-  position:sticky; top:0; background:var(--white); z-index:1;
-}
-.far-mhead-left { display:flex; align-items:center; gap:10px; }
-.far-mhead-icon {
-  width:38px; height:38px; background:var(--amber-light); border-radius:10px;
-  display:flex; align-items:center; justify-content:center; font-size:20px;
-}
-.far-mhead h3 { font-size:15px; font-weight:800; color:var(--ink); }
-.far-mhead p  { font-size:11px; color:var(--ink3); margin-top:2px; }
-.far-close-btn {
-  background:none; border:none; cursor:pointer; color:var(--ink3);
-  font-size:20px; width:32px; height:32px; border-radius:8px;
-  display:flex; align-items:center; justify-content:center; transition:background 0.15s;
-}
-.far-close-btn:hover { background:var(--border2); }
-
-.far-mbody { padding:20px 24px; }
-.far-sec-label {
-  font-size:10px; font-weight:800; text-transform:uppercase;
-  letter-spacing:0.8px; color:var(--ink3); font-family:'DM Mono',monospace;
-  margin-bottom:10px;
-}
-.far-zone-grid {
-  display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:20px;
-}
-.far-zone-btn {
-  padding:9px 12px; border:1.5px solid var(--border);
-  border-radius:10px; background:var(--white); font-family:'Noto Sans KR',sans-serif;
-  font-size:12px; color:var(--ink3); cursor:pointer; text-align:left; transition:all 0.15s;
-}
-.far-zone-btn:hover { background:var(--amber-light); border-color:var(--amber); color:var(--amber); }
-.far-zone-btn.active { border-color:var(--green); background:var(--green-light); color:var(--green); }
-.far-zone-btn .zn { font-weight:700; display:block; font-size:12px; }
-.far-zone-btn .zl { font-size:11px; margin-top:2px; opacity:0.85; font-family:'DM Mono',monospace; }
-
-.far-limit-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px; }
-.far-limit-box {
-  background:var(--border2); border-radius:10px; padding:10px 14px;
-}
-.far-limit-box label { font-size:11px; color:var(--ink3); display:block; margin-bottom:4px; }
-.far-limit-box input {
-  width:100%; border:none; background:transparent; font-size:15px; font-weight:700;
-  color:var(--ink); font-family:'DM Mono',monospace; outline:none;
-}
-
-.far-divider { height:1px; background:var(--border2); margin:20px 0; }
-
-.far-input-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px; }
-.far-field { display:flex; flex-direction:column; gap:5px; }
-.far-field label { font-size:12px; color:var(--ink3); }
-.far-field input {
-  padding:9px 12px; border:1.5px solid var(--border); border-radius:9px;
-  font-size:14px; font-family:'Noto Sans KR',sans-serif; color:var(--ink);
-  outline:none; transition:border 0.15s; background:var(--white);
-}
-.far-field input:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(26,92,58,0.08); }
-.far-field .fu { font-size:11px; color:var(--ink3); }
-
-.far-result-section { display:none; }
-.far-result-section.show { display:block; }
-
-.far-summary {
-  border-radius:10px; padding:12px 16px;
-  display:flex; align-items:center; gap:10px; margin-bottom:16px;
-  border:1.5px solid var(--border);
-}
-.far-summary.ok   { border-color:var(--green); background:var(--green-light); }
-.far-summary.warn { border-color:var(--amber); background:var(--amber-light); }
-.far-summary.over { border-color:var(--red);   background:var(--red-light);   }
-.far-summary-icon { font-size:20px; }
-.far-summary-text { font-size:13px; font-weight:700; }
-.far-summary.ok   .far-summary-text { color:var(--green); }
-.far-summary.warn .far-summary-text { color:var(--amber); }
-.far-summary.over .far-summary-text { color:var(--red);   }
-
-.far-cards { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-.far-rcard {
-  border:1px solid var(--border); border-radius:12px; padding:14px 16px;
-}
-.far-rcard-label { font-size:10px; font-weight:800; text-transform:uppercase;
-  letter-spacing:0.6px; color:var(--ink3); font-family:'DM Mono',monospace; margin-bottom:10px; }
-.far-row { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px; }
-.far-row .fk { font-size:12px; color:var(--ink3); }
-.far-row .fv { font-size:13px; font-weight:700; font-family:'DM Mono',monospace; color:var(--ink); }
-.far-badge {
-  display:inline-flex; align-items:center; gap:3px;
-  padding:3px 9px; border-radius:20px; font-size:11px; font-weight:700;
-  font-family:'DM Mono',monospace; margin-top:8px;
-}
-.far-badge.ok   { background:var(--green-light); color:var(--green); }
-.far-badge.warn { background:var(--amber-light); color:var(--amber); }
-.far-badge.over { background:var(--red-light);   color:var(--red);   }
-.far-bar-wrap { margin-top:8px; }
-.far-bar-bg {
-  height:6px; border-radius:3px; background:var(--border2); position:relative; overflow:hidden;
-}
-.far-bar-fill {
-  height:6px; border-radius:3px; transition:width 0.45s ease;
-}
-.far-bar-fill.ok   { background:var(--green); }
-.far-bar-fill.warn { background:var(--amber); }
-.far-bar-fill.over { background:var(--red);   }
-
-.far-mfoot {
-  padding:16px 24px; border-top:1px solid var(--border2);
-  display:flex; gap:8px; justify-content:flex-end;
-  position:sticky; bottom:0; background:var(--white);
-}
-.far-btn-cancel {
-  padding:9px 18px; border:1.5px solid var(--border); border-radius:9px;
-  background:var(--white); font-size:13px; font-weight:600;
-  font-family:'Noto Sans KR',sans-serif; color:var(--ink2); cursor:pointer; transition:background 0.15s;
-}
-.far-btn-cancel:hover { background:var(--border2); }
-.far-btn-save {
-  padding:9px 18px; border:none; border-radius:9px;
-  background:var(--green); font-size:13px; font-weight:700;
-  font-family:'Noto Sans KR',sans-serif; color:white; cursor:pointer; transition:background 0.15s;
-}
-.far-btn-save:hover { background:var(--green-mid); }
-.far-btn-save:disabled { background:var(--border); cursor:default; color:var(--ink3); }
-
-/* TOAST */
-.toast {
-  position:fixed; bottom:24px; left:50%;
-  transform:translateX(-50%) translateY(80px);
-  background:var(--ink); color:white; padding:10px 22px;
-  border-radius:30px; font-size:13px; font-weight:500;
-  z-index:999; transition:transform 0.3s ease; pointer-events:none;
-}
+.toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px); background:var(--ink); color:white; padding:10px 22px; border-radius:30px; font-size:13px; font-weight:500; z-index:999; transition:transform 0.3s ease; pointer-events:none; }
 .toast.show { transform:translateX(-50%) translateY(0); }
 
-@media(max-width:768px) {
-  .work-grid { grid-template-columns:1fr 1fr; }
+@media(max-width:900px) {
+  .rate-grid { grid-template-columns:1fr 1fr; }
   .stats-row { grid-template-columns:1fr 1fr; }
-  .grid-2 { grid-template-columns:1fr; }
 }
-@media(max-width:480px) {
-  .work-grid { grid-template-columns:1fr; }
+@media(max-width:520px) {
+  .main { padding:20px 16px 60px; }
+  .rate-grid, .stats-row { grid-template-columns:1fr; }
+  .step-progress { padding:14px 12px; }
 }
 </style>
 </head>
 <body>
 
-<!-- ===== 비밀번호 잠금 화면 ===== -->
-<div class="pw-gate" id="pwGate">
-  <div class="pw-box">
-    <span class="pw-lock-icon">🔒</span>
-    <h2 id="pwGateTitle">열람 비밀번호 확인</h2>
-    <p id="pwGateDesc">이 사업은 열람 비밀번호가 설정되어 있습니다.<br>비밀번호를 입력해 주세요.</p>
-    <div class="pw-input-wrap">
-      <input type="password" id="pwInput" placeholder="비밀번호 입력"
-             onkeydown="if(event.key==='Enter') checkPassword()">
-      <button class="pw-eye-btn" onclick="togglePwVisibility()" title="비밀번호 표시/숨기기">👁</button>
-    </div>
-    <div class="pw-error-msg" id="pwErrorMsg">⚠️ 비밀번호가 올바르지 않습니다. 다시 확인해 주세요.</div>
-    <button class="pw-submit-btn" onclick="checkPassword()">확인</button>
-    <br>
-    <button class="pw-back-btn" onclick="history.back()">← 목록으로 돌아가기</button>
-  </div>
-</div>
-
-<!-- ===== 메인 콘텐츠 (비밀번호 통과 후 표시) ===== -->
-<div class="main-content" id="mainContent">
 <div class="topbar">
   <div class="topbar-left">
-    <button class="back-btn" onclick="history.back()">← 목록으로</button>
-    <span class="topbar-title" id="topTitle">프로젝트</span>
+    <button class="back-btn" onclick="history.back()">← 목록</button>
+    <span class="topbar-title">💰 대체산림자원조성비 산출</span>
   </div>
-  <div>
-    <span class="topbar-badge" id="topBadge">진행중</span>
-  </div>
+  <button class="btn-top" onclick="resetAll()">🔄 처음부터</button>
 </div>
 
 <div class="main">
 
-  <!-- PROJECT HEADER -->
-  <div class="project-header">
-    <div class="project-header-left">
-      <div class="project-eyebrow">Urban Planning Project</div>
-      <div class="project-title" id="projTitle">—</div>
-      <div class="project-meta">
-        <div class="meta-chip">📍 <strong id="projLocation">—</strong></div>
-        <div class="meta-chip">🗂️ <strong id="projType">—</strong></div>
-        <div class="meta-chip">👤 <strong id="projManager">—</strong></div>
-        <div class="meta-chip">📐 <strong id="projArea">—</strong> ㎡</div>
+  <div class="step-progress">
+    <div class="sp-item active" id="sp1"><div class="sp-circle">1</div><div class="sp-label">산지내역서 업로드</div></div>
+    <div class="sp-line" id="spl1"></div>
+    <div class="sp-item" id="sp2"><div class="sp-circle">2</div><div class="sp-label">부과기준 · 감면 설정</div></div>
+    <div class="sp-line" id="spl2"></div>
+    <div class="sp-item" id="sp3"><div class="sp-circle">3</div><div class="sp-label">산출 결과</div></div>
+  </div>
+
+  <!-- ① 업로드 -->
+  <div class="sec-card">
+    <div class="sec-card-title"><div class="dot"></div>① 산지내역서 엑셀 업로드</div>
+    <div class="alert alert-blue">
+      <span class="alert-icon">ℹ️</span>
+      <div>
+        <strong>시설별 산지편입조서</strong>에서 저장한 <strong>산지내역서 엑셀</strong>(산지내역서_YYYYMMDD.xlsx)을 올려주세요.<br>
+        <span style="font-size:12px">
+          · Step 4에서 <strong>토지대장 정보 포함</strong>을 체크해야 공시지가가 들어갑니다.<br>
+          · Step 4에서 <strong>산지구분도</strong>를 매칭한 뒤 Step 5 토지이용계획을 매칭해야 시설별 보전/준보전 면적이 나뉩니다.
+        </span>
       </div>
     </div>
-    <div class="project-header-right">
-      <span class="status-badge" id="projStatus">—</span>
-      <span style="font-size:11px;color:var(--ink3);font-family:'DM Mono',monospace" id="projDate">—</span>
+    <div class="upload-box" id="dropZone"
+      onclick="document.getElementById('fileInput').click()"
+      ondragover="event.preventDefault();this.classList.add('drag-over')"
+      ondragleave="this.classList.remove('drag-over')"
+      ondrop="onDrop(event)">
+      <div class="upload-icon" id="upIcon">📊</div>
+      <div class="upload-title" id="upTitle">산지내역서 엑셀 업로드</div>
+      <div class="upload-desc" id="upDesc">.xlsx 파일 · 드래그&드롭 가능</div>
+      <label class="upload-label">📎 파일 선택</label>
+    </div>
+    <input type="file" id="fileInput" accept=".xlsx,.xls" class="hidden" onchange="onFile(event)">
+    <div id="parseMsg" style="margin-top:14px"></div>
+  </div>
+
+  <!-- ② 부과기준 -->
+  <div class="sec-card hidden" id="rateCard">
+    <div class="sec-card-title"><div class="dot"></div>② 부과기준 (산림청 고시)
+      <span class="sub">매년 바뀌므로 해당 연도 고시값으로 확인 후 입력하세요 · 입력값은 이 브라우저에 저장됩니다</span>
+    </div>
+    <div class="rate-grid">
+      <div class="rate-box"><label>준보전산지 단위면적당 금액</label>
+        <div class="rate-input-wrap"><input type="number" id="rJun" oninput="onRateChange()"><span class="unit">원/㎡</span></div></div>
+      <div class="rate-box"><label>보전산지 단위면적당 금액</label>
+        <div class="rate-input-wrap"><input type="number" id="rBo" oninput="onRateChange()"><span class="unit">원/㎡</span></div></div>
+      <div class="rate-box"><label>산지전용·일시사용제한지역</label>
+        <div class="rate-input-wrap"><input type="number" id="rRes" oninput="onRateChange()"><span class="unit">원/㎡</span></div></div>
+      <div class="rate-box"><label>공시지가 가산 상한</label>
+        <div class="rate-input-wrap"><input type="number" id="rCap" oninput="onRateChange()"><span class="unit">원/㎡</span></div></div>
+    </div>
+    <div class="rate-meta">
+      <span>공시지가 반영비율</span>
+      <div class="rate-box" style="padding:4px 10px;display:inline-block"><div class="rate-input-wrap"><input type="number" id="rPct" step="0.1" style="width:50px;font-size:13px" oninput="onRateChange()"><span class="unit">%</span></div></div>
+      <span style="margin-left:8px">적용 기준</span>
+      <input type="text" id="rLabel" placeholder="예: 2026년도 고시" oninput="onRateChange()">
+      <button class="btn-sm" onclick="restoreDefaultRates()">↺ 기본값</button>
+    </div>
+    <div class="formula">
+      부과금액 = 산지전용면적(㎡) × [ 산지구분별 단위면적당 금액 + min(개별공시지가 × <span id="fPct">1</span>%, <span id="fCap">-</span>원) ] × (1 − 감면율)
+    </div>
+    <div class="alert alert-amber" style="margin:12px 0 0" id="rateWarn">
+      <span class="alert-icon">⚠️</span>
+      <div style="font-size:12px">기본값은 공개 자료로 확인한 <strong>2023년도 부과기준</strong>(준보전 7,260 · 보전 9,430 · 제한지역 14,520 · 상한 7,260원/㎡)입니다. 2026년도 고시값을 산림청·국가법령정보센터에서 확인해 고쳐 주세요.</div>
     </div>
   </div>
 
-  <!-- STATS -->
-  <div class="stats-row">
-    <div class="stat-card">
-      <div class="stat-label">사업 면적</div>
-      <div class="stat-val"><span id="s-area">—</span><span class="stat-unit">㎡</span></div>
+  <!-- ③ 시설별 설정 -->
+  <div class="sec-card hidden" id="layerCard">
+    <div class="sec-card-title"><div class="dot"></div>③ 시설(레이어)별 산정 설정
+      <span class="sub">산정 제외 · 감면율 · 제한지역 단가 적용 여부를 시설마다 지정합니다</span>
     </div>
-    <div class="stat-card">
-      <div class="stat-label">작업 항목</div>
-      <div class="stat-val"><span id="s-tasks">5</span><span class="stat-unit">개</span></div>
+    <div class="table-wrap">
+      <table class="grid" id="layerTable"></table>
     </div>
-    <div class="stat-card">
-      <div class="stat-label">완료 작업</div>
-      <div class="stat-val"><span id="s-done">0</span><span class="stat-unit">개</span></div>
+    <div style="font-size:11px;color:var(--ink3);margin-top:8px;line-height:1.7">
+      · <strong>산정</strong> 체크를 해제하면 해당 시설 면적은 부과 대상에서 빠집니다 (예: 원형보전지).<br>
+      · <strong>감면율</strong>은 산지관리법 시행령 별표 5 등 감면 기준에 따라 시설별로 입력하세요 (100 = 전액 감면).<br>
+      · <strong>제한지역</strong>을 체크하면 그 시설의 면적 전체에 산지전용·일시사용제한지역 단가를 적용합니다.
     </div>
-    <div class="stat-card">
-      <div class="stat-label">진행률</div>
-      <div class="stat-val"><span id="s-progress">0</span><span class="stat-unit">%</span></div>
+    <div class="nav-btns" style="margin-top:16px">
+      <button class="btn-primary" onclick="calculate(true)">💰 산출하기 →</button>
     </div>
   </div>
 
-  <!-- WORK MENU -->
-  <div class="section-title">작업 메뉴</div>
-  <div class="work-grid">
-
-    <!-- 조서 작업 -->
-    <div class="work-card wc-green" onclick="goWork('land-parcel-auto.html')">
-      <div class="wc-top">
-        <div class="wc-icon">🗺️</div>
-        <span class="wc-badge badge-ready">사용 가능</span>
-      </div>
-      <div class="wc-title">조서 작업</div>
-      <div class="wc-desc">PNU 파일과 토지대장을 업로드하면<br>편입토지조서를 자동으로 생성합니다.</div>
-      <div class="wc-footer">
-        <span class="wc-tag">PNU · 토지대장 · 조서출력</span>
-        <span class="wc-arrow">→</span>
-      </div>
+  <!-- ④ 결과 -->
+  <div id="resultArea" class="hidden">
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-label">산정 필지</div><div class="stat-val"><span id="stCount">0</span><span class="stat-unit">필지</span></div></div>
+      <div class="stat-card"><div class="stat-label">부과 대상 면적</div><div class="stat-val"><span id="stArea">0</span><span class="stat-unit">㎡</span></div></div>
+      <div class="stat-card"><div class="stat-label">감면액</div><div class="stat-val" style="color:var(--amber)"><span id="stRelief">0</span><span class="stat-unit">원</span></div></div>
+      <div class="stat-card"><div class="stat-label">대체산림자원조성비</div><div class="stat-val big"><span id="stTotal">0</span><span class="stat-unit">원</span></div></div>
     </div>
 
-    <!-- GIS 분석 -->
-    <div class="work-card wc-blue" onclick="goWork('gis-analysis.html')">
-      <div class="wc-top">
-        <div class="wc-icon">🛰️</div>
-        <span class="wc-badge badge-ready">사용 가능</span>
-      </div>
-      <div class="wc-title">GIS 분석</div>
-      <div class="wc-desc">수치지형도·구역계 파일을 업로드하면<br>표고·경사·면적 등 공간 분석을 수행합니다.</div>
-      <div class="wc-footer">
-        <span class="wc-tag">표고 · 경사 · 면적 · 구역계</span>
-        <span class="wc-arrow">→</span>
-      </div>
+    <div class="sec-card">
+      <div class="sec-card-title"><div class="dot"></div>④ 시설별 · 산지구분별 집계</div>
+      <div class="table-wrap"><table class="grid" id="sumTable"></table></div>
     </div>
 
-    <!-- 위치도 생성 -->
-    <div class="work-card wc-teal" onclick="goWork('location-map.html')">
-      <div class="wc-top">
-        <div class="wc-icon">🗺️</div>
-        <span class="wc-badge badge-ready">사용 가능</span>
+    <div class="sec-card">
+      <div class="sec-card-title"><div class="dot"></div>⑤ 필지별 산출 내역</div>
+      <div class="toolbar">
+        <input type="text" class="search" id="detailSearch" placeholder="🔍 PNU · 지번 · 시설명 검색" oninput="renderDetail()">
+        <div style="flex:1"></div>
+        <button class="btn-primary btn-dark" onclick="exportExcel()">📥 엑셀 저장</button>
       </div>
-      <div class="wc-title">위치도 생성</div>
-      <div class="wc-desc">DXF 구역계 파일을 업로드하면<br>위성지도 위에 구역계를 표시하고<br>방위표·스케일바 포함 보고용 위치도를 자동 생성합니다.</div>
-      <div class="wc-footer">
-        <span class="wc-tag">DXF · 위성지도 · PNG · PDF</span>
-        <span class="wc-arrow">→</span>
-      </div>
+      <div class="table-wrap" style="max-height:560px;overflow:auto"><table class="grid" id="detailTable"></table></div>
+      <div id="detailNote" style="font-size:11px;color:var(--ink3);margin-top:8px"></div>
     </div>
-
-    <!-- DXF 좌표변환 -->
-    <div class="work-card wc-purple" onclick="goWork('dxf-coord-transform.html')">
-      <div class="wc-top">
-        <div class="wc-icon">🔄</div>
-        <span class="wc-badge badge-ready">사용 가능</span>
-      </div>
-      <div class="wc-title">DXF 좌표변환</div>
-      <div class="wc-desc">DXF 파일의 좌표계를 변환합니다.<br>GRS80 TM·Bessel TM·UTM-K·WGS84 등<br>한국 주요 좌표계 간 일괄 변환을 지원합니다.</div>
-      <div class="wc-footer">
-        <span class="wc-tag">TM · Bessel · GRS80 · WGS84</span>
-        <span class="wc-arrow">→</span>
-      </div>
-    </div>
-
-    <!-- 산지명세서 작성 -->
-    <div class="work-card wc-green" onclick="goWork('sanji-myungse.html')">
-      <div class="wc-top">
-        <div class="wc-icon">🌲</div>
-        <span class="wc-badge badge-ready">사용 가능</span>
-      </div>
-      <div class="wc-title">산지명세서 작성</div>
-      <div class="wc-desc">연속지적도·구역계를 업로드해 산지(임야)를<br>분류하고, 산지구분도 매칭과 토지대장 정보를<br>반영한 산지명세서를 자동으로 작성합니다.</div>
-      <div class="wc-footer">
-        <span class="wc-tag">산지분류 · 산지구분도 · 산지내역서</span>
-        <span class="wc-arrow">→</span>
-      </div>
-    </div>
-
-    <!-- 시설별 산지편입조서 -->
-    <div class="work-card wc-teal" onclick="goWork('sanji-facility-report.html')">
-      <div class="wc-top">
-        <div class="wc-icon">🏗️</div>
-        <span class="wc-badge badge-ready">사용 가능</span>
-      </div>
-      <div class="wc-title">시설별 산지편입조서</div>
-      <div class="wc-desc">토지이용계획 SHP를 업로드하면 산업시설·도로·공원 등<br>시설(레이어)별로 산지편입면적을 산출하고,<br>보전산지·준보전산지로 세분화한 조서를 작성합니다.</div>
-      <div class="wc-footer">
-        <span class="wc-tag">레이어 매칭 · 보전/준보전 · 시설별 면적조서</span>
-        <span class="wc-arrow">→</span>
-      </div>
-    </div>
-
-    <!-- 특정시설 운영현황 및 사례조사 -->
-    <div class="work-card wc-red" onclick="goWork('facility-survey.html')">
-      <div class="wc-top">
-        <div class="wc-icon">🏭</div>
-        <span class="wc-badge badge-ready">사용 가능</span>
-      </div>
-      <div class="wc-title">특정시설 운영현황 및 사례조사</div>
-      <div class="wc-desc">문답식으로 구역·시설 유형을 지정하면<br>산업단지·개발제한구역 등 다양한 지역지구 내<br>도시계획시설의 소재지·건축물 매칭을 확인하고 사례를 기록합니다.</div>
-      <div class="wc-footer">
-        <span class="wc-tag">문답식 설정 · SHP 중첩분석 · 사례기록</span>
-        <span class="wc-arrow">→</span>
-      </div>
-    </div>
-
-    <!-- 용적률/건폐율 계산 -->
-    <div class="work-card wc-amber" onclick="openFarModal()">
-      <div class="wc-top">
-        <div class="wc-icon">📐</div>
-        <span class="wc-badge badge-ready">사용 가능</span>
-      </div>
-      <div class="wc-title">용적률 · 건폐율 계산</div>
-      <div class="wc-desc">용도지역별 용적률·건폐율 기준을<br>자동으로 계산하고 검토합니다.</div>
-      <div class="wc-footer">
-        <span class="wc-tag">면적 · 층수 · 용도지역</span>
-        <span class="wc-arrow">→</span>
-      </div>
-    </div>
-
-    <!-- 보상가 산정 -->
-    <div class="work-card wc-amber coming-soon">
-      <div class="wc-top">
-        <div class="wc-icon">💰</div>
-        <span class="wc-badge badge-soon">준비 중</span>
-      </div>
-      <div class="wc-title">보상가 산정</div>
-      <div class="wc-desc">공시지가 기반 토지보상금을<br>필지별로 산정하고 총액을 집계합니다.</div>
-      <div class="wc-footer">
-        <span class="wc-tag">공시지가 · 보상율 · 합계</span>
-        <span class="wc-arrow">→</span>
-      </div>
-    </div>
-
-    <!-- 지장물 조서 -->
-    <div class="work-card wc-purple coming-soon">
-      <div class="wc-top">
-        <div class="wc-icon">🏠</div>
-        <span class="wc-badge badge-plan">계획</span>
-      </div>
-      <div class="wc-title">지장물 조서</div>
-      <div class="wc-desc">건축물·공작물·입목 등 지장물 현황을<br>항목별로 정리하고 관리합니다.</div>
-      <div class="wc-footer">
-        <span class="wc-tag">건축물 · 공작물 · 수목</span>
-        <span class="wc-arrow">→</span>
-      </div>
-    </div>
-
-    <!-- 보고서 출력 -->
-    <div class="work-card wc-teal coming-soon">
-      <div class="wc-top">
-        <div class="wc-icon">📄</div>
-        <span class="wc-badge badge-plan">계획</span>
-      </div>
-      <div class="wc-title">보고서 출력</div>
-      <div class="wc-desc">작성된 조서를 바탕으로<br>PDF/엑셀 보고서를 자동 생성합니다.</div>
-      <div class="wc-footer">
-        <span class="wc-tag">PDF · Excel · 양식</span>
-        <span class="wc-arrow">→</span>
-      </div>
-    </div>
-
-    <!-- 메모/이력 -->
-    <div class="work-card wc-red coming-soon">
-      <div class="wc-top">
-        <div class="wc-icon">📋</div>
-        <span class="wc-badge badge-plan">계획</span>
-      </div>
-      <div class="wc-title">업무 이력 관리</div>
-      <div class="wc-desc">프로젝트 진행 이력, 회의록, 메모를<br>날짜순으로 기록하고 조회합니다.</div>
-      <div class="wc-footer">
-        <span class="wc-tag">이력 · 메모 · 첨부</span>
-        <span class="wc-arrow">→</span>
-      </div>
-    </div>
-
   </div>
 
-  <!-- BOTTOM: MEMO + ACTIVITY -->
-  <div class="grid-2">
-
-    <div>
-      <div class="section-title">프로젝트 메모</div>
-      <div class="memo-card">
-        <div class="memo-text" id="projMemo">등록된 메모가 없습니다.</div>
-      </div>
-    </div>
-
-    <div>
-      <div class="section-title">최근 작업 이력</div>
-      <div class="memo-card" style="padding:0 20px">
-        <div class="activity-list" id="activityList">
-          <div class="activity-item">
-            <div class="activity-dot blue"></div>
-            <div class="activity-text">프로젝트가 <strong>생성</strong>되었습니다</div>
-            <div class="activity-time">오늘</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-  </div>
-
-</div>
-
-</div>
-<!-- / main-content -->
-
-<!-- ===== 용적률·건폐율 계산 모달 ===== -->
-<div class="far-overlay" id="farOverlay" onclick="if(event.target===this)closeFarModal()">
-  <div class="far-modal" role="dialog" aria-modal="true" aria-label="용적률·건폐율 계산">
-
-    <div class="far-mhead">
-      <div class="far-mhead-left">
-        <div class="far-mhead-icon">📐</div>
-        <div>
-          <h3>용적률 · 건폐율 계산</h3>
-          <p>법정기준 대비 계획 수치 검토</p>
-        </div>
-      </div>
-      <button class="far-close-btn" onclick="closeFarModal()" aria-label="닫기">✕</button>
-    </div>
-
-    <div class="far-mbody">
-
-      <!-- 용도지역 -->
-      <div class="far-sec-label">용도지역 선택</div>
-      <div class="far-zone-grid" id="farZoneGrid">
-        <button class="far-zone-btn" data-far="100" data-bcr="50" onclick="farSelectZone(this)">
-          <span class="zn">제1종 전용주거지역</span><span class="zl">용적률 100% · 건폐율 50%</span>
-        </button>
-        <button class="far-zone-btn" data-far="150" data-bcr="50" onclick="farSelectZone(this)">
-          <span class="zn">제2종 전용주거지역</span><span class="zl">용적률 150% · 건폐율 50%</span>
-        </button>
-        <button class="far-zone-btn" data-far="200" data-bcr="60" onclick="farSelectZone(this)">
-          <span class="zn">제1종 일반주거지역</span><span class="zl">용적률 200% · 건폐율 60%</span>
-        </button>
-        <button class="far-zone-btn active" data-far="250" data-bcr="60" onclick="farSelectZone(this)">
-          <span class="zn">제2종 일반주거지역</span><span class="zl">용적률 250% · 건폐율 60%</span>
-        </button>
-        <button class="far-zone-btn" data-far="300" data-bcr="50" onclick="farSelectZone(this)">
-          <span class="zn">제3종 일반주거지역</span><span class="zl">용적률 300% · 건폐율 50%</span>
-        </button>
-        <button class="far-zone-btn" data-far="500" data-bcr="70" onclick="farSelectZone(this)">
-          <span class="zn">준주거지역</span><span class="zl">용적률 500% · 건폐율 70%</span>
-        </button>
-        <button class="far-zone-btn" data-far="900" data-bcr="80" onclick="farSelectZone(this)">
-          <span class="zn">근린상업지역</span><span class="zl">용적률 900% · 건폐율 80%</span>
-        </button>
-        <button class="far-zone-btn" data-far="1300" data-bcr="80" onclick="farSelectZone(this)">
-          <span class="zn">일반상업지역</span><span class="zl">용적률 1300% · 건폐율 80%</span>
-        </button>
-        <button class="far-zone-btn" data-far="200" data-bcr="60" onclick="farSelectZone(this)">
-          <span class="zn">일반공업지역</span><span class="zl">용적률 200% · 건폐율 60%</span>
-        </button>
-        <button class="far-zone-btn" data-far="400" data-bcr="70" onclick="farSelectZone(this)">
-          <span class="zn">준공업지역</span><span class="zl">용적률 400% · 건폐율 70%</span>
-        </button>
-      </div>
-
-      <!-- 법정 기준값 (수동 조정 가능) -->
-      <div class="far-sec-label" style="margin-top:4px">법정 기준값 <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;font-family:'Noto Sans KR',sans-serif">(수동 조정 가능)</span></div>
-      <div class="far-limit-row">
-        <div class="far-limit-box">
-          <label>용적률 상한 (%)</label>
-          <input type="number" id="farLimitFar" value="250" min="0" max="2000" oninput="farCalc()">
-        </div>
-        <div class="far-limit-box">
-          <label>건폐율 상한 (%)</label>
-          <input type="number" id="farLimitBcr" value="60" min="0" max="100" oninput="farCalc()">
-        </div>
-      </div>
-
-      <div class="far-divider"></div>
-
-      <!-- 계획 수치 입력 -->
-      <div class="far-sec-label">계획 수치 입력</div>
-      <div class="far-input-grid">
-        <div class="far-field">
-          <label>대지면적 <span class="fu">㎡</span></label>
-          <input type="number" id="farSite" placeholder="예: 10000" oninput="farCalc()">
-        </div>
-        <div class="far-field">
-          <label>건축면적 <span class="fu">㎡</span></label>
-          <input type="number" id="farBuild" placeholder="예: 4500" oninput="farCalc()">
-        </div>
-        <div class="far-field">
-          <label>연면적 합계 <span class="fu">㎡</span></label>
-          <input type="number" id="farTotal" placeholder="예: 20000" oninput="farCalc()">
-        </div>
-        <div class="far-field">
-          <label>지상 층수 <span class="fu">층</span></label>
-          <input type="number" id="farFloors" placeholder="예: 15" oninput="farCalc()">
-        </div>
-      </div>
-
-      <!-- 결과 -->
-      <div class="far-result-section" id="farResultSection">
-        <div class="far-divider" style="margin-top:4px"></div>
-        <div class="far-sec-label">검토 결과</div>
-
-        <div class="far-summary ok" id="farSummary">
-          <span class="far-summary-icon" id="farSummaryIcon">✅</span>
-          <span class="far-summary-text" id="farSummaryText">계획 수치가 법정 기준을 충족합니다.</span>
-        </div>
-
-        <div class="far-cards">
-          <div class="far-rcard">
-            <div class="far-rcard-label">용적률 (FAR)</div>
-            <div class="far-row"><span class="fk">계획</span><span class="fv" id="fcFarPlan">—</span></div>
-            <div class="far-row"><span class="fk">법정 상한</span><span class="fv" id="fcFarLimit">—</span></div>
-            <div class="far-row"><span class="fk">여유</span><span class="fv" id="fcFarMargin">—</span></div>
-            <div><span class="far-badge ok" id="fcFarBadge">✓ 적합</span></div>
-            <div class="far-bar-wrap">
-              <div class="far-bar-bg"><div class="far-bar-fill ok" id="fcFarBar" style="width:0%"></div></div>
-            </div>
-          </div>
-          <div class="far-rcard">
-            <div class="far-rcard-label">건폐율 (BCR)</div>
-            <div class="far-row"><span class="fk">계획</span><span class="fv" id="fcBcrPlan">—</span></div>
-            <div class="far-row"><span class="fk">법정 상한</span><span class="fv" id="fcBcrLimit">—</span></div>
-            <div class="far-row"><span class="fk">여유</span><span class="fv" id="fcBcrMargin">—</span></div>
-            <div><span class="far-badge ok" id="fcBcrBadge">✓ 적합</span></div>
-            <div class="far-bar-wrap">
-              <div class="far-bar-bg"><div class="far-bar-fill ok" id="fcBcrBar" style="width:0%"></div></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div>
-
-    <div class="far-mfoot">
-      <button class="far-btn-cancel" onclick="closeFarModal()">닫기</button>
-      <button class="far-btn-save" id="farSaveBtn" onclick="farSaveResult()" disabled>결과 저장</button>
-    </div>
-
-  </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
-<script type="module">
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+<script>
+// ═══════════════════════════════════════════════════════
+// 부과기준 기본값 — 2023년도 대체산림자원조성비 부과기준(산림청 고시)
+// 매년 고시로 바뀌므로 화면에서 수정 가능, localStorage에 저장
+// ═══════════════════════════════════════════════════════
+const DEFAULT_RATES = { jun: 7260, bo: 9430, res: 14520, cap: 7260, pct: 1, label: '2023년도 고시(기본값)' };
+const RATE_KEY = 'forestFundRates_v1';
+const UNCLASS = '미분류';
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBoG6ZwhhW-7iqHDuXjdQeBfV7fVYcuoOM",
-  authDomain: "urbanplanning-test.firebaseapp.com",
-  projectId: "urbanplanning-test",
-  storageBucket: "urbanplanning-test.firebasestorage.app",
-  messagingSenderId: "604565575520",
-  appId: "1:604565575520:web:951f429f4f2033c020f005",
-  measurementId: "G-T3F8V1RTG0"
-};
+let rates = { ...DEFAULT_RATES };
+let parsed = null;        // { parcels:[], layers:[], mode, warnings:[] , fileName }
+let layerCfg = {};        // layer → { include, relief, restricted }
+let calcRows = [];        // 필지×시설×산지구분 산출 행
+let calcSummary = [];     // 시설별 집계
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-let currentProject = null;
-let masterKey = '';
-
-// ─── SHA-256 해시 유틸 ────────────────────────────────
-async function sha256(text) {
-  if (!text) return '';
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+// ─── 유틸 ─────────────────────────────────────────────
+function escHtml(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function num(v) {
+  if (v == null || v === '' || v === '-') return null;
+  if (typeof v === 'number') return isNaN(v) ? null : v;
+  const n = parseFloat(String(v).replace(/,/g, '').trim());
+  return isNaN(n) ? null : n;
 }
-
-// ─── 비밀번호 토글 ────────────────────────────────────
-window.togglePwVisibility = function() {
-  const inp = document.getElementById('pwInput');
-  inp.type = inp.type === 'password' ? 'text' : 'password';
-};
-
-// ─── 비밀번호 확인 (해시 비교) ────────────────────────
-window.checkPassword = async function() {
-  if (!currentProject) return;
-  const inputHash  = await sha256(document.getElementById('pwInput').value);
-  const storedHash = currentProject.password || '';
-  const isMaster   = masterKey && inputHash === masterKey;
-
-  if (inputHash === storedHash || isMaster) {
-    try {
-      sessionStorage.setItem(`unlocked_${currentProject.firestoreId || currentProject.name}`, '1');
-    } catch(e) {}
-    if (isMaster) showToast('🔑 마스터 키로 열람합니다');
-    unlockContent();
-  } else {
-    const errEl   = document.getElementById('pwErrorMsg');
-    const inputEl = document.getElementById('pwInput');
-    errEl.classList.add('show');
-    inputEl.classList.add('error');
-    inputEl.value = '';
-    inputEl.focus();
-    setTimeout(() => { errEl.classList.remove('show'); inputEl.classList.remove('error'); }, 3000);
-  }
-};
-
-// ─── 콘텐츠 잠금 해제 ─────────────────────────────────
-function unlockContent() {
-  document.getElementById('pwGate').classList.add('hidden');
-  document.getElementById('mainContent').classList.add('visible');
-}
-
-// ─── 프로젝트 정보 로드 ───────────────────────────────
-async function loadProject() {
-  // 마스터 키 + 프로젝트 데이터 동시 로드
-  const params = new URLSearchParams(window.location.search);
-  const firestoreId = params.get('id');
-
-  const [cfgSnap, projSnap] = await Promise.allSettled([
-    getDoc(doc(db, 'config', 'settings')),
-    firestoreId ? getDoc(doc(db, 'projects', firestoreId)) : Promise.resolve(null)
-  ]);
-
-  // 마스터 키
-  if (cfgSnap.status === 'fulfilled' && cfgSnap.value?.exists()) {
-    masterKey = cfgSnap.value.data().masterKey || '';
-  }
-
-  let project = null;
-
-  // ① Firestore가 단독 신뢰 소스 — sessionStorage는 UI 캐시용으로만 사용
-  if (projSnap.status === 'fulfilled' && projSnap.value?.exists()) {
-    project = { firestoreId: projSnap.value.id, ...projSnap.value.data() };
-    // 비밀번호 해시는 sessionStorage에 저장하지 않음 (조작 방지)
-    const { password, ...safeCache } = project;
-    try { sessionStorage.setItem('currentProject', JSON.stringify(safeCache)); } catch(e) {}
-  } else if (firestoreId) {
-    // Firestore 실패 → 접근 차단
-    document.getElementById('pwGateTitle').textContent = '⚠️ 로드 실패';
-    document.getElementById('pwGateDesc').textContent = 'Firebase 연결에 실패했습니다.\n네트워크 상태를 확인하고 새로고침해 주세요.';
-    return;
-  }
-
-  // ② URL에 id 없을 때만 sessionStorage 캐시 사용 (fallback)
-  if (!project) {
-    try {
-      const raw = sessionStorage.getItem('currentProject');
-      if (raw) project = { ...JSON.parse(raw), password: undefined }; // 비번은 신뢰 안 함
-    } catch(e) {}
-  }
-
-  // ③ 최종 fallback — 샘플
-  if (!project) {
-    project = {
-      name: '샘플 프로젝트', location: '서울특별시 강남구',
-      type: '도시개발사업', manager: '담당자',
-      area: '50000', status: '진행중',
-      memo: '프로젝트 메모를 여기에 입력하세요.',
-      date: new Date().toISOString().slice(0,10)
-    };
-  }
-
-  currentProject = project;
-
-  // ─── 비밀번호 게이트 ────────────────────────────────
-  const hasPw = !!(project.password && project.password.trim());
-  if (hasPw) {
-    const alreadyUnlocked = sessionStorage.getItem(`unlocked_${project.firestoreId}`) === '1';
-    if (alreadyUnlocked) {
-      renderProject(project);
-      unlockContent();
-    } else {
-      document.getElementById('pwGateTitle').textContent = `🔒 ${project.name}`;
-      document.getElementById('pwGateDesc').textContent = '이 사업은 열람 비밀번호가 설정되어 있습니다.\n비밀번호를 입력해 주세요.';
-      renderProject(project);
-      // unlockContent() 호출 안 함 → 잠금 유지
-    }
-  } else {
-    renderProject(project);
-    unlockContent();
-  }
-}
-
-// ─── 프로젝트 정보 렌더 ───────────────────────────────
-function renderProject(project) {
-  document.title = `${project.name} — 프로젝트 상세`;
-  document.getElementById('topTitle').textContent = project.name;
-  document.getElementById('projTitle').textContent = project.name;
-  document.getElementById('projLocation').textContent = project.location || '—';
-  document.getElementById('projType').textContent = project.type || '—';
-  document.getElementById('projManager').textContent = project.manager || '—';
-  document.getElementById('projArea').textContent = project.area ? Number(project.area).toLocaleString() : '—';
-  document.getElementById('s-area').textContent = project.area ? Number(project.area).toLocaleString() : '—';
-  document.getElementById('projDate').textContent = project.date ? `등록일: ${project.date}` : '';
-  document.getElementById('projMemo').textContent = project.memo || '등록된 메모가 없습니다.';
-
-  const statusEl = document.getElementById('projStatus');
-  const badgeEl = document.getElementById('topBadge');
-  const statusClass = { '진행중':'s-진행중','검토중':'s-검토중','완료':'s-완료','보류':'s-보류' };
-  statusEl.className = `status-badge ${statusClass[project.status] || ''}`;
-  statusEl.textContent = project.status || '—';
-  badgeEl.textContent = project.status || '—';
-}
-
-// ─── 작업 페이지 이동 ────────────────────────────────
-window.goWork = function(page) {
-  window.location.href = page;
-};
-
-// ─── 토스트 ──────────────────────────────────────────
+function fmtWon(v) { return (v == null) ? '-' : Math.round(v).toLocaleString(); }
+function fmtArea(v) { return (v == null) ? '-' : (Math.round(v * 10) / 10).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }); }
+function r1(v) { return Math.round((v || 0) * 10) / 10; }
 function showToast(msg) {
   const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2400);
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2600);
 }
-window.showToast = showToast;
-
-// ─── 용적률·건폐율 계산 모달 ─────────────────────────
-
-window.openFarModal = function() {
-  document.getElementById('farOverlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
-};
-
-window.closeFarModal = function() {
-  document.getElementById('farOverlay').classList.remove('open');
-  document.body.style.overflow = '';
-};
-
-window.farSelectZone = function(btn) {
-  document.querySelectorAll('.far-zone-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('farLimitFar').value = btn.dataset.far;
-  document.getElementById('farLimitBcr').value = btn.dataset.bcr;
-  farCalc();
-};
-
-function farGetStatus(plan, limit) {
-  const r = plan / limit;
-  if (r > 1)    return 'over';
-  if (r > 0.95) return 'warn';
-  return 'ok';
+function setStep(n) {
+  for (let i = 1; i <= 3; i++) {
+    const el = document.getElementById('sp' + i);
+    el.className = 'sp-item' + (i === n ? ' active' : i < n ? ' done' : '');
+    if (i < 3) document.getElementById('spl' + i).className = 'sp-line' + (i < n ? ' done' : '');
+  }
 }
 
-function farSetCard(prefix, plan, limit) {
-  const margin = limit - plan;
-  const status = farGetStatus(plan, limit);
-  const pct    = Math.min((plan / limit) * 100, 100);
-
-  document.getElementById(`fc${prefix}Plan`).textContent   = plan.toFixed(1) + '%';
-  document.getElementById(`fc${prefix}Limit`).textContent  = limit.toFixed(1) + '%';
-  document.getElementById(`fc${prefix}Margin`).textContent = (margin >= 0 ? '+' : '') + margin.toFixed(1) + '%';
-
-  const badge = document.getElementById(`fc${prefix}Badge`);
-  const bar   = document.getElementById(`fc${prefix}Bar`);
-  badge.className = `far-badge ${status}`;
-  bar.className   = `far-bar-fill ${status}`;
-  bar.style.width = pct.toFixed(1) + '%';
-
-  const icons  = { ok:'✓', warn:'⚠', over:'✕' };
-  const labels = { ok:'적합', warn:'기준 근접', over:'기준 초과' };
-  badge.textContent = `${icons[status]} ${labels[status]}`;
-  return status;
+// ─── 부과기준 ─────────────────────────────────────────
+function loadRates() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(RATE_KEY) || 'null');
+    if (saved && typeof saved === 'object') rates = { ...DEFAULT_RATES, ...saved };
+  } catch (e) {}
+  writeRatesToUI();
 }
-
-window.farCalc = function() {
-  const site  = parseFloat(document.getElementById('farSite').value);
-  const build = parseFloat(document.getElementById('farBuild').value);
-  const total = parseFloat(document.getElementById('farTotal').value);
-  const lFar  = parseFloat(document.getElementById('farLimitFar').value);
-  const lBcr  = parseFloat(document.getElementById('farLimitBcr').value);
-  const sec   = document.getElementById('farResultSection');
-
-  if (!site || (!build && !total)) { sec.classList.remove('show'); document.getElementById('farSaveBtn').disabled = true; return; }
-  sec.classList.add('show');
-
-  let farSt = 'ok', bcrSt = 'ok';
-  if (total && site && lFar)  farSt = farSetCard('Far', (total / site) * 100, lFar);
-  if (build && site && lBcr)  bcrSt = farSetCard('Bcr', (build / site) * 100, lBcr);
-
-  const worst = [farSt, bcrSt].includes('over') ? 'over' : [farSt, bcrSt].includes('warn') ? 'warn' : 'ok';
-  const summaryEl   = document.getElementById('farSummary');
-  const summaryIcon = document.getElementById('farSummaryIcon');
-  const summaryText = document.getElementById('farSummaryText');
-  const msgs = {
-    ok:   { cls:'ok',   icon:'✅', text:'계획 수치가 법정 기준을 충족합니다.' },
-    warn: { cls:'warn', icon:'⚠️', text:'기준에 근접한 항목이 있습니다. 확인이 필요합니다.' },
-    over: { cls:'over', icon:'🚫', text:'법정 기준을 초과하는 항목이 있습니다.' }
+function writeRatesToUI() {
+  document.getElementById('rJun').value = rates.jun;
+  document.getElementById('rBo').value = rates.bo;
+  document.getElementById('rRes').value = rates.res;
+  document.getElementById('rCap').value = rates.cap;
+  document.getElementById('rPct').value = rates.pct;
+  document.getElementById('rLabel').value = rates.label;
+  updateFormula();
+}
+function updateFormula() {
+  document.getElementById('fPct').textContent = rates.pct;
+  document.getElementById('fCap').textContent = Number(rates.cap || 0).toLocaleString();
+  const isDefault = rates.jun === DEFAULT_RATES.jun && rates.bo === DEFAULT_RATES.bo && rates.res === DEFAULT_RATES.res && rates.cap === DEFAULT_RATES.cap;
+  document.getElementById('rateWarn').classList.toggle('hidden', !isDefault);
+}
+function onRateChange() {
+  rates = {
+    jun: num(document.getElementById('rJun').value) ?? 0,
+    bo:  num(document.getElementById('rBo').value) ?? 0,
+    res: num(document.getElementById('rRes').value) ?? 0,
+    cap: num(document.getElementById('rCap').value) ?? 0,
+    pct: num(document.getElementById('rPct').value) ?? 0,
+    label: document.getElementById('rLabel').value.trim(),
   };
-  const m = msgs[worst];
-  summaryEl.className     = `far-summary ${m.cls}`;
-  summaryIcon.textContent = m.icon;
-  summaryText.textContent = m.text;
-  document.getElementById('farSaveBtn').disabled = false;
-};
+  try { localStorage.setItem(RATE_KEY, JSON.stringify(rates)); } catch (e) {}
+  updateFormula();
+  if (!document.getElementById('resultArea').classList.contains('hidden')) calculate(false);
+}
+function restoreDefaultRates() {
+  rates = { ...DEFAULT_RATES };
+  try { localStorage.removeItem(RATE_KEY); } catch (e) {}
+  writeRatesToUI();
+  if (!document.getElementById('resultArea').classList.contains('hidden')) calculate(false);
+  showToast('↺ 기본 부과기준으로 되돌렸습니다');
+}
 
-window.farSaveResult = function() {
-  const site   = parseFloat(document.getElementById('farSite').value);
-  const build  = parseFloat(document.getElementById('farBuild').value);
-  const total  = parseFloat(document.getElementById('farTotal').value);
-  const lFar   = parseFloat(document.getElementById('farLimitFar').value);
-  const lBcr   = parseFloat(document.getElementById('farLimitBcr').value);
-  const far    = total && site ? ((total / site) * 100).toFixed(1) : null;
-  const bcr    = build && site ? ((build / site) * 100).toFixed(1) : null;
-  const line   = [`[용적률·건폐율 검토]`];
-  if (far) line.push(`용적률 ${far}% / 기준 ${lFar}% → ${parseFloat(far) > lFar ? '초과' : '적합'}`);
-  if (bcr) line.push(`건폐율 ${bcr}% / 기준 ${lBcr}% → ${parseFloat(bcr) > lBcr ? '초과' : '적합'}`);
-  const memo = document.getElementById('projMemo');
-  const prev = memo.textContent === '등록된 메모가 없습니다.' ? '' : memo.textContent + '\n';
-  memo.textContent = prev + line.join('\n');
-  closeFarModal();
-  showToast('📐 계산 결과가 메모에 저장되었습니다');
-};
+// ═══════════════════════════════════════════════════════
+// 산지내역서 파싱
+// · 분할형(2행 헤더): 레이어명(㎡) 병합 + 보전산지/준보전산지 서브헤더
+// · 단일형(1행 헤더): 레이어명(㎡) — 필지의 산지구분 면적비로 보전/준보전 배분
+// ═══════════════════════════════════════════════════════
+const KNOWN_AREA_HEADS = new Set([
+  '필지구적면적(㎡)', '편입구적면적(㎡)', '편입면적 보정(㎡)', '공부상면적(㎡)',
+  '국유림(㎡)', '공유림(㎡)', '사유림(㎡)',
+  '산지구분 합계(㎡)', '보전산지-임업용(㎡)', '보전산지-공익용(㎡)', '준보전산지(㎡)',
+]);
 
-// ─── 초기화 ──────────────────────────────────────────
-loadProject();
+function parseSanjiAoa(aoa) {
+  const warnings = [];
+  if (!aoa || aoa.length < 2) throw new Error('시트에 데이터가 없습니다.');
+  const h1 = (aoa[0] || []).map(v => String(v ?? '').trim());
+  const h2 = (aoa[1] || []).map(v => String(v ?? '').trim());
+  const isSplit = h2.some(v => v === '보전산지') && h2.some(v => v === '준보전산지');
+  const dataStart = isSplit ? 2 : 1;
+
+  const idx = name => h1.findIndex(h => h === name);
+  const col = {
+    pnu: idx('PNU'), emd: idx('읍면동'), jibun: idx('지번'), jimok: idx('지목'),
+    bojeong: idx('편입면적 보정(㎡)'), price: idx('공시지가(원/㎡)'),
+    gF: idx('보전산지-임업용(㎡)'), gG: idx('보전산지-공익용(㎡)'), gJ: idx('준보전산지(㎡)'),
+  };
+  if (col.pnu < 0) throw new Error('PNU 컬럼을 찾을 수 없습니다. 시설별 산지편입조서에서 저장한 산지내역서인지 확인해주세요.');
+
+  // 레이어 컬럼 탐지
+  const layers = [];   // { name, cBo, cJun } | { name, c }
+  if (isSplit) {
+    for (let c = 0; c < h1.length; c++) {
+      const h = h1[c];
+      if (!h.endsWith('(㎡)')) continue;
+      if (h2[c] === '보전산지' && h2[c + 1] === '준보전산지') {
+        layers.push({ name: h.replace(/\(㎡\)$/, '').trim(), cBo: c, cJun: c + 1 });
+        c++;
+      }
+    }
+  } else {
+    // 알려진 면적 컬럼 이후에 나오는 (㎡) 컬럼 = 토지이용계획 레이어
+    let lastKnown = -1;
+    h1.forEach((h, c) => { if (KNOWN_AREA_HEADS.has(h) || h === '소유자주소' || h === '산지구분' || h === '편입구분') lastKnown = Math.max(lastKnown, c); });
+    for (let c = lastKnown + 1; c < h1.length; c++) {
+      const h = h1[c];
+      if (h.endsWith('(㎡)')) layers.push({ name: h.replace(/\(㎡\)$/, '').trim(), c });
+    }
+  }
+  if (layers.length === 0) throw new Error('토지이용계획(레이어)별 면적 컬럼이 없습니다. 시설별 산지편입조서 Step 5에서 토지이용계획 SHP를 매칭한 뒤 엑셀을 저장해주세요.');
+
+  const hasGubun = col.gF >= 0 && col.gG >= 0 && col.gJ >= 0;
+  if (!isSplit) {
+    warnings.push(hasGubun
+      ? '시설별 보전/준보전 구분이 없는 엑셀입니다 — 필지별 산지구분 면적비로 시설 면적을 보전/준보전에 나눠 산정했습니다.'
+      : '산지구분 정보가 없는 엑셀입니다 — 모든 면적을 준보전산지로 산정했습니다. Step 4에서 산지구분도를 매칭한 엑셀을 쓰면 정확해집니다.');
+  }
+  if (col.price < 0) warnings.push('공시지가 컬럼이 없습니다 — 공시지가 가산분 없이 단위면적당 금액만으로 산정합니다. (Step 4에서 "토지대장 정보 포함"을 체크해 저장하세요)');
+
+  const parcels = [];
+  for (let r = dataStart; r < aoa.length; r++) {
+    const row = aoa[r] || [];
+    const pnu = String(row[col.pnu] ?? '').trim();
+    if (!pnu || pnu === '합계') continue;
+    const price = col.price >= 0 ? num(row[col.price]) : null;
+    const areas = {};   // layer → { bo, jun }
+    let boRatio = 0;
+    if (!isSplit && hasGubun) {
+      const f = num(row[col.gF]) || 0, g = num(row[col.gG]) || 0, j = num(row[col.gJ]) || 0;
+      const s = f + g + j;
+      boRatio = s > 0 ? (f + g) / s : 0;
+    }
+    layers.forEach(L => {
+      if (isSplit) {
+        areas[L.name] = { bo: num(row[L.cBo]) || 0, jun: num(row[L.cJun]) || 0 };
+      } else {
+        const a = num(row[L.c]) || 0;
+        areas[L.name] = { bo: a * boRatio, jun: a * (1 - boRatio) };
+      }
+    });
+    parcels.push({
+      pnu,
+      emd: col.emd >= 0 ? String(row[col.emd] ?? '') : '',
+      jibun: col.jibun >= 0 ? String(row[col.jibun] ?? '') : '',
+      jimok: col.jimok >= 0 ? String(row[col.jimok] ?? '') : '',
+      bojeong: col.bojeong >= 0 ? num(row[col.bojeong]) : null,
+      price, areas,
+    });
+  }
+  if (parcels.length === 0) throw new Error('필지 데이터 행이 없습니다.');
+  const noPrice = col.price >= 0 ? parcels.filter(p => p.price == null).length : 0;
+  if (noPrice > 0) warnings.push(`공시지가가 비어 있는 필지 ${noPrice}건은 공시지가 가산분 0원으로 산정합니다.`);
+
+  return { parcels, layers: layers.map(L => L.name), mode: isSplit ? 'split' : (hasGubun ? 'ratio' : 'none'), hasPrice: col.price >= 0, warnings };
+}
+
+// ═══════════════════════════════════════════════════════
+// 산출
+// 단가 = 산지구분별 단위금액 + min(공시지가 × pct%, 상한)
+// 금액 = 면적(소수1자리) × 단가 × (1 − 감면율), 원 단위 반올림
+// ═══════════════════════════════════════════════════════
+function priceAdd(price, R) {
+  if (price == null || price <= 0) return 0;
+  return Math.min(price * (R.pct / 100), R.cap);
+}
+function computeFund(P, cfg, R) {
+  const rows = [];
+  const sum = {};   // layer → aggregates
+  P.layers.forEach(name => {
+    sum[name] = { name, include: cfg[name].include, relief: cfg[name].relief, restricted: cfg[name].restricted,
+                  areaBo: 0, areaJun: 0, areaRes: 0, gross: 0, reliefAmt: 0, net: 0 };
+  });
+  P.parcels.forEach(p => {
+    const add = priceAdd(p.price, R);
+    P.layers.forEach(name => {
+      const a = p.areas[name] || { bo: 0, jun: 0 };
+      const c = cfg[name];
+      const parts = c.restricted
+        ? [{ type: '제한지역', area: r1(a.bo + a.jun), base: R.res }]
+        : [{ type: '보전산지', area: r1(a.bo), base: R.bo }, { type: '준보전산지', area: r1(a.jun), base: R.jun }];
+      parts.forEach(pt => {
+        if (pt.area <= 0) return;
+        const unit = pt.base + add;
+        const gross = c.include ? Math.round(pt.area * unit) : 0;
+        const net = c.include ? Math.round(gross * (1 - c.relief / 100)) : 0;
+        rows.push({ pnu: p.pnu, emd: p.emd, jibun: p.jibun, jimok: p.jimok, price: p.price,
+                    layer: name, type: pt.type, area: pt.area, base: pt.base, add, unit,
+                    relief: c.include ? c.relief : null, gross, reliefAmt: gross - net, net, include: c.include });
+        const s = sum[name];
+        if (pt.type === '보전산지') s.areaBo += pt.area;
+        else if (pt.type === '준보전산지') s.areaJun += pt.area;
+        else s.areaRes += pt.area;
+        s.gross += gross; s.reliefAmt += gross - net; s.net += net;
+      });
+    });
+  });
+  return { rows, summary: P.layers.map(n => sum[n]) };
+}
+
+// ─── 업로드 처리 ───────────────────────────────────────
+function onDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+}
+function onFile(e) {
+  const f = e.target.files[0];
+  if (f) handleFile(f);
+  e.target.value = '';
+}
+async function handleFile(file) {
+  const msg = document.getElementById('parseMsg');
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+    const sheetName = wb.SheetNames.includes('산지내역서') ? '산지내역서' : wb.SheetNames[0];
+    const aoa = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: '' });
+    parsed = parseSanjiAoa(aoa);
+    parsed.fileName = file.name;
+
+    // 시설 설정 초기화 (미분류는 기본 산정 포함)
+    layerCfg = {};
+    parsed.layers.forEach(n => { layerCfg[n] = { include: true, relief: 0, restricted: false }; });
+
+    const modeLabel = { split: '시설별 보전/준보전 구분 있음', ratio: '필지 산지구분 비율로 배분', none: '전체 준보전산지로 산정' }[parsed.mode];
+    msg.innerHTML =
+      `<div class="alert alert-green"><span class="alert-icon">✅</span><div>
+        <strong>${escHtml(file.name)}</strong> — 필지 <strong>${parsed.parcels.length.toLocaleString()}</strong>건 · 시설(레이어) <strong>${parsed.layers.length}</strong>개 인식 · ${modeLabel}
+      </div></div>` +
+      parsed.warnings.map(w => `<div class="alert alert-amber" style="margin-bottom:8px"><span class="alert-icon">⚠️</span><div style="font-size:12px">${escHtml(w)}</div></div>`).join('');
+
+    const dz = document.getElementById('dropZone');
+    dz.classList.add('done');
+    document.getElementById('upIcon').textContent = '✅';
+    document.getElementById('upTitle').textContent = file.name;
+    document.getElementById('upDesc').textContent = '다른 파일로 바꾸려면 클릭하세요';
+
+    document.getElementById('rateCard').classList.remove('hidden');
+    document.getElementById('layerCard').classList.remove('hidden');
+    document.getElementById('resultArea').classList.add('hidden');
+    renderLayerTable();
+    setStep(2);
+    showToast(`✅ 필지 ${parsed.parcels.length.toLocaleString()}건 · 시설 ${parsed.layers.length}개 불러옴`);
+  } catch (err) {
+    console.error(err);
+    msg.innerHTML = `<div class="alert alert-red"><span class="alert-icon">❌</span><div>${escHtml(err.message || '파일을 읽을 수 없습니다.')}</div></div>`;
+    showToast('❌ 산지내역서를 읽지 못했습니다');
+  }
+}
+
+// ─── 시설별 설정 테이블 ─────────────────────────────────
+function layerAreaTotals() {
+  const t = {};
+  parsed.layers.forEach(n => t[n] = { bo: 0, jun: 0, cnt: 0 });
+  parsed.parcels.forEach(p => parsed.layers.forEach(n => {
+    const a = p.areas[n]; if (!a) return;
+    const bo = r1(a.bo), jun = r1(a.jun);
+    t[n].bo += bo; t[n].jun += jun;
+    if (bo + jun > 0) t[n].cnt++;
+  }));
+  return t;
+}
+function renderLayerTable() {
+  const t = layerAreaTotals();
+  const rows = parsed.layers.map((n, i) => {
+    const c = layerCfg[n];
+    const isUn = n === UNCLASS;
+    return `<tr class="${c.include ? '' : 'excluded'}">
+      <td class="left" style="font-weight:700;${isUn ? 'color:var(--ink3)' : ''}">${escHtml(n)}${isUn ? ' <span class="tag tag-amber">레이어 미겹침</span>' : ''}</td>
+      <td class="num">${t[n].cnt.toLocaleString()}</td>
+      <td class="num">${fmtArea(t[n].bo)}</td>
+      <td class="num">${fmtArea(t[n].jun)}</td>
+      <td class="num" style="font-weight:700">${fmtArea(t[n].bo + t[n].jun)}</td>
+      <td><input type="checkbox" class="chk" ${c.include ? 'checked' : ''} onchange="setCfg(${i},'include',this.checked)"></td>
+      <td><input type="number" class="cell-input" min="0" max="100" step="1" value="${c.relief}" ${c.include ? '' : 'disabled'} oninput="setCfg(${i},'relief',this.value)"> %</td>
+      <td><input type="checkbox" class="chk" ${c.restricted ? 'checked' : ''} ${c.include ? '' : 'disabled'} onchange="setCfg(${i},'restricted',this.checked)"></td>
+    </tr>`;
+  }).join('');
+  let tb = 0, tj = 0;
+  parsed.layers.forEach(n => { tb += t[n].bo; tj += t[n].jun; });
+  document.getElementById('layerTable').innerHTML = `
+    <thead><tr><th>시설(레이어)</th><th>필지 수</th><th>보전산지(㎡)</th><th>준보전산지(㎡)</th><th>합계(㎡)</th><th>산정</th><th>감면율</th><th>제한지역</th></tr></thead>
+    <tbody>${rows}
+      <tr class="total"><td class="left">합계</td><td>${parsed.parcels.length.toLocaleString()}</td><td class="num">${fmtArea(tb)}</td><td class="num">${fmtArea(tj)}</td><td class="num">${fmtArea(tb + tj)}</td><td colspan="3"></td></tr>
+    </tbody>`;
+}
+function setCfg(i, key, val) {
+  const n = parsed.layers[i];
+  if (key === 'relief') {
+    let v = num(val); if (v == null) v = 0;
+    layerCfg[n].relief = Math.max(0, Math.min(100, v));
+  } else {
+    layerCfg[n][key] = !!val;
+  }
+  if (key !== 'relief') renderLayerTable();
+  if (!document.getElementById('resultArea').classList.contains('hidden')) calculate(false);
+}
+
+// ─── 산출 + 렌더 ───────────────────────────────────────
+function calculate(scroll) {
+  if (!parsed) return;
+  if (!(rates.jun > 0 && rates.bo > 0)) { showToast('⚠️ 단위면적당 금액을 입력해주세요'); return; }
+  const res = computeFund(parsed, layerCfg, rates);
+  calcRows = res.rows; calcSummary = res.summary;
+  renderSummary();
+  renderDetail();
+  document.getElementById('resultArea').classList.remove('hidden');
+  setStep(3);
+  if (scroll) document.getElementById('resultArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderSummary() {
+  let area = 0, gross = 0, relief = 0, net = 0;
+  const parcelSet = new Set();
+  calcRows.forEach(r => { if (r.include) { area += r.area; parcelSet.add(r.pnu); } });
+  calcSummary.forEach(s => { gross += s.gross; relief += s.reliefAmt; net += s.net; });
+  document.getElementById('stCount').textContent = parcelSet.size.toLocaleString();
+  document.getElementById('stArea').textContent = fmtArea(area);
+  document.getElementById('stRelief').textContent = fmtWon(relief);
+  document.getElementById('stTotal').textContent = fmtWon(net);
+
+  const body = calcSummary.map(s => {
+    const a = s.areaBo + s.areaJun + s.areaRes;
+    return `<tr class="${s.include ? '' : 'excluded'}">
+      <td class="left" style="font-weight:700">${escHtml(s.name)}${s.restricted ? ' <span class="tag tag-red">제한지역</span>' : ''}</td>
+      <td class="num">${s.restricted ? '-' : fmtArea(s.areaBo)}</td>
+      <td class="num">${s.restricted ? '-' : fmtArea(s.areaJun)}</td>
+      <td class="num">${s.restricted ? fmtArea(s.areaRes) : '-'}</td>
+      <td class="num">${fmtArea(a)}</td>
+      <td class="num">${s.include ? fmtWon(s.gross) : '산정 제외'}</td>
+      <td class="num">${s.include ? s.relief + '%' : '-'}</td>
+      <td class="num" style="color:var(--amber)">${s.include ? fmtWon(s.reliefAmt) : '-'}</td>
+      <td class="num" style="font-weight:800;color:var(--ink)">${s.include ? fmtWon(s.net) : '-'}</td>
+      <td class="num">${net > 0 && s.include ? (s.net / net * 100).toFixed(1) + '%' : '-'}</td>
+    </tr>`;
+  }).join('');
+  let tBo = 0, tJun = 0, tRes = 0;
+  calcSummary.forEach(s => { if (!s.include) return; tBo += s.areaBo; tJun += s.areaJun; tRes += s.areaRes; });
+  document.getElementById('sumTable').innerHTML = `
+    <thead><tr><th>시설(레이어)</th><th>보전산지(㎡)</th><th>준보전산지(㎡)</th><th>제한지역(㎡)</th><th>면적 계(㎡)</th><th>산정액(원)</th><th>감면율</th><th>감면액(원)</th><th>부과액(원)</th><th>비율</th></tr></thead>
+    <tbody>${body}
+      <tr class="total"><td class="left">합계 (산정 대상)</td><td class="num">${fmtArea(tBo)}</td><td class="num">${fmtArea(tJun)}</td><td class="num">${fmtArea(tRes)}</td><td class="num">${fmtArea(tBo + tJun + tRes)}</td><td class="num">${fmtWon(gross)}</td><td></td><td class="num">${fmtWon(relief)}</td><td class="num">${fmtWon(net)}</td><td>100%</td></tr>
+    </tbody>`;
+}
+
+function renderDetail() {
+  const q = (document.getElementById('detailSearch').value || '').trim().toLowerCase();
+  const list = calcRows.filter(r => !q || r.pnu.includes(q) || r.jibun.toLowerCase().includes(q) || r.layer.toLowerCase().includes(q));
+  const LIMIT = 1500;
+  const shown = list.slice(0, LIMIT);
+  const head = `<thead><tr><th>PNU</th><th>읍면동</th><th>지번</th><th>지목</th><th>시설(레이어)</th><th>산지구분</th><th>면적(㎡)</th><th>공시지가(원/㎡)</th><th>단위금액</th><th>공시지가 가산</th><th>적용단가(원/㎡)</th><th>산정액(원)</th><th>감면율</th><th>부과액(원)</th></tr></thead>`;
+  const body = shown.map(r => `<tr class="${r.include ? '' : 'excluded'}">
+    <td class="mono">${escHtml(r.pnu)}</td>
+    <td>${escHtml(r.emd)}</td>
+    <td class="mono">${escHtml(r.jibun)}</td>
+    <td>${escHtml(r.jimok)}</td>
+    <td class="left">${escHtml(r.layer)}</td>
+    <td>${r.type}</td>
+    <td class="num">${fmtArea(r.area)}</td>
+    <td class="num">${r.price == null ? '<span class="tag tag-red">없음</span>' : r.price.toLocaleString()}</td>
+    <td class="num">${r.base.toLocaleString()}</td>
+    <td class="num">${(Math.round(r.add * 10) / 10).toLocaleString()}</td>
+    <td class="num" style="font-weight:700">${(Math.round(r.unit * 10) / 10).toLocaleString()}</td>
+    <td class="num">${r.include ? fmtWon(r.gross) : '제외'}</td>
+    <td class="num">${r.include ? r.relief + '%' : '-'}</td>
+    <td class="num" style="font-weight:800;color:var(--ink)">${r.include ? fmtWon(r.net) : '-'}</td>
+  </tr>`).join('');
+  document.getElementById('detailTable').innerHTML = head + `<tbody>${body || '<tr><td colspan="14" style="padding:30px;color:var(--ink3)">결과 없음</td></tr>'}</tbody>`;
+  document.getElementById('detailNote').textContent =
+    `${list.length.toLocaleString()}행` + (list.length > LIMIT ? ` 중 ${LIMIT.toLocaleString()}행만 표시 — 전체는 엑셀로 확인하세요` : '') +
+    ' · 면적은 소수 1자리로 반올림 후 적용단가를 곱하고, 금액은 원 단위 반올림';
+}
+
+// ─── 엑셀 저장 ─────────────────────────────────────────
+function exportExcel() {
+  if (!calcRows.length) { showToast('⚠️ 산출 결과가 없습니다'); return; }
+  const wb = XLSX.utils.book_new();
+
+  // 1) 시설별 집계
+  let gross = 0, relief = 0, net = 0, tBo = 0, tJun = 0, tRes = 0;
+  const s1 = [['시설(레이어)', '산정여부', '제한지역 적용', '보전산지(㎡)', '준보전산지(㎡)', '제한지역(㎡)', '면적 계(㎡)', '산정액(원)', '감면율(%)', '감면액(원)', '부과액(원)']];
+  calcSummary.forEach(s => {
+    s1.push([s.name, s.include ? '산정' : '제외', s.restricted ? 'O' : '', r1(s.areaBo), r1(s.areaJun), r1(s.areaRes),
+             r1(s.areaBo + s.areaJun + s.areaRes), s.include ? s.gross : 0, s.include ? s.relief : '', s.include ? s.reliefAmt : 0, s.include ? s.net : 0]);
+    if (s.include) { gross += s.gross; relief += s.reliefAmt; net += s.net; tBo += s.areaBo; tJun += s.areaJun; tRes += s.areaRes; }
+  });
+  s1.push(['합계(산정 대상)', '', '', r1(tBo), r1(tJun), r1(tRes), r1(tBo + tJun + tRes), gross, '', relief, net]);
+  const ws1 = XLSX.utils.aoa_to_sheet(s1);
+  ws1['!cols'] = [18, 8, 10, 14, 14, 12, 14, 16, 10, 14, 16].map(w => ({ wch: w }));
+  applyNumFmt(ws1, 1, { 3: '#,##0.0', 4: '#,##0.0', 5: '#,##0.0', 6: '#,##0.0', 7: '#,##0', 9: '#,##0', 10: '#,##0' });
+  XLSX.utils.book_append_sheet(wb, ws1, '시설별 집계');
+
+  // 2) 필지별 산출
+  const s2 = [['PNU', '읍면동', '지번', '지목', '시설(레이어)', '산지구분', '면적(㎡)', '공시지가(원/㎡)', '단위면적당 금액(원/㎡)', '공시지가 가산(원/㎡)', '적용단가(원/㎡)', '산정액(원)', '감면율(%)', '감면액(원)', '부과액(원)']];
+  calcRows.forEach(r => s2.push([r.pnu, r.emd, r.jibun, r.jimok, r.layer, r.type, r.area,
+    r.price == null ? '' : r.price, r.base, Math.round(r.add * 10) / 10, Math.round(r.unit * 10) / 10,
+    r.include ? r.gross : '제외', r.include ? r.relief : '', r.include ? r.reliefAmt : '', r.include ? r.net : '']));
+  s2.push(['합계', '', '', '', '', '', r1(calcRows.filter(r => r.include).reduce((s, r) => s + r.area, 0)), '', '', '', '', gross, '', relief, net]);
+  const ws2 = XLSX.utils.aoa_to_sheet(s2);
+  ws2['!cols'] = [22, 10, 10, 6, 16, 10, 12, 14, 16, 14, 14, 14, 9, 12, 14].map(w => ({ wch: w }));
+  applyNumFmt(ws2, 1, { 6: '#,##0.0', 7: '#,##0', 8: '#,##0', 9: '#,##0.0', 10: '#,##0.0', 11: '#,##0', 13: '#,##0', 14: '#,##0' });
+  XLSX.utils.book_append_sheet(wb, ws2, '필지별 산출');
+
+  // 3) 적용 기준
+  const s3 = [
+    ['항목', '값', '비고'],
+    ['적용 기준', rates.label || '', '산림청 대체산림자원조성비 부과기준 고시'],
+    ['준보전산지 단위면적당 금액', rates.jun, '원/㎡'],
+    ['보전산지 단위면적당 금액', rates.bo, '원/㎡'],
+    ['산지전용·일시사용제한지역 단위면적당 금액', rates.res, '원/㎡'],
+    ['공시지가 반영비율', rates.pct, '%'],
+    ['공시지가 가산 상한', rates.cap, '원/㎡'],
+    ['산식', `면적 × [단위면적당 금액 + min(공시지가 × ${rates.pct}%, ${rates.cap}원)] × (1 − 감면율)`, '면적 소수1자리, 금액 원 단위 반올림'],
+    ['원본 파일', parsed.fileName || '', ''],
+    ['산출일', new Date().toISOString().slice(0, 10), ''],
+  ];
+  const ws3 = XLSX.utils.aoa_to_sheet(s3);
+  ws3['!cols'] = [{ wch: 36 }, { wch: 60 }, { wch: 36 }];
+  XLSX.utils.book_append_sheet(wb, ws3, '적용 기준');
+
+  const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  XLSX.writeFile(wb, `대체산림자원조성비_${today}.xlsx`);
+  showToast('📥 엑셀 저장 완료');
+}
+function applyNumFmt(ws, startRow, fmtByCol) {
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  for (let R = startRow; R <= range.e.r; R++) {
+    Object.entries(fmtByCol).forEach(([c, z]) => {
+      const cell = ws[XLSX.utils.encode_cell({ r: R, c: Number(c) })];
+      if (cell && typeof cell.v === 'number') cell.z = z;
+    });
+  }
+}
+
+// ─── 초기화 ───────────────────────────────────────────
+function resetAll() {
+  if (parsed && !confirm('처음부터 다시 시작할까요?')) return;
+  parsed = null; layerCfg = {}; calcRows = []; calcSummary = [];
+  document.getElementById('parseMsg').innerHTML = '';
+  document.getElementById('dropZone').classList.remove('done');
+  document.getElementById('upIcon').textContent = '📊';
+  document.getElementById('upTitle').textContent = '산지내역서 엑셀 업로드';
+  document.getElementById('upDesc').textContent = '.xlsx 파일 · 드래그&드롭 가능';
+  ['rateCard', 'layerCard', 'resultArea'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  setStep(1);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+loadRates();
 </script>
 </body>
 </html>
