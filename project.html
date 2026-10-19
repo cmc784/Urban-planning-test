@@ -530,6 +530,24 @@ body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--
 #fundView .step-progress {padding:14px 12px;}
 }
 #fundView { display:none; }
+#fundView .law-box { background:#f7f6f2; border:1px solid var(--border); border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:12px; color:var(--ink2); }
+#fundView .law-box summary { cursor:pointer; font-weight:700; color:var(--ink); }
+#fundView .law-body { margin-top:10px; display:flex; flex-direction:column; gap:8px; line-height:1.7; }
+#fundView .law-body ul { margin:4px 0 0 18px; }
+#fundView .zone-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; background:var(--blue-light); border:1px solid #b8ccf0; border-radius:8px; padding:10px 14px; margin-bottom:14px; }
+#fundView .zone-label { font-size:12px; font-weight:700; color:#1a2a5e; }
+#fundView .zone-select, #fundView .item-select { padding:5px 8px; border:1px solid var(--border); border-radius:6px; font-size:12px; font-family:inherit; background:var(--white); color:var(--ink); max-width:100%; }
+#fundView .item-select { width:280px; }
+#fundView .zone-rates { font-size:12px; font-family:'DM Mono',monospace; color:#1a2a5e; }
+#fundView .basis { font-size:10px; color:var(--ink3); }
+#fundView .ex-grid { display:grid; grid-template-columns:200px 1fr; gap:6px 14px; font-size:13px; align-items:baseline; }
+#fundView .ex-grid .k { color:var(--ink3); font-size:12px; }
+#fundView .ex-grid .v { font-family:'DM Mono',monospace; color:var(--ink); }
+#fundView .ex-grid .v b { color:var(--green); }
+#fundView .ex-final { margin-top:12px; padding:10px 14px; background:var(--green-light); border-radius:8px; font-family:'DM Mono',monospace; font-size:14px; font-weight:800; color:var(--green); }
+#fundView table.grid tr.clickable { cursor:pointer; }
+#fundView table.grid tr.picked td { background:#fff7ed !important; }
+@media(max-width:600px){ #fundView .ex-grid { grid-template-columns:1fr; } #fundView .item-select { width:200px; } }
 #fundView.open { display:block; }
 #projectView.closed { display:none; }
 
@@ -906,16 +924,42 @@ body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--
 
   <!-- ③ 시설별 설정 -->
   <div class="sec-card hidden" id="layerCard">
-    <div class="sec-card-title"><div class="dot"></div>③ 시설(레이어)별 산정 설정
-      <span class="sub">산정 제외 · 감면율 · 제한지역 단가 적용 여부를 시설마다 지정합니다</span>
+    <div class="sec-card-title"><div class="dot"></div>③ 시설(레이어)별 산정 · 감면 설정
+      <span class="sub">시설마다 별표 5 감면 항목을 고르면 보전·준보전 감면율이 자동으로 들어갑니다</span>
     </div>
+
+    <details class="law-box">
+      <summary>📘 감면 기준의 법적 근거 (산지관리법 제19조 · 시행령 제23조 · 별표 5 &lt;개정 2026. 8. 18.&gt;)</summary>
+      <div class="law-body">
+        <div><b>법 제19조제5항</b> — 산림청장등은 다음의 경우 대체산림자원조성비를 감면할 수 있음
+          <ul>
+            <li><b>제1호</b> 국가·지방자치단체가 공용 또는 공공용 목적으로 산지전용·일시사용 → 별표 5 <b>제1호</b></li>
+            <li><b>제2호</b> 대통령령으로 정하는 중요 산업시설 설치 → 별표 5 <b>제2호</b> (시행령 제23조제6항)</li>
+            <li><b>제3호</b> 광물의 채굴 또는 대통령령으로 정하는 시설 설치·용도 사용 → 별표 5 <b>제3호</b> (시행령 제23조제7항)</li>
+          </ul>
+        </div>
+        <div><b>법 제19조제7항 · 시행령 제23조제1항</b> — 감면대상 및 감면비율은 <b>별표 5</b>에 따름 (보전산지·준보전산지 감면율이 따로 정해짐)</div>
+        <div><b>법 제19조제8항</b> — 대체산림자원조성비 = 산지전용·일시사용 면적 × 부과시점의 단위면적당 금액</div>
+        <div><b>별표 5 비고 1·2</b> — 공용·공공용시설(제1호 거목)이나 지역·지구·구역(제2호 자·차·카·파·하·거·머·버목, 제3호 너·더·러목) 안의 시설이 다른 감면 항목에도 해당하면 <b>가장 높은 감면율</b> 적용</div>
+        <div><b>별표 5 비고 8</b> — 감면대상 면적은 해당 대상시설이 <b>설치되는 산지의 면적</b>으로 한정 (법제처 해석도 같은 취지) → 이 화면은 시설(레이어)별 면적에 그 시설의 감면율만 적용합니다</div>
+      </div>
+    </details>
+
+    <div class="zone-row">
+      <div class="zone-label">🗺️ 지역·지구 감면 <span style="font-weight:400;color:var(--ink3)">(별표 5 비고 2 — 사업지구 전체에 적용, 시설 감면율과 비교해 높은 쪽 적용)</span></div>
+      <select id="zoneSelect" class="zone-select" onchange="setZone(this.value)"></select>
+      <span id="zoneRates" class="zone-rates"></span>
+    </div>
+
     <div class="table-wrap">
       <table class="grid" id="layerTable"></table>
     </div>
     <div style="font-size:11px;color:var(--ink3);margin-top:8px;line-height:1.7">
       · <strong>산정</strong> 체크를 해제하면 해당 시설 면적은 부과 대상에서 빠집니다 (예: 원형보전지).<br>
-      · <strong>감면율</strong>은 산지관리법 시행령 별표 5 등 감면 기준에 따라 시설별로 입력하세요 (100 = 전액 감면).<br>
-      · <strong>제한지역</strong>을 체크하면 그 시설의 면적 전체에 산지전용·일시사용제한지역 단가를 적용합니다.
+      · <strong>감면 항목</strong>을 고르면 별표 5의 보전산지·준보전산지 감면율이 들어가고, 감면율을 직접 고치면 '직접 입력'으로 바뀝니다.<br>
+      · 제1호 항목은 <strong>국가·지방자치단체</strong>가 시행하는 경우에만 해당합니다. 공기업(LH 등) 사업의 도로·공원 등은 무상귀속되면 <strong>제3호 사목</strong>을 검토하세요.<br>
+      · <strong>제한지역</strong>을 체크하면 그 시설 면적 전체에 산지전용·일시사용제한지역 단가를 적용하며, 감면율은 보전산지 감면율을 씁니다.<br>
+      · 감면 적용 여부는 최종적으로 허가권자(산림청장등)가 판단하므로, 이 결과는 검토용 추정치입니다.
     </div>
     <div class="nav-btns" style="margin-top:16px">
       <button class="btn-primary" onclick="calculate(true)">💰 산출하기 →</button>
@@ -929,6 +973,13 @@ body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--
       <div class="stat-card"><div class="stat-label">부과 대상 면적</div><div class="stat-val"><span id="stArea">0</span><span class="stat-unit">㎡</span></div></div>
       <div class="stat-card"><div class="stat-label">감면액</div><div class="stat-val" style="color:var(--amber)"><span id="stRelief">0</span><span class="stat-unit">원</span></div></div>
       <div class="stat-card"><div class="stat-label">대체산림자원조성비</div><div class="stat-val big"><span id="stTotal">0</span><span class="stat-unit">원</span></div></div>
+    </div>
+
+    <div class="sec-card" id="exampleCard">
+      <div class="sec-card-title"><div class="dot"></div>산정식 예시
+        <span class="sub">산출 결과 중 감면이 적용된 한 행을 골라 계산 과정을 풀어 보여줍니다 · 필지별 내역에서 행을 클릭하면 그 행으로 바뀝니다</span>
+      </div>
+      <div id="exampleBody"></div>
     </div>
 
     <div class="sec-card">
@@ -1369,7 +1420,105 @@ const UNCLASS = '미분류';
 
 let rates = { ...DEFAULT_RATES };
 let parsed = null;        // { parcels:[], layers:[], mode, warnings:[] , fileName }
-let layerCfg = {};        // layer → { include, relief, restricted }
+let layerCfg = {};        // layer → { include, item, rBo, rJun, restricted }
+let zoneItem = '';        // 지역·지구 감면 항목 코드 (별표 5 비고 2)
+let examplePick = null;   // 산정식 예시로 보여줄 행 index
+
+// ═══════════════════════════════════════════════════════
+// 산지관리법 시행령 [별표 5] 대체산림자원조성비 감면대상 및 감면비율
+// <개정 2026. 8. 18.> (제23조제1항 관련) — bo: 보전산지, jun: 준보전산지 (%)
+// zone: 비고 2의 지역·지구·구역 항목
+// ═══════════════════════════════════════════════════════
+const B5 = [
+  // 제1호 — 국가·지방자치단체의 공용·공공용 (법 제19조제5항제1호)
+  { c:'1-가', g:1, t:'「도로법」 도로 (휴게시설·대기실 제외)', bo:100, jun:100 },
+  { c:'1-나', g:1, t:'댐 (댐건설관리법)', bo:100, jun:100 },
+  { c:'1-라', g:1, t:'철도 및 고속철도', bo:100, jun:100 },
+  { c:'1-마', g:1, t:'공용청사·재해방지시설·국립/공설묘지·야생동식물보호시설·공원시설·폐기물처리시설·산림공익시설', bo:100, jun:100 },
+  { c:'1-바', g:1, t:'국방·군사시설', bo:100, jun:100 },
+  { c:'1-사', g:1, t:'저수지·소류지·수로 등 농지개량시설', bo:100, jun:100 },
+  { c:'1-아', g:1, t:'국가유산 보존·정비·활용시설', bo:100, jun:100 },
+  { c:'1-자', g:1, t:'도시철도', bo:100, jun:100 },
+  { c:'1-차', g:1, t:'「수도법」 수도', bo:100, jun:100 },
+  { c:'1-카', g:1, t:'농어촌도로 (휴게시설·대기실 제외)', bo:100, jun:100 },
+  { c:'1-타', g:1, t:'도시·군관리계획으로 결정된 도로 (국토계획법 제2조제7호)', bo:100, jun:100 },
+  { c:'1-하', g:1, t:'국립·공립 박물관·미술관·공공도서관·특수도서관', bo:100, jun:100 },
+  { c:'1-거', g:1, t:'그 밖의 국가·지자체 설치 공용·공공용 시설 (시행령 제46조제1항제2호가~라목)', bo:50, jun:50 },
+  // 제2호 — 중요 산업시설 (법 제19조제5항제2호)
+  { c:'2-가', g:2, t:'농어촌정비사업 시설', bo:100, jun:100 },
+  { c:'2-나', g:2, t:'특정연구기관의 교육·연구시설', bo:100, jun:100 },
+  { c:'2-다', g:2, t:'벤처기업집적시설', bo:100, jun:100 },
+  { c:'2-라', g:2, t:'재생에너지 설비(태양에너지 제외)·연료전지·수소에너지 설비', bo:100, jun:100 },
+  { c:'2-마', g:2, t:'기부채납·무상귀속되는 산업시설', bo:100, jun:100 },
+  { c:'2-아', g:2, t:'우주센터시설', bo:100, jun:100 },
+  { c:'2-자1', g:2, t:'국가산업단지 (수도권·골프장 제외)', bo:100, jun:100, zone:true },
+  { c:'2-자2', g:2, t:'국가산업단지 외의 산업단지 (수도권·골프장 제외)', bo:0, jun:100, zone:true },
+  { c:'2-차', g:2, t:'관광지(50만㎡ 이상)·관광단지 (수도권·골프장 제외)', bo:0, jun:100, zone:true },
+  { c:'2-카', g:2, t:'물류터미널사업·물류단지 (창고업 제외)', bo:100, jun:100, zone:true },
+  { c:'2-타', g:2, t:'공기업·준정부기관·지방공사·지방공단·민자사업시행자가 설치하는 공항·수도·하수도·하천·어항·폐기물·전기통신·전원·가스·재활용·체육·청소년수련시설', bo:100, jun:100 },
+  { c:'2-파', g:2, t:'경제자유구역 실시계획 승인 시설 (택지·골프장 제외)', bo:50, jun:50, zone:true },
+  { c:'2-하', g:2, t:'제주투자진흥지구 시설 등', bo:50, jun:50, zone:true },
+  { c:'2-거', g:2, t:'기업도시개발구역 시설 (택지·골프장 제외)', bo:0, jun:50, zone:true },
+  { c:'2-너', g:2, t:'폐광지역 개발사업 시설', bo:0, jun:50 },
+  { c:'2-더', g:2, t:'평창 동계올림픽 특별구역 시설', bo:50, jun:100 },
+  { c:'2-러', g:2, t:'평택시개발사업·국제화계획지구 개발사업', bo:0, jun:50 },
+  { c:'2-머', g:2, t:'첨단투자지구 시설 (2022.9.1.~2025.8.31. 신청분)', bo:0, jun:50, zone:true },
+  { c:'2-버', g:2, t:'수도권 반환공여구역주변지역 등 시설 (2022.9.1.~2025.8.31. 신청분)', bo:0, jun:50, zone:true },
+  // 제3호 — 광물 채굴 등 (법 제19조제5항제3호)
+  { c:'3-가', g:3, t:'농림어업인 주택(660㎡ 미만)·농도·임산물 재배시설', bo:100, jun:100 },
+  { c:'3-나', g:3, t:'각급 학교 시설용지 (유아·초중등·고등교육법)', bo:100, jun:100 },
+  { c:'3-다', g:3, t:'사립 박물관·미술관·공공도서관·특수도서관', bo:100, jun:100 },
+  { c:'3-라', g:3, t:'광해방지사업 시설', bo:100, jun:100 },
+  { c:'3-마', g:3, t:'농림어업인등·산림조합의 사육·양식·온실·버섯재배·축사시설', bo:100, jun:100 },
+  { c:'3-바', g:3, t:'전통사찰 불사시설 및 부대시설', bo:100, jun:100 },
+  { c:'3-사', g:3, t:'기부채납·무상귀속되는 공용·공공용시설 및 재해방지시설', bo:100, jun:100 },
+  { c:'3-아', g:3, t:'초지', bo:50, jun:100 },
+  { c:'3-자', g:3, t:'광물의 채굴', bo:100, jun:100 },
+  { c:'3-차', g:3, t:'농어촌 비영리법인 의료기관', bo:100, jun:100 },
+  { c:'3-카', g:3, t:'비영리법인 사회복지시설·봉안시설', bo:0, jun:100 },
+  { c:'3-타', g:3, t:'임대주택 (공공주택 특별법 시행령 제2조제1호~제3호)', bo:0, jun:100 },
+  { c:'3-파', g:3, t:'지방이전 공공기관 사옥', bo:0, jun:100 },
+  { c:'3-하', g:3, t:'청소년수련시설', bo:50, jun:50 },
+  { c:'3-거', g:3, t:'방사성폐기물 관리시설', bo:50, jun:50 },
+  { c:'3-너', g:3, t:'행정중심복합도시 예정지역 시설 (택지 제외)', bo:0, jun:50, zone:true },
+  { c:'3-더', g:3, t:'혁신도시개발구역 시설 (택지 제외)', bo:0, jun:50, zone:true },
+  { c:'3-러', g:3, t:'지역개발사업구역(낙후지역) 공원·체육시설 (2017~2024 신청분)', bo:0, jun:50, zone:true },
+  { c:'3-머', g:3, t:'한국도로공사 설치 도로 (휴게시설·대기실 제외)', bo:100, jun:100 },
+  { c:'3-버', g:3, t:'한국수자원공사 설치 댐', bo:100, jun:100 },
+  { c:'3-서', g:3, t:'한국철도공사 설치 철도·고속철도', bo:100, jun:100 },
+  { c:'3-어', g:3, t:'매장유산 발굴조사 (감면 목적사업 수행용)', bo:100, jun:100 },
+  { c:'3-저', g:3, t:'특별재난지역 피해 단독주택 복구 (660㎡ 미만)', bo:100, jun:100 },
+  { c:'3-처', g:3, t:'다른 법률에 따른 면제 시설 (군공항 이전·농협·수협·산림조합·창업 7년 내 중소기업·소기업 공장·친수구역 등)', bo:100, jun:100 },
+];
+const B5_MAP = Object.fromEntries(B5.map(x => [x.c, x]));
+const B5_GROUP = { 1:'제1호 국가·지자체 공용·공공용', 2:'제2호 중요 산업시설', 3:'제3호 광물 채굴 등' };
+function b5Label(code) {
+  if (!code) return '감면 없음';
+  if (code === 'custom') return '직접 입력';
+  const x = B5_MAP[code];
+  const m = x && x.c.match(/^(\d)-(.)(\d?)$/);
+  return m ? `별표5 제${m[1]}호 ${m[2]}목${m[3] ? ' ' + m[3] + ')' : ''}` : code;
+}
+function b5Options(selected, zoneOnly) {
+  let html = `<option value=""${!selected ? ' selected' : ''}>${zoneOnly ? '해당 없음' : '감면 없음 (0%)'}</option>`;
+  if (!zoneOnly) html += `<option value="custom"${selected === 'custom' ? ' selected' : ''}>직접 입력</option>`;
+  [1, 2, 3].forEach(g => {
+    const items = B5.filter(x => x.g === g && (!zoneOnly || x.zone));
+    if (!items.length) return;
+    html += `<optgroup label="${B5_GROUP[g]}">` + items.map(x =>
+      `<option value="${x.c}"${selected === x.c ? ' selected' : ''}>${x.c} ${escHtml(x.t)} (보전 ${x.bo}% · 준보전 ${x.jun}%)</option>`).join('') + '</optgroup>';
+  });
+  return html;
+}
+// 시설 감면율과 지역·지구 감면율 중 높은 쪽 (별표 5 비고 1·2)
+function effRelief(c) {
+  const z = zoneItem ? B5_MAP[zoneItem] : null;
+  const zBo = z ? z.bo : 0, zJun = z ? z.jun : 0;
+  const bo = Math.max(c.rBo || 0, zBo), jun = Math.max(c.rJun || 0, zJun);
+  const basisBo = (c.rBo || 0) >= zBo ? (c.rBo > 0 ? c.item : '') : zoneItem;
+  const basisJun = (c.rJun || 0) >= zJun ? (c.rJun > 0 ? c.item : '') : zoneItem;
+  return { bo, jun, basisBo, basisJun };
+}
 let calcRows = [];        // 필지×시설×산지구분 산출 행
 let calcSummary = [];     // 시설별 집계
 
@@ -1543,25 +1692,29 @@ function computeFund(P, cfg, R) {
   const rows = [];
   const sum = {};   // layer → aggregates
   P.layers.forEach(name => {
-    sum[name] = { name, include: cfg[name].include, relief: cfg[name].relief, restricted: cfg[name].restricted,
-                  areaBo: 0, areaJun: 0, areaRes: 0, gross: 0, reliefAmt: 0, net: 0 };
+    const e = effRelief(cfg[name]);
+    sum[name] = { name, include: cfg[name].include, item: cfg[name].item, rBo: e.bo, rJun: e.jun, basisBo: e.basisBo, basisJun: e.basisJun,
+                  restricted: cfg[name].restricted, areaBo: 0, areaJun: 0, areaRes: 0, gross: 0, reliefAmt: 0, net: 0 };
   });
   P.parcels.forEach(p => {
     const add = priceAdd(p.price, R);
     P.layers.forEach(name => {
       const a = p.areas[name] || { bo: 0, jun: 0 };
       const c = cfg[name];
+      const e = effRelief(c);
+      // 제한지역은 보전산지 감면율 적용
       const parts = c.restricted
-        ? [{ type: '제한지역', area: r1(a.bo + a.jun), base: R.res }]
-        : [{ type: '보전산지', area: r1(a.bo), base: R.bo }, { type: '준보전산지', area: r1(a.jun), base: R.jun }];
+        ? [{ type: '제한지역', area: r1(a.bo + a.jun), base: R.res, rel: e.bo, basis: e.basisBo }]
+        : [{ type: '보전산지', area: r1(a.bo), base: R.bo, rel: e.bo, basis: e.basisBo },
+           { type: '준보전산지', area: r1(a.jun), base: R.jun, rel: e.jun, basis: e.basisJun }];
       parts.forEach(pt => {
         if (pt.area <= 0) return;
         const unit = pt.base + add;
         const gross = c.include ? Math.round(pt.area * unit) : 0;
-        const net = c.include ? Math.round(gross * (1 - c.relief / 100)) : 0;
+        const net = c.include ? Math.round(gross * (1 - pt.rel / 100)) : 0;
         rows.push({ pnu: p.pnu, emd: p.emd, jibun: p.jibun, jimok: p.jimok, price: p.price,
                     layer: name, type: pt.type, area: pt.area, base: pt.base, add, unit,
-                    relief: c.include ? c.relief : null, gross, reliefAmt: gross - net, net, include: c.include });
+                    relief: c.include ? pt.rel : null, basis: c.include ? pt.basis : '', gross, reliefAmt: gross - net, net, include: c.include });
         const s = sum[name];
         if (pt.type === '보전산지') s.areaBo += pt.area;
         else if (pt.type === '준보전산지') s.areaJun += pt.area;
@@ -1597,7 +1750,9 @@ async function handleFile(file) {
 
     // 시설 설정 초기화 (미분류는 기본 산정 포함)
     layerCfg = {};
-    parsed.layers.forEach(n => { layerCfg[n] = { include: true, relief: 0, restricted: false }; });
+    parsed.layers.forEach(n => { layerCfg[n] = { include: true, item: '', rBo: 0, rJun: 0, restricted: false }; });
+    zoneItem = ''; examplePick = null;
+    renderZone();
 
     const modeLabel = { split: '시설별 보전/준보전 구분 있음', ratio: '필지 산지구분 비율로 배분', none: '전체 준보전산지로 산정' }[parsed.mode];
     msg.innerHTML =
@@ -1649,27 +1804,58 @@ function renderLayerTable() {
       <td class="num">${fmtArea(t[n].jun)}</td>
       <td class="num" style="font-weight:700">${fmtArea(t[n].bo + t[n].jun)}</td>
       <td><input type="checkbox" class="chk" ${c.include ? 'checked' : ''} onchange="setCfg(${i},'include',this.checked)"></td>
-      <td><input type="number" class="cell-input" min="0" max="100" step="1" value="${c.relief}" ${c.include ? '' : 'disabled'} oninput="setCfg(${i},'relief',this.value)"> %</td>
+      <td class="left"><select class="item-select" ${c.include ? '' : 'disabled'} onchange="setCfg(${i},'item',this.value)">${b5Options(c.item, false)}</select></td>
+      <td><input type="number" class="cell-input" id="rbo-${i}" min="0" max="100" step="1" value="${c.rBo}" ${c.include ? '' : 'disabled'} oninput="setCfg(${i},'rBo',this.value)"> %</td>
+      <td><input type="number" class="cell-input" id="rjun-${i}" min="0" max="100" step="1" value="${c.rJun}" ${c.include ? '' : 'disabled'} oninput="setCfg(${i},'rJun',this.value)"> %</td>
+      <td class="num" id="eff-${i}">${effCell(c)}</td>
       <td><input type="checkbox" class="chk" ${c.restricted ? 'checked' : ''} ${c.include ? '' : 'disabled'} onchange="setCfg(${i},'restricted',this.checked)"></td>
     </tr>`;
   }).join('');
   let tb = 0, tj = 0;
   parsed.layers.forEach(n => { tb += t[n].bo; tj += t[n].jun; });
   document.getElementById('layerTable').innerHTML = `
-    <thead><tr><th>시설(레이어)</th><th>필지 수</th><th>보전산지(㎡)</th><th>준보전산지(㎡)</th><th>합계(㎡)</th><th>산정</th><th>감면율</th><th>제한지역</th></tr></thead>
+    <thead><tr><th>시설(레이어)</th><th>필지 수</th><th>보전산지(㎡)</th><th>준보전산지(㎡)</th><th>합계(㎡)</th><th>산정</th><th>감면 항목 (별표 5)</th><th>보전 감면율</th><th>준보전 감면율</th><th>최종 적용<br>(지역·지구 비교)</th><th>제한지역</th></tr></thead>
     <tbody>${rows}
-      <tr class="total"><td class="left">합계</td><td>${parsed.parcels.length.toLocaleString()}</td><td class="num">${fmtArea(tb)}</td><td class="num">${fmtArea(tj)}</td><td class="num">${fmtArea(tb + tj)}</td><td colspan="3"></td></tr>
+      <tr class="total"><td class="left">합계</td><td>${parsed.parcels.length.toLocaleString()}</td><td class="num">${fmtArea(tb)}</td><td class="num">${fmtArea(tj)}</td><td class="num">${fmtArea(tb + tj)}</td><td colspan="6"></td></tr>
     </tbody>`;
+}
+function effCell(c) {
+  if (!c.include) return '-';
+  const e = effRelief(c);
+  const z = zoneItem && (e.basisBo === zoneItem || e.basisJun === zoneItem) ? ' <span class="basis">(지구)</span>' : '';
+  return `보전 ${e.bo}% · 준보전 ${e.jun}%${z}`;
 }
 function setCfg(i, key, val) {
   const n = parsed.layers[i];
-  if (key === 'relief') {
+  const c = layerCfg[n];
+  if (key === 'rBo' || key === 'rJun') {
     let v = num(val); if (v == null) v = 0;
-    layerCfg[n].relief = Math.max(0, Math.min(100, v));
+    c[key] = Math.max(0, Math.min(100, v));
+    c.item = 'custom';
+    // 입력 중 포커스 유지를 위해 표 전체 대신 해당 칸만 갱신
+    const sel = document.querySelectorAll('#layerTable .item-select')[i];
+    if (sel) sel.value = 'custom';
+    document.getElementById('eff-' + i).innerHTML = effCell(c);
+  } else if (key === 'item') {
+    c.item = val;
+    if (val && val !== 'custom' && B5_MAP[val]) { c.rBo = B5_MAP[val].bo; c.rJun = B5_MAP[val].jun; }
+    else if (!val) { c.rBo = 0; c.rJun = 0; }
+    renderLayerTable();
   } else {
-    layerCfg[n][key] = !!val;
+    c[key] = !!val;
+    renderLayerTable();
   }
-  if (key !== 'relief') renderLayerTable();
+  if (!document.getElementById('resultArea').classList.contains('hidden')) calculate(false);
+}
+function renderZone() {
+  document.getElementById('zoneSelect').innerHTML = b5Options(zoneItem, true);
+  const z = zoneItem ? B5_MAP[zoneItem] : null;
+  document.getElementById('zoneRates').textContent = z ? `보전 ${z.bo}% · 준보전 ${z.jun}%` : '';
+}
+function setZone(v) {
+  zoneItem = v;
+  renderZone();
+  if (parsed) renderLayerTable();
   if (!document.getElementById('resultArea').classList.contains('hidden')) calculate(false);
 }
 
@@ -1679,13 +1865,20 @@ function calculate(scroll) {
   if (!(rates.jun > 0 && rates.bo > 0)) { showToast('⚠️ 단위면적당 금액을 입력해주세요'); return; }
   const res = computeFund(parsed, layerCfg, rates);
   calcRows = res.rows; calcSummary = res.summary;
+  if (examplePick == null || !calcRows[examplePick]) examplePick = defaultExampleIndex();
   renderSummary();
   renderDetail();
+  renderExample();
   document.getElementById('resultArea').classList.remove('hidden');
   setStep(3);
   if (scroll) document.getElementById('resultArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+function reliefBasisText(s) {
+  const codes = [...new Set([s.basisBo, s.basisJun].filter(Boolean))];
+  if (!codes.length) return '감면 없음';
+  return codes.map(b5Label).join(' · ');
+}
 function renderSummary() {
   let area = 0, gross = 0, relief = 0, net = 0;
   const parcelSet = new Set();
@@ -1705,7 +1898,7 @@ function renderSummary() {
       <td class="num">${s.restricted ? fmtArea(s.areaRes) : '-'}</td>
       <td class="num">${fmtArea(a)}</td>
       <td class="num">${s.include ? fmtWon(s.gross) : '산정 제외'}</td>
-      <td class="num">${s.include ? s.relief + '%' : '-'}</td>
+      <td class="num">${s.include ? (s.restricted ? `${s.rBo}%` : `${s.rBo}% / ${s.rJun}%`) + `<br><span class="basis">${escHtml(reliefBasisText(s))}</span>` : '-'}</td>
       <td class="num" style="color:var(--amber)">${s.include ? fmtWon(s.reliefAmt) : '-'}</td>
       <td class="num" style="font-weight:800;color:var(--ink)">${s.include ? fmtWon(s.net) : '-'}</td>
       <td class="num">${net > 0 && s.include ? (s.net / net * 100).toFixed(1) + '%' : '-'}</td>
@@ -1714,10 +1907,49 @@ function renderSummary() {
   let tBo = 0, tJun = 0, tRes = 0;
   calcSummary.forEach(s => { if (!s.include) return; tBo += s.areaBo; tJun += s.areaJun; tRes += s.areaRes; });
   document.getElementById('sumTable').innerHTML = `
-    <thead><tr><th>시설(레이어)</th><th>보전산지(㎡)</th><th>준보전산지(㎡)</th><th>제한지역(㎡)</th><th>면적 계(㎡)</th><th>산정액(원)</th><th>감면율</th><th>감면액(원)</th><th>부과액(원)</th><th>비율</th></tr></thead>
+    <thead><tr><th>시설(레이어)</th><th>보전산지(㎡)</th><th>준보전산지(㎡)</th><th>제한지역(㎡)</th><th>면적 계(㎡)</th><th>산정액(원)</th><th>감면율<br>(보전/준보전)</th><th>감면액(원)</th><th>부과액(원)</th><th>비율</th></tr></thead>
     <tbody>${body}
       <tr class="total"><td class="left">합계 (산정 대상)</td><td class="num">${fmtArea(tBo)}</td><td class="num">${fmtArea(tJun)}</td><td class="num">${fmtArea(tRes)}</td><td class="num">${fmtArea(tBo + tJun + tRes)}</td><td class="num">${fmtWon(gross)}</td><td></td><td class="num">${fmtWon(relief)}</td><td class="num">${fmtWon(net)}</td><td>100%</td></tr>
     </tbody>`;
+}
+
+// 감면이 일부 적용된 행 → 감면 있는 행 → 첫 산정 행 순으로 예시 선택
+function defaultExampleIndex() {
+  let i = calcRows.findIndex(r => r.include && r.relief > 0 && r.relief < 100 && r.price != null);
+  if (i < 0) i = calcRows.findIndex(r => r.include && r.relief > 0 && r.price != null);
+  if (i < 0) i = calcRows.findIndex(r => r.include);
+  return i < 0 ? null : i;
+}
+function pickExample(i) {
+  examplePick = i;
+  renderExample();
+  renderDetail();
+  document.getElementById('exampleCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function renderExample() {
+  const el = document.getElementById('exampleBody');
+  const r = examplePick != null ? calcRows[examplePick] : null;
+  if (!r) { el.innerHTML = '<div style="color:var(--ink3);font-size:12px">산정 대상 행이 없습니다.</div>'; return; }
+  const w = v => Number(v).toLocaleString();
+  const rawAdd = r.price != null ? r.price * rates.pct / 100 : 0;
+  const capped = r.price != null && rawAdd > rates.cap;
+  const addTxt = r.price == null
+    ? '공시지가 없음 → 0원'
+    : `${w(r.price)} × ${rates.pct}% = ${w(Math.round(rawAdd * 10) / 10)}원` + (capped ? ` → 상한 ${w(rates.cap)}원 적용` : ` (상한 ${w(rates.cap)}원 이하)`);
+  const unitR = Math.round(r.unit * 10) / 10;
+  el.innerHTML = `
+    <div class="ex-grid">
+      <div class="k">대상</div><div class="v">${escHtml(r.emd)} ${escHtml(r.jibun)} (${escHtml(r.jimok)}) · PNU ${escHtml(r.pnu)}</div>
+      <div class="k">시설 · 산지구분</div><div class="v">${escHtml(r.layer)} · ${r.type}</div>
+      <div class="k">① 산지전용 면적</div><div class="v"><b>${fmtArea(r.area)}</b> ㎡</div>
+      <div class="k">② 단위면적당 금액 (${r.type})</div><div class="v"><b>${w(r.base)}</b> 원/㎡ <span class="basis">${escHtml(rates.label || '')}</span></div>
+      <div class="k">③ 공시지가 가산</div><div class="v">${addTxt} → <b>${w(Math.round(r.add * 10) / 10)}</b> 원/㎡</div>
+      <div class="k">④ 적용단가 = ② + ③</div><div class="v">${w(r.base)} + ${w(Math.round(r.add * 10) / 10)} = <b>${w(unitR)}</b> 원/㎡</div>
+      <div class="k">⑤ 산정액 = ① × ④</div><div class="v">${fmtArea(r.area)} × ${w(unitR)} = <b>${r.include ? w(r.gross) : '산정 제외'}</b> 원</div>
+      <div class="k">⑥ 감면율</div><div class="v"><b>${r.include ? r.relief : 0}%</b> <span class="basis">${r.include ? escHtml(b5Label(r.basis)) : ''}${r.basis && B5_MAP[r.basis] ? ' — ' + escHtml(B5_MAP[r.basis].t) : ''}</span></div>
+      <div class="k">⑦ 감면액 = ⑤ × ⑥</div><div class="v">${r.include ? `${w(r.gross)} × ${r.relief}% = <b>${w(r.reliefAmt)}</b> 원` : '-'}</div>
+    </div>
+    <div class="ex-final">부과액 = ⑤ − ⑦ = ${r.include ? `${w(r.gross)} − ${w(r.reliefAmt)} = ${w(r.net)} 원` : '산정 제외'}</div>`;
 }
 
 function renderDetail() {
@@ -1725,8 +1957,8 @@ function renderDetail() {
   const list = calcRows.filter(r => !q || r.pnu.includes(q) || r.jibun.toLowerCase().includes(q) || r.layer.toLowerCase().includes(q));
   const LIMIT = 1500;
   const shown = list.slice(0, LIMIT);
-  const head = `<thead><tr><th>PNU</th><th>읍면동</th><th>지번</th><th>지목</th><th>시설(레이어)</th><th>산지구분</th><th>면적(㎡)</th><th>공시지가(원/㎡)</th><th>단위금액</th><th>공시지가 가산</th><th>적용단가(원/㎡)</th><th>산정액(원)</th><th>감면율</th><th>부과액(원)</th></tr></thead>`;
-  const body = shown.map(r => `<tr class="${r.include ? '' : 'excluded'}">
+  const head = `<thead><tr><th>PNU</th><th>읍면동</th><th>지번</th><th>지목</th><th>시설(레이어)</th><th>산지구분</th><th>면적(㎡)</th><th>공시지가(원/㎡)</th><th>단위금액</th><th>공시지가 가산</th><th>적용단가(원/㎡)</th><th>산정액(원)</th><th>감면율</th><th>감면 근거</th><th>부과액(원)</th></tr></thead>`;
+  const body = shown.map(r => `<tr class="clickable ${r.include ? '' : 'excluded'} ${calcRows.indexOf(r) === examplePick ? 'picked' : ''}" onclick="pickExample(${calcRows.indexOf(r)})">
     <td class="mono">${escHtml(r.pnu)}</td>
     <td>${escHtml(r.emd)}</td>
     <td class="mono">${escHtml(r.jibun)}</td>
@@ -1740,9 +1972,10 @@ function renderDetail() {
     <td class="num" style="font-weight:700">${(Math.round(r.unit * 10) / 10).toLocaleString()}</td>
     <td class="num">${r.include ? fmtWon(r.gross) : '제외'}</td>
     <td class="num">${r.include ? r.relief + '%' : '-'}</td>
+    <td class="basis">${r.include ? escHtml(b5Label(r.basis)) : '-'}</td>
     <td class="num" style="font-weight:800;color:var(--ink)">${r.include ? fmtWon(r.net) : '-'}</td>
   </tr>`).join('');
-  document.getElementById('detailTable').innerHTML = head + `<tbody>${body || '<tr><td colspan="14" style="padding:30px;color:var(--ink3)">결과 없음</td></tr>'}</tbody>`;
+  document.getElementById('detailTable').innerHTML = head + `<tbody>${body || '<tr><td colspan="15" style="padding:30px;color:var(--ink3)">결과 없음</td></tr>'}</tbody>`;
   document.getElementById('detailNote').textContent =
     `${list.length.toLocaleString()}행` + (list.length > LIMIT ? ` 중 ${LIMIT.toLocaleString()}행만 표시 — 전체는 엑셀로 확인하세요` : '') +
     ' · 면적은 소수 1자리로 반올림 후 적용단가를 곱하고, 금액은 원 단위 반올림';
@@ -1755,28 +1988,39 @@ function exportExcel() {
 
   // 1) 시설별 집계
   let gross = 0, relief = 0, net = 0, tBo = 0, tJun = 0, tRes = 0;
-  const s1 = [['시설(레이어)', '산정여부', '제한지역 적용', '보전산지(㎡)', '준보전산지(㎡)', '제한지역(㎡)', '면적 계(㎡)', '산정액(원)', '감면율(%)', '감면액(원)', '부과액(원)']];
+  const s1 = [['시설(레이어)', '산정여부', '제한지역 적용', '보전산지(㎡)', '준보전산지(㎡)', '제한지역(㎡)', '면적 계(㎡)', '산정액(원)', '보전 감면율(%)', '준보전 감면율(%)', '감면 근거', '감면액(원)', '부과액(원)']];
   calcSummary.forEach(s => {
     s1.push([s.name, s.include ? '산정' : '제외', s.restricted ? 'O' : '', r1(s.areaBo), r1(s.areaJun), r1(s.areaRes),
-             r1(s.areaBo + s.areaJun + s.areaRes), s.include ? s.gross : 0, s.include ? s.relief : '', s.include ? s.reliefAmt : 0, s.include ? s.net : 0]);
+             r1(s.areaBo + s.areaJun + s.areaRes), s.include ? s.gross : 0, s.include ? s.rBo : '', s.include ? s.rJun : '',
+             s.include ? reliefBasisText(s) : '', s.include ? s.reliefAmt : 0, s.include ? s.net : 0]);
     if (s.include) { gross += s.gross; relief += s.reliefAmt; net += s.net; tBo += s.areaBo; tJun += s.areaJun; tRes += s.areaRes; }
   });
-  s1.push(['합계(산정 대상)', '', '', r1(tBo), r1(tJun), r1(tRes), r1(tBo + tJun + tRes), gross, '', relief, net]);
+  s1.push(['합계(산정 대상)', '', '', r1(tBo), r1(tJun), r1(tRes), r1(tBo + tJun + tRes), gross, '', '', '', relief, net]);
   const ws1 = XLSX.utils.aoa_to_sheet(s1);
-  ws1['!cols'] = [18, 8, 10, 14, 14, 12, 14, 16, 10, 14, 16].map(w => ({ wch: w }));
-  applyNumFmt(ws1, 1, { 3: '#,##0.0', 4: '#,##0.0', 5: '#,##0.0', 6: '#,##0.0', 7: '#,##0', 9: '#,##0', 10: '#,##0' });
+  ws1['!cols'] = [18, 8, 10, 14, 14, 12, 14, 16, 12, 12, 24, 14, 16].map(w => ({ wch: w }));
+  applyNumFmt(ws1, 1, { 3: '#,##0.0', 4: '#,##0.0', 5: '#,##0.0', 6: '#,##0.0', 7: '#,##0', 11: '#,##0', 12: '#,##0' });
   XLSX.utils.book_append_sheet(wb, ws1, '시설별 집계');
 
   // 2) 필지별 산출
-  const s2 = [['PNU', '읍면동', '지번', '지목', '시설(레이어)', '산지구분', '면적(㎡)', '공시지가(원/㎡)', '단위면적당 금액(원/㎡)', '공시지가 가산(원/㎡)', '적용단가(원/㎡)', '산정액(원)', '감면율(%)', '감면액(원)', '부과액(원)']];
+  const s2 = [['PNU', '읍면동', '지번', '지목', '시설(레이어)', '산지구분', '면적(㎡)', '공시지가(원/㎡)', '단위면적당 금액(원/㎡)', '공시지가 가산(원/㎡)', '적용단가(원/㎡)', '산정액(원)', '감면율(%)', '감면 근거', '감면액(원)', '부과액(원)']];
   calcRows.forEach(r => s2.push([r.pnu, r.emd, r.jibun, r.jimok, r.layer, r.type, r.area,
     r.price == null ? '' : r.price, r.base, Math.round(r.add * 10) / 10, Math.round(r.unit * 10) / 10,
-    r.include ? r.gross : '제외', r.include ? r.relief : '', r.include ? r.reliefAmt : '', r.include ? r.net : '']));
-  s2.push(['합계', '', '', '', '', '', r1(calcRows.filter(r => r.include).reduce((s, r) => s + r.area, 0)), '', '', '', '', gross, '', relief, net]);
+    r.include ? r.gross : '제외', r.include ? r.relief : '', r.include ? b5Label(r.basis) : '', r.include ? r.reliefAmt : '', r.include ? r.net : '']));
+  s2.push(['합계', '', '', '', '', '', r1(calcRows.filter(r => r.include).reduce((s, r) => s + r.area, 0)), '', '', '', '', gross, '', '', relief, net]);
   const ws2 = XLSX.utils.aoa_to_sheet(s2);
-  ws2['!cols'] = [22, 10, 10, 6, 16, 10, 12, 14, 16, 14, 14, 14, 9, 12, 14].map(w => ({ wch: w }));
-  applyNumFmt(ws2, 1, { 6: '#,##0.0', 7: '#,##0', 8: '#,##0', 9: '#,##0.0', 10: '#,##0.0', 11: '#,##0', 13: '#,##0', 14: '#,##0' });
+  ws2['!cols'] = [22, 10, 10, 6, 16, 10, 12, 14, 16, 14, 14, 14, 9, 18, 12, 14].map(w => ({ wch: w }));
+  applyNumFmt(ws2, 1, { 6: '#,##0.0', 7: '#,##0', 8: '#,##0', 9: '#,##0.0', 10: '#,##0.0', 11: '#,##0', 14: '#,##0', 15: '#,##0' });
   XLSX.utils.book_append_sheet(wb, ws2, '필지별 산출');
+
+  // 2-1) 시설별 감면 설정
+  const sR = [['시설(레이어)', '산정여부', '감면 항목', '감면 항목 내용', '보전 감면율(%)', '준보전 감면율(%)', '최종 보전(%)', '최종 준보전(%)', '제한지역']];
+  parsed.layers.forEach(n => {
+    const c = layerCfg[n], e = effRelief(c);
+    sR.push([n, c.include ? '산정' : '제외', b5Label(c.item), c.item && B5_MAP[c.item] ? B5_MAP[c.item].t : '', c.rBo, c.rJun, e.bo, e.jun, c.restricted ? 'O' : '']);
+  });
+  const wsR = XLSX.utils.aoa_to_sheet(sR);
+  wsR['!cols'] = [18, 8, 16, 60, 12, 12, 12, 12, 8].map(w => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, wsR, '감면 설정');
 
   // 3) 적용 기준
   const s3 = [
@@ -1788,6 +2032,8 @@ function exportExcel() {
     ['공시지가 반영비율', rates.pct, '%'],
     ['공시지가 가산 상한', rates.cap, '원/㎡'],
     ['산식', `면적 × [단위면적당 금액 + min(공시지가 × ${rates.pct}%, ${rates.cap}원)] × (1 − 감면율)`, '면적 소수1자리, 금액 원 단위 반올림'],
+    ['지역·지구 감면', zoneItem ? `${b5Label(zoneItem)} ${B5_MAP[zoneItem].t}` : '해당 없음', '별표 5 비고 2 — 시설 감면율과 비교해 높은 쪽 적용'],
+    ['감면 근거', '산지관리법 제19조제5항·제7항, 시행령 제23조, 별표 5 <개정 2026. 8. 18.>', '감면대상 면적은 해당 시설이 설치되는 산지 면적(별표 5 비고 8)'],
     ['원본 파일', parsed.fileName || '', ''],
     ['산출일', new Date().toISOString().slice(0, 10), ''],
   ];
@@ -1824,6 +2070,7 @@ function resetAll() {
 }
 
 loadRates();
+renderZone();
 
 // project.html 모듈이 로드되기 전/실패 시에도 토스트가 동작하도록 대체 함수
 if (typeof window.showToast !== 'function') {
