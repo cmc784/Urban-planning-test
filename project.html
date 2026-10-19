@@ -1089,7 +1089,7 @@ window.APP_CONFIG = window.APP_CONFIG || { encodedKey: 'TVVVMk9ESTNNRVZHTUVORkxU
       <div class="toolbar">
         <input type="text" class="search" id="detailSearch" placeholder="🔍 PNU · 지번 · 시설명 검색" oninput="renderDetail()">
         <div style="flex:1"></div>
-        <button class="btn-primary btn-dark" onclick="exportExcel()">📥 엑셀 저장</button>
+        <button class="btn-primary btn-dark" onclick="exportExcel()" title="총괄표 · 시설별 산지편입조서 · 전액부과 세부조서 · 개별공시지가 · 산출 근거">📥 부과대상 조서 엑셀 저장</button>
       </div>
       <div class="table-wrap" style="max-height:560px;overflow:auto"><table class="grid" id="detailTable"></table></div>
       <div id="detailNote" style="font-size:11px;color:var(--ink3);margin-top:8px"></div>
@@ -1713,6 +1713,7 @@ function parseSanjiAoa(aoa) {
     pnu: idx('PNU'), sido: idx('시도'), sgg: idx('시군구'), emd: idx('읍면동'), jibun: idx('지번'), jimok: idx('지목'),
     bojeong: idx('편입면적 보정(㎡)'), price: idx('공시지가(원/㎡)'),
     gF: idx('보전산지-임업용(㎡)'), gG: idx('보전산지-공익용(㎡)'), gJ: idx('준보전산지(㎡)'),
+    gongbu: idx('공부상면적(㎡)'), daejang: idx('대장구분'),
   };
   if (col.pnu < 0) throw new Error('PNU 컬럼을 찾을 수 없습니다. 시설별 산지편입조서에서 저장한 산지내역서인지 확인해주세요.');
 
@@ -1775,6 +1776,11 @@ function parseSanjiAoa(aoa) {
       jibun: col.jibun >= 0 ? String(row[col.jibun] ?? '') : '',
       jimok: col.jimok >= 0 ? String(row[col.jimok] ?? '') : '',
       bojeong: col.bojeong >= 0 ? num(row[col.bojeong]) : null,
+      gongbu: col.gongbu >= 0 ? num(row[col.gongbu]) : null,
+      daejang: col.daejang >= 0 ? String(row[col.daejang] ?? '') : '',
+      gF: col.gF >= 0 ? (num(row[col.gF]) || 0) : null,
+      gG: col.gG >= 0 ? (num(row[col.gG]) || 0) : null,
+      gJ: col.gJ >= 0 ? (num(row[col.gJ]) || 0) : null,
       price, priceSrc: price != null ? '엑셀' : '', priceYear: '', priceMsg: '', areas,
     });
   }
@@ -2537,7 +2543,575 @@ function renderDetail() {
 }
 
 // ─── 엑셀 저장 ─────────────────────────────────────────
-function exportExcel() {
+// ═══════════════════════════════════════════════════════
+// 대체산림자원조성비 부과대상 조서 — 양식형 엑셀 (첨부 양식 참고)
+//   시트: ① 시설별 산지편입현황 총괄표  ② 시설별 산지편입조서(필지별)
+//         ③ 전액부과 세부조서(필지별)    ④ 개별공시지가  ⑤ 산출 근거
+// 1단계: buildFormSpec() — 값·수식·서식·병합을 담은 '조서 명세'(순수 데이터)를 만듦
+// 2단계: writeSpecWithExcelJS() — 명세를 ExcelJS로 서식 있는 .xlsx로 저장
+// ═══════════════════════════════════════════════════════
+const FORM_TYPES = [
+  { key: '보전산지', short: '보전' },
+  { key: '준보전산지', short: '준보전' },
+  { key: '제한지역', short: '제한지역' },
+];
+const NF_AREA = '_-* #,##0.0_-;\\-* #,##0.0_-;_-* "-"_-;_-@_-';
+const NF_WON = '_-* #,##0_-;\\-* #,##0_-;_-* "-"_-;_-@_-';
+const FORM_STYLES = {
+  title:   { font: { size: 20, bold: true }, align: { h: 'left', v: 'middle' } },
+  sub:     { font: { size: 11 }, align: { h: 'left', v: 'middle' } },
+  note:    { font: { size: 10, bold: true }, align: { h: 'center', v: 'middle', wrap: true }, border: 'thin' },
+  unit:    { font: { size: 10 }, align: { h: 'right', v: 'middle' } },
+  hG:      { font: { size: 10, bold: true }, fill: 'FFCCFFCC', align: { h: 'center', v: 'middle', wrap: true }, border: 'thin' },
+  hY:      { font: { size: 10, bold: true }, fill: 'FFFFFF99', align: { h: 'center', v: 'middle', wrap: true }, border: 'thin' },
+  hW:      { font: { size: 10, bold: true }, fill: 'FFF2F2F2', align: { h: 'center', v: 'middle', wrap: true }, border: 'thin' },
+  filt:    { font: { size: 9, color: 'FF808080' }, align: { h: 'center', v: 'middle' }, border: 'thin' },
+  tC:      { font: { size: 10 }, align: { h: 'center', v: 'middle' }, border: 'thin' },
+  tL:      { font: { size: 10 }, align: { h: 'left', v: 'middle', wrap: true }, border: 'thin' },
+  tCw:     { font: { size: 10 }, align: { h: 'center', v: 'middle', wrap: true }, border: 'thin' },
+  tPnu:    { font: { size: 9, color: 'FF595959' }, align: { h: 'center', v: 'middle' }, border: 'thin', numFmt: '@' },
+  a:       { font: { size: 10 }, align: { h: 'right', v: 'middle' }, border: 'thin', numFmt: NF_AREA },
+  aG:      { font: { size: 10 }, fill: 'FFE8F8E8', align: { h: 'right', v: 'middle' }, border: 'thin', numFmt: NF_AREA },
+  aY:      { font: { size: 10 }, fill: 'FFFFFFCC', align: { h: 'right', v: 'middle' }, border: 'thin', numFmt: NF_AREA },
+  w:       { font: { size: 10 }, align: { h: 'right', v: 'middle' }, border: 'thin', numFmt: NF_WON },
+  wY:      { font: { size: 10 }, fill: 'FFFFFFCC', align: { h: 'right', v: 'middle' }, border: 'thin', numFmt: NF_WON },
+  wB:      { font: { size: 10, bold: true }, fill: 'FFFFFF99', align: { h: 'right', v: 'middle' }, border: 'thin', numFmt: NF_WON },
+  pct:     { font: { size: 10 }, align: { h: 'center', v: 'middle' }, border: 'thin', numFmt: '0"%"' },
+  totL:    { font: { size: 10, bold: true }, fill: 'FFDDEBF7', align: { h: 'center', v: 'middle' }, border: 'thin' },
+  totA:    { font: { size: 10, bold: true }, fill: 'FFDDEBF7', align: { h: 'right', v: 'middle' }, border: 'thin', numFmt: NF_AREA },
+  totW:    { font: { size: 10, bold: true }, fill: 'FFDDEBF7', align: { h: 'right', v: 'middle' }, border: 'thin', numFmt: NF_WON },
+  grpL:    { font: { size: 10, bold: true }, fill: 'FFF2F2F2', align: { h: 'center', v: 'middle', wrap: true }, border: 'thin' },
+  grpA:    { font: { size: 10, bold: true }, fill: 'FFF2F2F2', align: { h: 'right', v: 'middle' }, border: 'thin', numFmt: NF_AREA },
+  grpW:    { font: { size: 10, bold: true }, fill: 'FFF2F2F2', align: { h: 'right', v: 'middle' }, border: 'thin', numFmt: NF_WON },
+  boxH:    { font: { size: 10, bold: true }, fill: 'FFCCFFCC', align: { h: 'left', v: 'middle', wrap: true }, border: 'thin' },
+  boxT:    { font: { size: 10 }, align: { h: 'left', v: 'middle', wrap: true }, border: 'thin' },
+  boxW:    { font: { size: 10, bold: true }, align: { h: 'right', v: 'middle' }, border: 'thin', numFmt: NF_WON },
+};
+
+function unEsc(s) { return String(s).replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&'); }
+function colL(c) { let s = ''; while (c > 0) { const m = (c - 1) % 26; s = String.fromCharCode(65 + m) + s; c = Math.floor((c - 1) / 26); } return s; }
+function newSheet(name) { return { name, cells: {}, merges: [], cols: {}, rows: {}, freeze: null, autoFilter: null, print: null }; }
+function put(sh, r, c, v, s, f) { sh.cells[r + ',' + c] = { r, c, v: v === undefined ? null : v, s: s || null, f: f || null }; }
+function box(sh, r1, c1, r2, c2, v, s) {
+  for (let r = r1; r <= r2; r++) for (let c = c1; c <= c2; c++) put(sh, r, c, (r === r1 && c === c1) ? v : null, s);
+  if (r1 !== r2 || c1 !== c2) sh.merges.push(`${colL(c1)}${r1}:${colL(c2)}${r2}`);
+}
+function ref(c, r) { return colL(c) + r; }
+
+// 소재지 분리: 읍·면 / 리·동 (예: '진접읍 내곡리' → 진접읍 / 내곡리, '월암동' → '' / 월암동)
+function splitLoc(p) {
+  const e = String(p.emd || '').trim();
+  const parts = e.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return { eup: parts[0], ri: parts.slice(1).join(' ') };
+  if (/[읍면]$/.test(e)) return { eup: e, ri: '' };
+  return { eup: '', ri: e };
+}
+
+// 필지 × 시설 × 산지구분 산출결과를 조서용으로 집계
+function collectFormData() {
+  const rel = {};   // layer → { 보전산지, 준보전산지, 제한지역 } 감면율
+  parsed.layers.forEach(n => {
+    const e = effRelief(layerCfg[n]);
+    rel[n] = { '보전산지': e.bo, '준보전산지': e.jun, '제한지역': e.bo, basisBo: e.basisBo, basisJun: e.basisJun };
+  });
+  const byP = new Map();   // pnu → { p, seg: {layer: {type: row}} }
+  parsed.parcels.forEach(p => byP.set(p.pnu, { p, seg: {} }));
+  const typeUsed = new Set();
+  const reliefCols = new Map();   // layer → Set(type)   (감면율 > 0)
+  const chargeCols = new Map();   // layer → Set(type)   (감면율 = 0)
+  calcRows.forEach(r => {
+    if (!r.include || r.area <= 0) return;
+    const d = byP.get(r.pnu); if (!d) return;
+    (d.seg[r.layer] = d.seg[r.layer] || {})[r.type] = r;
+    typeUsed.add(r.type);
+    const m = r.relief > 0 ? reliefCols : chargeCols;
+    if (!m.has(r.layer)) m.set(r.layer, new Set());
+    m.get(r.layer).add(r.type);
+  });
+  const types = FORM_TYPES.filter(t => typeUsed.has(t.key));
+  const order = (set) => FORM_TYPES.filter(t => set.has(t.key)).map(t => t.key);
+  const layerOrder = parsed.layers;
+  const relief = layerOrder.filter(n => reliefCols.has(n)).map(n => ({ layer: n, types: order(reliefCols.get(n)) }));
+  const charge = layerOrder.filter(n => chargeCols.has(n)).map(n => ({ layer: n, types: order(chargeCols.get(n)) }));
+  const parcels = [...byP.values()].filter(d => Object.keys(d.seg).length);
+  return { rel, types, relief, charge, parcels };
+}
+function relLabel(rel, layer, types) {
+  const v = types.map(t => rel[layer][t]);
+  if (v.every(x => x === v[0])) return `※${v[0]}%감면`;
+  return '※' + types.map((t, i) => `${FORM_TYPES.find(x => x.key === t).short} ${v[i]}%`).join(' · ') + ' 감면';
+}
+function basisFor(layer, type) {
+  const c = layerCfg[layer]; const e = effRelief(c);
+  return type === '준보전산지' ? e.basisJun : e.basisBo;
+}
+
+function buildFormSpec() {
+  const D = collectFormData();
+  const projName = (document.getElementById('projTitle')?.textContent || '').trim();
+  const gosi = `${rates.label || ''} (준보전 ${rates.jun.toLocaleString()} · 보전 ${rates.bo.toLocaleString()} · 제한지역 ${rates.res.toLocaleString()}원/㎡, 공시지가×${pctText()} 최대 ${rates.cap.toLocaleString()}원/㎡)`;
+  const baseOf = t => t === '보전산지' ? rates.bo : t === '준보전산지' ? rates.jun : rates.res;
+  const sheets = [];
+
+  // ───────────────── ② 시설별 산지편입조서 (필지별) ─────────────────
+  const S2 = newSheet('시설별 산지편입조서');
+  const T = D.types;                                    // 사용된 산지구분
+  const hasRes = T.some(t => t.key === '제한지역');
+  const hasGubun = D.parcels.some(d => d.p.gF != null);
+  let c = 1;
+  const C = {};
+  C.pnu = c++; C.no = c++; C.eup = c++; C.ri = c++; C.jibun = c++; C.jimok = c++; C.gongbu = c++; C.gubun = c++;
+  C.sum = c++; C.boT = c++; C.boF = c++; C.boG = c++; C.jun = c++; if (hasRes) C.res = c++;
+  // 감면 블록
+  C.rSub = {}; C.rSubStart = c;
+  C.rSub.all = c++; T.forEach(t => C.rSub[t.key] = c++);
+  C.rLayer = D.relief.map(L => { const m = {}; L.types.forEach(t => m[t] = c++); return { ...L, cols: m }; });
+  C.rEnd = c - 1;
+  // 전액부과 블록 (계 + 산지구분)
+  C.chStart = c; C.ch = {}; C.ch.all = c++; T.forEach(t => C.ch[t.key] = c++); C.chEnd = c - 1;
+  // 공시지가·단위면적당 금액
+  C.price = c++; C.add = c++; C.unit = {}; T.forEach(t => C.unit[t.key] = c++); C.year = c++;
+  // 부과대상금액 블록
+  C.amtStart = c; C.gross = c++; C.reliefAmt = c++; C.net = c++; C.netT = {}; T.forEach(t => C.netT[t.key] = c++); C.amtEnd = c - 1;
+  C.note = c++;
+  const lastCol = C.note;
+
+  // 제목
+  box(S2, 1, C.no, 1, C.sum, '대체산림자원조성비 부과대상 조서', 'title');
+  box(S2, 2, C.no, 2, C.sum, `사업명 : ${projName || '-'}`, 'sub');
+  box(S2, 1, C.amtStart, 2, lastCol, gosi, 'note');
+  S2.rows[1] = 30; S2.rows[2] = 30;
+  // 헤더 (4~7행)
+  const H1 = 4, H4 = 7, TOT = 8, FIL = 9, DAT = 10;
+  [[C.pnu, 'PNU'], [C.no, '연번'], [C.jibun, '지번'], [C.jimok, '지목'], [C.gongbu, '공부면적\n(㎡)'], [C.gubun, '산지구분']]
+    .forEach(([cc, t]) => box(S2, H1, cc, H4, cc, t, 'hG'));
+  box(S2, H1, C.eup, H1 + 1, C.ri, '소재지\n(시,군,구,읍,동,면)', 'hG');
+  box(S2, H1 + 2, C.eup, H4, C.eup, '읍·면', 'hG');
+  box(S2, H1 + 2, C.ri, H4, C.ri, '리·동', 'hG');
+  box(S2, H1, C.sum, H1, hasRes ? C.res : C.jun, '산지구분별(㎡)', 'hG');
+  box(S2, H1 + 1, C.sum, H4, C.sum, '합계', 'hG');
+  box(S2, H1 + 1, C.boT, H1 + 1, C.boG, '보전산지', 'hG');
+  box(S2, H1 + 2, C.boT, H4, C.boT, '계', 'hG');
+  box(S2, H1 + 2, C.boF, H4, C.boF, '임업용', 'hG');
+  box(S2, H1 + 2, C.boG, H4, C.boG, '공익용', 'hG');
+  box(S2, H1 + 1, C.jun, H4, C.jun, '준보전\n산지', 'hG');
+  if (hasRes) box(S2, H1 + 1, C.res, H4, C.res, '제한지역', 'hG');
+  // 감면 블록
+  box(S2, H1, C.rSubStart, H1, C.rEnd, '감면 대상 시설   ※산지관리법 시행령 별표 5', 'hG');
+  box(S2, H1 + 1, C.rSub.all, H1 + 1, C.rSub.all + T.length, '소계', 'hG');
+  box(S2, H1 + 2, C.rSub.all, H4, C.rSub.all, '계', 'hG');
+  T.forEach(t => box(S2, H1 + 2, C.rSub[t.key], H4, C.rSub[t.key], t.short, 'hG'));
+  C.rLayer.forEach(L => {
+    const cs = L.types.map(t => L.cols[t]);
+    box(S2, H1 + 1, cs[0], H1 + 1, cs[cs.length - 1], L.layer, 'hG');
+    box(S2, H1 + 2, cs[0], H1 + 2, cs[cs.length - 1], relLabel(D.rel, L.layer, L.types), 'hG');
+    L.types.forEach(t => put(S2, H4, L.cols[t], FORM_TYPES.find(x => x.key === t).short, 'hG'));
+  });
+  // 전액부과
+  box(S2, H1, C.chStart, H1 + 1, C.chEnd, '전액부과 시설\n※감면 없음 (세부: 전액부과 세부조서)', 'hY');
+  box(S2, H1 + 2, C.ch.all, H4, C.ch.all, '계', 'hY');
+  T.forEach(t => box(S2, H1 + 2, C.ch[t.key], H4, C.ch[t.key], t.short, 'hY'));
+  // 공시지가 · 단위면적당 금액
+  box(S2, H1, C.price, H4, C.price, '개별공시지가\n(원/㎡)', 'hG');
+  box(S2, H1, C.add, H4, C.add, `공시지가\n반영액\n(×${pctText()},\n상한 ${rates.cap.toLocaleString()})`, 'hG');
+  box(S2, H1, C.unit[T[0].key], H1 + 1, C.unit[T[T.length - 1].key], '단위면적당 금액\n(원/㎡)', 'hG');
+  T.forEach(t => box(S2, H1 + 2, C.unit[t.key], H4, C.unit[t.key], `${t.short}\n(${baseOf(t.key).toLocaleString()}+반영액)`, 'hG'));
+  box(S2, H1, C.year, H4, C.year, '부과기준\n적용연도', 'hG');
+  // 부과대상금액
+  box(S2, H1, C.amtStart, H1 + 1, C.amtEnd, '부과대상금액(원)\n= 면적 × 단위면적당 금액 × (1 − 감면율)', 'hY');
+  box(S2, H1 + 2, C.gross, H4, C.gross, '산정액', 'hY');
+  box(S2, H1 + 2, C.reliefAmt, H4, C.reliefAmt, '감면액', 'hY');
+  box(S2, H1 + 2, C.net, H4, C.net, '부과액\n계', 'hY');
+  T.forEach(t => box(S2, H1 + 2, C.netT[t.key], H4, C.netT[t.key], `부과액\n${t.short}`, 'hY'));
+  box(S2, H1, C.note, H4, C.note, '비고\n(공시지가 출처)', 'hW');
+  for (let r = H1; r <= H4; r++) S2.rows[r] = r === H1 + 2 ? 34 : 22;
+
+  // 데이터
+  const N = D.parcels.length, LAST = DAT + N - 1;
+  const year = (rates.label.match(/20\d\d/) || [new Date().getFullYear()])[0] + '년';
+  D.parcels.forEach((d, i) => {
+    const r = DAT + i, p = d.p, loc = splitLoc(p);
+    const areaT = {}, netT = {}; let gross = 0, reliefAmt = 0;
+    const rSum = {}, chSum = {};
+    T.forEach(t => { areaT[t.key] = 0; netT[t.key] = 0; rSum[t.key] = 0; chSum[t.key] = 0; });
+    Object.entries(d.seg).forEach(([layer, byT]) => Object.values(byT).forEach(row => {
+      areaT[row.type] += row.area; netT[row.type] += row.net; gross += row.gross; reliefAmt += row.reliefAmt;
+      if (row.relief > 0) rSum[row.type] += row.area; else chSum[row.type] += row.area;
+    }));
+    const boArea = r1(areaT['보전산지'] || 0);
+    const gubunTxt = T.filter(t => (areaT[t.key] || 0) > 0).map(t => t.key).join('\n') || '-';
+    put(S2, r, C.pnu, p.pnu, 'tPnu');
+    put(S2, r, C.no, i + 1, 'tC', `ROW()-${DAT - 1}`);
+    put(S2, r, C.eup, loc.eup, 'tC'); put(S2, r, C.ri, loc.ri, 'tC');
+    put(S2, r, C.jibun, p.jibun || jibunFromPnu(p.pnu), 'tC'); put(S2, r, C.jimok, p.jimok, 'tC');
+    put(S2, r, C.gongbu, p.gongbu, 'a');
+    put(S2, r, C.gubun, gubunTxt, 'tCw');
+    // 산지구분별
+    if (hasGubun && d.p.gF != null && (d.p.gF + d.p.gG) > 0) {
+      const f = r1(boArea * d.p.gF / (d.p.gF + d.p.gG)), g = r1(boArea - f);
+      put(S2, r, C.boF, f, 'aG'); put(S2, r, C.boG, g, 'aG');
+      put(S2, r, C.boT, r1(f + g), 'aG', `${ref(C.boF, r)}+${ref(C.boG, r)}`);
+    } else {
+      put(S2, r, C.boF, null, 'aG'); put(S2, r, C.boG, null, 'aG');
+      put(S2, r, C.boT, boArea, 'aG');
+    }
+    put(S2, r, C.jun, r1(areaT['준보전산지'] || 0), 'aG');
+    if (hasRes) put(S2, r, C.res, r1(areaT['제한지역'] || 0), 'aG');
+    put(S2, r, C.sum, r1(T.reduce((s, t) => s + (areaT[t.key] || 0), 0)), 'aG',
+      [C.boT, C.jun].concat(hasRes ? [C.res] : []).map(cc => ref(cc, r)).join('+'));
+    // 감면 블록
+    C.rLayer.forEach(L => L.types.forEach(t => put(S2, r, L.cols[t], r1((d.seg[L.layer] && d.seg[L.layer][t]) ? d.seg[L.layer][t].area : 0), 'aG')));
+    T.forEach(t => {
+      const cs = C.rLayer.filter(L => L.cols[t.key]).map(L => ref(L.cols[t.key], r));
+      put(S2, r, C.rSub[t.key], r1(rSum[t.key]), 'aG', cs.length ? cs.join('+') : null);
+    });
+    put(S2, r, C.rSub.all, r1(T.reduce((s, t) => s + rSum[t.key], 0)), 'aG', T.map(t => ref(C.rSub[t.key], r)).join('+'));
+    // 전액부과
+    T.forEach(t => put(S2, r, C.ch[t.key], r1(chSum[t.key]), 'aY'));   // 수식은 ③ 시트 생성 후 연결
+    put(S2, r, C.ch.all, r1(T.reduce((s, t) => s + chSum[t.key], 0)), 'aY', T.map(t => ref(C.ch[t.key], r)).join('+'));
+    // 공시지가 · 단위면적당 금액
+    const add = priceAdd(p.price, rates);
+    put(S2, r, C.price, p.price, 'w');
+    put(S2, r, C.add, add, 'w', p.price != null ? `MIN(${ref(C.price, r)}*${rates.pct}/100,${rates.cap})` : null);
+    T.forEach(t => put(S2, r, C.unit[t.key], baseOf(t.key) + add, 'w', `${baseOf(t.key)}+${ref(C.add, r)}`));
+    put(S2, r, C.year, year, 'tC');
+    // 금액
+    put(S2, r, C.gross, gross, 'wY');
+    put(S2, r, C.reliefAmt, reliefAmt, 'wY');
+    T.forEach(t => put(S2, r, C.netT[t.key], netT[t.key], 'wY'));
+    put(S2, r, C.net, gross - reliefAmt, 'wB', T.map(t => ref(C.netT[t.key], r)).join('+'));
+    put(S2, r, C.note, priceSrcText(p), 'tC');
+    S2.rows[r] = gubunTxt.includes('\n') ? 30 : 20;
+  });
+  // 합계(8행, SUBTOTAL — 필터 시 자동 재계산) · 필터행(9행)
+  box(S2, TOT, C.pnu, TOT, C.gubun, '합      계', 'totL');
+  for (let cc = C.sum; cc <= lastCol; cc++) {
+    if (cc === C.year || cc === C.note || cc === C.price || cc === C.add || (C.unit && Object.values(C.unit).includes(cc))) { put(S2, TOT, cc, '-', 'totL'); continue; }
+    const isWon = cc >= C.amtStart && cc <= C.amtEnd;
+    const col = colL(cc);
+    let v = 0;
+    for (let r = DAT; r <= LAST; r++) { const x = S2.cells[r + ',' + cc]; if (x && typeof x.v === 'number') v += x.v; }
+    put(S2, TOT, cc, isWon ? v : r1(v), isWon ? 'totW' : 'totA', `SUBTOTAL(9,${col}${DAT}:${col}${LAST})`);
+  }
+  put(S2, TOT, C.gongbu, null, 'totL');
+  for (let cc = 1; cc <= lastCol; cc++) put(S2, FIL, cc, '▼', 'filt');
+  S2.rows[TOT] = 24; S2.rows[FIL] = 14;
+  S2.autoFilter = `A${FIL}:${colL(lastCol)}${LAST}`;
+  S2.freeze = { row: DAT - 1, col: C.gubun };
+  const w2 = { [C.pnu]: 21, [C.no]: 6, [C.eup]: 9, [C.ri]: 9, [C.jibun]: 10, [C.jimok]: 6, [C.gongbu]: 11, [C.gubun]: 11, [C.year]: 9, [C.note]: 14, [C.price]: 12, [C.add]: 11 };
+  for (let cc = C.amtStart; cc <= C.amtEnd; cc++) w2[cc] = 15;
+  for (let cc = 1; cc <= lastCol; cc++) S2.cols[cc] = w2[cc] || 11;
+
+  // ───────────────── ③ 전액부과 세부조서 (필지별) ─────────────────
+  const S3 = newSheet('전액부과 세부조서');
+  let k = 1; const K = { pnu: k++, no: k++, eup: k++, ri: k++, jibun: k++, jimok: k++, gubun: k++ };
+  K.all = {}; K.allStart = k; K.all.sum = k++; T.forEach(t => K.all[t.key] = k++); K.allEnd = k - 1;
+  K.layers = D.charge.map(L => { const m = {}; L.types.forEach(t => m[t] = k++); return { ...L, cols: m }; });
+  const last3 = Math.max(k - 1, K.allEnd);
+  box(S3, 1, K.no, 1, K.all.sum + 3, '전액부과 세부조서 (감면 없는 시설별 산지편입면적)', 'title');
+  box(S3, 2, K.no, 2, K.all.sum + 3, `사업명 : ${projName || '-'}`, 'sub');
+  put(S3, 2, last3, '(단위 : ㎡)', 'unit');
+  [[K.pnu, 'PNU'], [K.no, '연번'], [K.jibun, '지번'], [K.jimok, '지목'], [K.gubun, '산지구분']].forEach(([cc, t]) => box(S3, H1, cc, H4, cc, t, 'hG'));
+  box(S3, H1, K.eup, H1 + 1, K.ri, '소재지', 'hG');
+  box(S3, H1 + 2, K.eup, H4, K.eup, '읍·면', 'hG'); box(S3, H1 + 2, K.ri, H4, K.ri, '리·동', 'hG');
+  box(S3, H1, K.allStart, H1 + 1, K.allEnd, '전액부과 합계\n※전액부과', 'hY');
+  box(S3, H1 + 2, K.all.sum, H4, K.all.sum, '계', 'hY');
+  T.forEach(t => box(S3, H1 + 2, K.all[t.key], H4, K.all[t.key], t.short, 'hY'));
+  if (K.layers.length) {
+    const s0 = K.layers[0].cols[K.layers[0].types[0]];
+    box(S3, H1, s0, H1 + 1, last3, '시설별 면적', 'hY');
+    K.layers.forEach(L => {
+      const cs = L.types.map(t => L.cols[t]);
+      box(S3, H1 + 2, cs[0], H1 + 2, cs[cs.length - 1], L.layer, 'hY');
+      L.types.forEach(t => put(S3, H4, L.cols[t], FORM_TYPES.find(x => x.key === t).short, 'hY'));
+    });
+  }
+  for (let r = H1; r <= H4; r++) S3.rows[r] = 22;
+  D.parcels.forEach((d, i) => {
+    const r = DAT + i, p = d.p, loc = splitLoc(p);
+    put(S3, r, K.pnu, p.pnu, 'tPnu'); put(S3, r, K.no, i + 1, 'tC', `ROW()-${DAT - 1}`);
+    put(S3, r, K.eup, loc.eup, 'tC'); put(S3, r, K.ri, loc.ri, 'tC');
+    put(S3, r, K.jibun, p.jibun || jibunFromPnu(p.pnu), 'tC'); put(S3, r, K.jimok, p.jimok, 'tC');
+    const types = new Set(); Object.values(d.seg).forEach(o => Object.keys(o).forEach(t => types.add(t)));
+    put(S3, r, K.gubun, FORM_TYPES.filter(t => types.has(t.key)).map(t => t.key).join('\n'), 'tCw');
+    const sums = {}; T.forEach(t => sums[t.key] = 0);
+    K.layers.forEach(L => L.types.forEach(t => {
+      const row = d.seg[L.layer] && d.seg[L.layer][t];
+      const a = row && row.relief === 0 ? row.area : 0;
+      sums[t] += a;
+      put(S3, r, L.cols[t], r1(a), 'aY');
+    }));
+    T.forEach(t => {
+      const cs = K.layers.filter(L => L.cols[t.key]).map(L => ref(L.cols[t.key], r));
+      put(S3, r, K.all[t.key], r1(sums[t.key]), 'aY', cs.length ? cs.join('+') : null);
+    });
+    put(S3, r, K.all.sum, r1(T.reduce((s, t) => s + sums[t.key], 0)), 'aY', T.map(t => ref(K.all[t.key], r)).join('+'));
+    S3.rows[r] = types.size > 1 ? 30 : 20;
+  });
+  box(S3, TOT, K.pnu, TOT, K.gubun, '합      계', 'totL');
+  for (let cc = K.allStart; cc <= last3; cc++) {
+    let v = 0; for (let r = DAT; r <= LAST; r++) { const x = S3.cells[r + ',' + cc]; if (x && typeof x.v === 'number') v += x.v; }
+    put(S3, TOT, cc, r1(v), 'totA', `SUBTOTAL(9,${colL(cc)}${DAT}:${colL(cc)}${LAST})`);
+  }
+  for (let cc = 1; cc <= last3; cc++) put(S3, FIL, cc, '▼', 'filt');
+  S3.rows[TOT] = 24; S3.rows[FIL] = 14;
+  S3.autoFilter = `A${FIL}:${colL(last3)}${LAST}`;
+  S3.freeze = { row: DAT - 1, col: K.gubun };
+  for (let cc = 1; cc <= last3; cc++) S3.cols[cc] = ({ [K.pnu]: 21, [K.no]: 6, [K.jimok]: 6, [K.gubun]: 11 })[cc] || 11;
+  // ② 전액부과 열 → ③ 세부조서 합계 참조 수식으로 연결
+  D.parcels.forEach((d, i) => {
+    const r = DAT + i;
+    T.forEach(t => { const x = S2.cells[r + ',' + C.ch[t.key]]; x.f = `'전액부과 세부조서'!${ref(K.all[t.key], r)}`; });
+  });
+
+  // ───────────────── ④ 개별공시지가 ─────────────────
+  const S4 = newSheet('개별공시지가');
+  const P = { no: 1, pnu: 2, sgg: 3, eup: 4, ri: 5, jibun: 6, jimok: 7, gubun: 8, area: 9, price: 10, raw: 11, cap: 12, year: 13, src: 14 };
+  box(S4, 1, 1, 1, 9, '개별공시지가', 'title');
+  box(S4, 2, 1, 2, 9, `사업명 : ${projName || '-'}`, 'sub');
+  box(S4, H1, P.no, H1 + 1, P.no, '연번', 'hG'); box(S4, H1, P.pnu, H1 + 1, P.pnu, 'PNU', 'hG');
+  box(S4, H1, P.sgg, H1, P.ri, '토지소재지', 'hG');
+  put(S4, H1 + 1, P.sgg, '시·군·구', 'hG'); put(S4, H1 + 1, P.eup, '읍·면', 'hG'); put(S4, H1 + 1, P.ri, '리·동', 'hG');
+  box(S4, H1, P.jibun, H1 + 1, P.jibun, '지번', 'hG'); box(S4, H1, P.jimok, H1 + 1, P.jimok, '지목', 'hG');
+  box(S4, H1, P.gubun, H1 + 1, P.gubun, '산지구분', 'hG'); box(S4, H1, P.area, H1 + 1, P.area, '전용\n면적(㎡)', 'hG');
+  box(S4, H1, P.price, H1, P.cap, '개별공시지가(원/㎡)', 'hG');
+  put(S4, H1 + 1, P.price, '공시지가', 'hG'); put(S4, H1 + 1, P.raw, rates.pct === 0.1 ? '1000분의1' : `×${rates.pct}%`, 'hG'); put(S4, H1 + 1, P.cap, '상한액 적용', 'hG');
+  box(S4, H1, P.year, H1 + 1, P.year, '기준년도', 'hG'); box(S4, H1, P.src, H1 + 1, P.src, '출처', 'hW');
+  S4.rows[H1] = 22; S4.rows[H1 + 1] = 30;
+  const R4 = H1 + 3;   // 합계 6행 → 데이터 7행부터
+  const L4 = R4 + D.parcels.length - 1;
+  D.parcels.forEach((d, i) => {
+    const r = R4 + i, p = d.p, loc = splitLoc(p);
+    let area = 0; const types = new Set();
+    Object.values(d.seg).forEach(o => Object.values(o).forEach(row => { area += row.area; types.add(row.type); }));
+    put(S4, r, P.no, i + 1, 'tC'); put(S4, r, P.pnu, p.pnu, 'tPnu');
+    put(S4, r, P.sgg, p.sgg || '', 'tC'); put(S4, r, P.eup, loc.eup, 'tC'); put(S4, r, P.ri, loc.ri, 'tC');
+    put(S4, r, P.jibun, p.jibun || jibunFromPnu(p.pnu), 'tC'); put(S4, r, P.jimok, p.jimok, 'tC');
+    put(S4, r, P.gubun, FORM_TYPES.filter(t => types.has(t.key)).map(t => t.key).join('\n'), 'tCw');
+    S4.rows[r] = types.size > 1 ? 30 : 20;
+    put(S4, r, P.area, r1(area), 'a');
+    put(S4, r, P.price, p.price, 'w');
+    const raw = p.price != null ? Math.round(p.price * rates.pct * 1e4) / 1e6 : 0;
+    put(S4, r, P.raw, raw, 'w', p.price != null ? `${ref(P.price, r)}*${rates.pct}/100` : null);
+    put(S4, r, P.cap, Math.min(raw, rates.cap), 'w', `MIN(${ref(P.raw, r)},${rates.cap})`);
+    put(S4, r, P.year, p.priceYear ? String(p.priceYear).slice(0, 4) + '년' : '', 'tC');
+    put(S4, r, P.src, priceSrcText(p), 'tC');
+  });
+  box(S4, H1 + 2, P.no, H1 + 2, P.gubun, '합     계', 'totL');
+  put(S4, H1 + 2, P.area, r1(D.parcels.reduce((s, d) => s + Object.values(d.seg).reduce((a, o) => a + Object.values(o).reduce((b, row) => b + row.area, 0), 0), 0)), 'totA', `SUBTOTAL(9,${colL(P.area)}${R4}:${colL(P.area)}${L4})`);
+  for (let cc = P.price; cc <= P.src; cc++) put(S4, H1 + 2, cc, '-', 'totL');
+  S4.autoFilter = `A${H1 + 1}:${colL(P.src)}${L4}`;
+  S4.freeze = { row: H1 + 2, col: P.jibun };
+  // 부과기준 안내 상자 (오른쪽)
+  const BX = P.src + 2;
+  box(S4, H1, BX, H1, BX + 2, `${rates.label || ''} 대체산림자원조성비 부과기준`, 'boxH');
+  box(S4, H1 + 1, BX, H1 + 1, BX + 2, '부과금액 = 산지전용·일시사용허가 면적 × 단위면적당 금액', 'boxT');
+  box(S4, H1 + 2, BX, H1 + 2, BX + 2, `단위면적당 금액 = 산지별·지역별 단위면적당 산출금액 + 개별공시지가×${pctText()}`, 'boxT');
+  [['준보전산지', rates.jun], ['보전산지', rates.bo], ['산지전용·일시사용제한지역', rates.res], [`개별공시지가×${pctText()} 상한`, rates.cap]].forEach(([t, v], i) => {
+    box(S4, H1 + 3 + i, BX, H1 + 3 + i, BX + 1, t, 'boxT'); put(S4, H1 + 3 + i, BX + 2, v, 'boxW');
+  });
+  S4.rows[H1 + 1] = 30; S4.rows[H1 + 2] = 30;
+  Object.assign(S4.cols, { [P.no]: 6, [P.pnu]: 21, [P.sgg]: 10, [P.eup]: 9, [P.ri]: 9, [P.jibun]: 10, [P.jimok]: 6, [P.gubun]: 14, [P.area]: 11, [P.price]: 12, [P.raw]: 11, [P.cap]: 11, [P.year]: 9, [P.src]: 14, [BX]: 30, [BX + 1]: 18, [BX + 2]: 12 });
+  // ② 공시지가 열 → ④ 개별공시지가 시트 참조
+  D.parcels.forEach((d, i) => {
+    const x = S2.cells[(DAT + i) + ',' + C.price];
+    if (d.p.price != null) x.f = `'개별공시지가'!${ref(P.price, R4 + i)}`;
+    const y = S2.cells[(DAT + i) + ',' + C.add];
+    y.f = `'개별공시지가'!${ref(P.cap, R4 + i)}`;
+  });
+
+  // ───────────────── ① 시설별 산지편입현황 총괄표 ─────────────────
+  const S1 = newSheet('시설별 산지편입현황 총괄표');
+  const agg = new Map();   // key(layer|type) → {layer,type,rel,area,gross,relief,net}
+  calcRows.forEach(r => {
+    if (!r.include || r.area <= 0) return;
+    const key = r.layer + '|' + r.type;
+    const a = agg.get(key) || { layer: r.layer, type: r.type, rel: r.relief, area: 0, gross: 0, relief: 0, net: 0 };
+    a.area += r.area; a.gross += r.gross; a.relief += r.reliefAmt; a.net += r.net;
+    agg.set(key, a);
+  });
+  const groups = new Map();   // rel → [{layer, byType:{}, ...}]
+  [...agg.values()].forEach(a => {
+    if (!groups.has(a.rel)) groups.set(a.rel, new Map());
+    const g = groups.get(a.rel);
+    const item = g.get(a.layer) || { layer: a.layer, byType: {}, gross: 0, relief: 0, net: 0 };
+    item.byType[a.type] = r1(a.area); item.gross += a.gross; item.relief += a.relief; item.net += a.net;
+    g.set(a.layer, item);
+  });
+  const relKeys = [...groups.keys()].sort((a, b) => a - b);   // 0(전액부과) → 50 → 100
+  const G = { grp: 2, name: 3, nameEnd: 6 }; let gc = 7;
+  G.t = {}; T.forEach(t => G.t[t.key] = gc++); G.sum = gc++; G.gross = gc++; G.rate = gc++; G.relief = gc++; G.net = gc++; G.basis = gc++; G.law = gc++;
+  box(S1, 1, 2, 1, G.net, '시설별 산지편입현황 총괄표', 'title');
+  box(S1, 2, 2, 2, G.sum, `사업명 : ${projName || '-'}`, 'sub');
+  put(S1, 2, G.law, '(면적: ㎡, 금액: 원)', 'unit');
+  box(S1, 3, G.grp, 4, G.nameEnd, '구  분', 'hG');
+  box(S1, 3, G.t[T[0].key], 3, G.sum, '산지면적(㎡)', 'hG');
+  T.forEach(t => put(S1, 4, G.t[t.key], t.key, 'hG')); put(S1, 4, G.sum, '계', 'hG');
+  box(S1, 3, G.gross, 3, G.net, '대체산림자원조성비(원)', 'hY');
+  put(S1, 4, G.gross, '산정액', 'hY'); put(S1, 4, G.rate, '감면율', 'hY'); put(S1, 4, G.relief, '감면액', 'hY'); put(S1, 4, G.net, '부과액', 'hY');
+  box(S1, 3, G.basis, 3, G.law, '비  고', 'hW'); put(S1, 4, G.basis, '감면 근거', 'hW'); put(S1, 4, G.law, '규  정', 'hW');
+  S1.rows[3] = 22; S1.rows[4] = 30;
+  let row = 5;
+  const totRow = row++;
+  const groupRows = [];
+  relKeys.forEach(rel => {
+    const items = [...groups.get(rel).values()];
+    const gRow = row++;
+    groupRows.push(gRow);
+    const first = row;
+    items.forEach(it => {
+      const types = T.filter(t => it.byType[t.key] != null);
+      // 같은 시설이 감면율별로 나뉘면(예: 임대주택 보전 0% / 준보전 100%) 산지구분을 이름에 표시
+      const split = relKeys.filter(k2 => groups.get(k2).has(it.layer)).length > 1;
+      const label = it.layer + (split ? ` (${types.map(t => t.short).join('·')})` : '');
+      box(S1, row, G.name, row, G.nameEnd, label, 'tL');
+      T.forEach(t => put(S1, row, G.t[t.key], it.byType[t.key] ?? 0, 'a'));
+      put(S1, row, G.sum, r1(T.reduce((s, t) => s + (it.byType[t.key] || 0), 0)), 'a', T.map(t => ref(G.t[t.key], row)).join('+'));
+      put(S1, row, G.gross, it.gross, 'w'); put(S1, row, G.rate, rel, 'pct'); put(S1, row, G.relief, it.relief, 'w');
+      put(S1, row, G.net, it.net, 'wY', `${ref(G.gross, row)}-${ref(G.relief, row)}`);
+      const codes = [...new Set(types.map(t => basisFor(it.layer, t.key)).filter(Boolean))];
+      put(S1, row, G.basis, rel > 0 ? codes.map(b5Label).join(', ') : '-', 'tC');
+      put(S1, row, G.law, rel > 0 ? codes.map(cd => B5_MAP[cd] ? B5_MAP[cd].t : (cd === 'custom' ? '직접 입력' : cd)).join(' / ') : '감면 대상 아님', 'tL');
+      S1.rows[row] = 22;
+      row++;
+    });
+    const lastR = row - 1;
+    box(S1, gRow, G.grp, lastR, G.grp, rel === 0 ? '전액부과' : `${rel}% 감면`, 'grpL');
+    box(S1, gRow, G.name, gRow, G.nameEnd, '계', 'grpL');
+    const sumF = cc => `SUM(${colL(cc)}${first}:${colL(cc)}${lastR})`;
+    [...T.map(t => G.t[t.key]), G.sum].forEach(cc => {
+      let v = 0; for (let rr = first; rr <= lastR; rr++) v += (S1.cells[rr + ',' + cc]?.v || 0);
+      put(S1, gRow, cc, r1(v), 'grpA', sumF(cc));
+    });
+    [G.gross, G.relief, G.net].forEach(cc => {
+      let v = 0; for (let rr = first; rr <= lastR; rr++) v += (S1.cells[rr + ',' + cc]?.v || 0);
+      put(S1, gRow, cc, v, 'grpW', sumF(cc));
+    });
+    put(S1, gRow, G.rate, rel, 'pct'); put(S1, gRow, G.basis, '', 'grpL'); put(S1, gRow, G.law, '', 'grpL');
+    S1.rows[gRow] = 22;
+  });
+  box(S1, totRow, G.grp, totRow, G.nameEnd, '합      계', 'totL');
+  [...T.map(t => G.t[t.key]), G.sum].forEach(cc => {
+    const v = groupRows.reduce((s, gr) => s + (S1.cells[gr + ',' + cc]?.v || 0), 0);
+    put(S1, totRow, cc, r1(v), 'totA', groupRows.map(gr => ref(cc, gr)).join('+') || null);
+  });
+  [G.gross, G.relief, G.net].forEach(cc => {
+    const v = groupRows.reduce((s, gr) => s + (S1.cells[gr + ',' + cc]?.v || 0), 0);
+    put(S1, totRow, cc, v, 'totW', groupRows.map(gr => ref(cc, gr)).join('+') || null);
+  });
+  put(S1, totRow, G.rate, '-', 'totL'); put(S1, totRow, G.basis, '', 'totL'); put(S1, totRow, G.law, '', 'totL');
+  S1.rows[totRow] = 24;
+  // 산식 안내
+  const nr = row + 1;
+  box(S1, nr, 2, nr, G.law, `※ 부과금액 = 산지전용·일시사용허가 면적 × 단위면적당 금액 × (1 − 감면율),  단위면적당 금액 = 산지별·지역별 단위면적당 산출금액 + 개별공시지가×${pctText()} (최대 ${rates.cap.toLocaleString()}원/㎡)  — ${rates.label || ''}`, 'sub');
+  box(S1, nr + 1, 2, nr + 1, G.law, '※ 감면대상 면적은 해당 시설이 설치되는 산지의 면적에 한함(산지관리법 시행령 별표 5 비고 8). 감면 적용은 허가권자가 최종 판단함.', 'sub');
+  Object.assign(S1.cols, { 1: 2, 2: 10, 3: 6, 4: 10, 5: 10, 6: 6 });
+  T.forEach(t => S1.cols[G.t[t.key]] = 13); Object.assign(S1.cols, { [G.sum]: 13, [G.gross]: 15, [G.rate]: 8, [G.relief]: 15, [G.net]: 15, [G.basis]: 18, [G.law]: 48 });
+  S1.freeze = { row: 4, col: 0 };
+
+  // ───────────────── ⑤ 산출 근거 ─────────────────
+  const S5 = newSheet('산출 근거');
+  box(S5, 1, 1, 1, 6, '산출 근거 · 감면 설정', 'title');
+  const info = [
+    ['적용 부과기준', rates.label || ''],
+    ['준보전산지 단위면적당 산출금액', rates.jun], ['보전산지 단위면적당 산출금액', rates.bo], ['산지전용·일시사용제한지역', rates.res],
+    ['개별공시지가 반영비율', pctText()], ['공시지가 반영 상한(원/㎡)', rates.cap],
+    ['사업시행자(자동 매칭 기준)', sponsor === 'gov' ? '국가·지방자치단체' : '공기업·민간 등'],
+    ['지역·지구 감면', zoneItem ? `${b5Label(zoneItem)} ${B5_MAP[zoneItem].t}` : '해당 없음'],
+    ['감면 근거 법령', '산지관리법 제19조제5항·제7항, 같은 법 시행령 제23조 및 별표 5'],
+    ['원본 파일', parsed.fileName || ''], ['산출일', new Date().toISOString().slice(0, 10)],
+  ];
+  info.forEach(([k2, v], i) => { box(S5, 3 + i, 1, 3 + i, 2, k2, 'hG'); box(S5, 3 + i, 3, 3 + i, 6, v, typeof v === 'number' ? 'w' : 'tL'); });
+  const rr0 = 3 + info.length + 2;
+  ['시설(레이어)', '산정', '감면 항목', '보전 감면율', '준보전 감면율', '매칭 방법'].forEach((h, i) => put(S5, rr0, i + 1, h, 'hG'));
+  parsed.layers.forEach((n, i) => {
+    const cfg = layerCfg[n], e = effRelief(cfg);
+    put(S5, rr0 + 1 + i, 1, n, 'tL'); put(S5, rr0 + 1 + i, 2, cfg.include ? '산정' : '제외', 'tC');
+    put(S5, rr0 + 1 + i, 3, cfg.item && B5_MAP[cfg.item] ? `${b5Label(cfg.item)} ${B5_MAP[cfg.item].t}` : b5Label(cfg.item), 'tL');
+    put(S5, rr0 + 1 + i, 4, e.bo, 'pct'); put(S5, rr0 + 1 + i, 5, e.jun, 'pct');
+    put(S5, rr0 + 1 + i, 6, unEsc(matchNote(cfg)).replace(/^🤖 /, '자동: ').replace(/^✋ /, ''), 'tL');
+  });
+  Object.assign(S5.cols, { 1: 22, 2: 10, 3: 60, 4: 12, 5: 12, 6: 50 });
+
+  sheets.push(S1, S2, S3, S4, S5);
+  return { sheets, styles: FORM_STYLES, fileName: `대체산림자원조성비_부과대상조서_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.xlsx` };
+}
+
+// ── ExcelJS로 저장 ──
+function loadExcelJS() {
+  if (window.ExcelJS) return Promise.resolve(window.ExcelJS);
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
+    s.onload = () => window.ExcelJS ? resolve(window.ExcelJS) : reject(new Error('ExcelJS 로드 실패'));
+    s.onerror = () => reject(new Error('ExcelJS 로드 실패'));
+    document.head.appendChild(s);
+  });
+}
+function exStyle(st) {
+  const o = {};
+  o.font = { name: '맑은 고딕', size: st.font?.size || 10, bold: !!st.font?.bold };
+  if (st.font?.color) o.font.color = { argb: st.font.color };
+  if (st.fill) o.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: st.fill } };
+  if (st.border) { const b = { style: st.border, color: { argb: 'FF808080' } }; o.border = { top: b, left: b, bottom: b, right: b }; }
+  if (st.align) o.alignment = { horizontal: st.align.h, vertical: st.align.v || 'middle', wrapText: !!st.align.wrap };
+  if (st.numFmt) o.numFmt = st.numFmt;
+  return o;
+}
+async function writeSpecWithExcelJS(spec) {
+  const ExcelJS = await loadExcelJS();
+  const wb = new ExcelJS.Workbook();
+  wb.creator = '도시계획 프로젝트 관리';
+  const cache = {};
+  Object.entries(spec.styles).forEach(([k, v]) => cache[k] = exStyle(v));
+  spec.sheets.forEach(sh => {
+    const ws = wb.addWorksheet(sh.name, {
+      views: sh.freeze ? [{ state: 'frozen', xSplit: sh.freeze.col, ySplit: sh.freeze.row }] : [],
+      pageSetup: { orientation: 'landscape', paperSize: 8, fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
+    });
+    Object.entries(sh.cols).forEach(([c, w]) => { ws.getColumn(Number(c)).width = w; });
+    Object.entries(sh.rows).forEach(([r, h]) => { ws.getRow(Number(r)).height = h; });
+    Object.values(sh.cells).forEach(x => {
+      const cell = ws.getCell(x.r, x.c);
+      if (x.f) cell.value = { formula: x.f, result: x.v == null ? undefined : x.v };
+      else if (x.v != null) cell.value = x.v;
+      if (x.s && cache[x.s]) {
+        const st = cache[x.s];
+        if (st.font) cell.font = st.font;
+        if (st.fill) cell.fill = st.fill;
+        if (st.border) cell.border = st.border;
+        if (st.alignment) cell.alignment = st.alignment;
+        if (st.numFmt) cell.numFmt = st.numFmt;
+      }
+    });
+    sh.merges.forEach(m => ws.mergeCells(m));
+    if (sh.autoFilter) ws.autoFilter = sh.autoFilter;
+  });
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = spec.fileName;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+async function exportExcel() {
+  if (!calcRows.length) { showToast('⚠️ 산출 결과가 없습니다'); return; }
+  let spec;
+  try { spec = buildFormSpec(); }
+  catch (e) { console.error(e); showToast('⚠️ 조서 구성 오류 — 기본 형식으로 저장합니다'); exportExcelPlain(); return; }
+  try {
+    showToast('📥 양식형 조서 생성 중…');
+    await writeSpecWithExcelJS(spec);
+    showToast('📥 대체산림자원조성비 부과대상 조서 저장 완료');
+  } catch (e) {
+    console.error(e);
+    showToast('⚠️ 서식 엔진을 불러오지 못해 기본 형식으로 저장합니다');
+    exportExcelPlain();
+  }
+}
+
+// 서식 엔진을 못 불러올 때 쓰는 기본 형식 저장
+function exportExcelPlain() {
   if (!calcRows.length) { showToast('⚠️ 산출 결과가 없습니다'); return; }
   const wb = XLSX.utils.book_new();
 
