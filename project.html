@@ -1678,6 +1678,7 @@ function onRateChange() {
   };
   try { localStorage.setItem(RATE_KEY, JSON.stringify(rates)); } catch (e) {}
   updateFormula();
+  if (parsed) renderPriceTable();
   if (!document.getElementById('resultArea').classList.contains('hidden')) calculate(false);
 }
 function restoreDefaultRates() {
@@ -2032,6 +2033,43 @@ async function lookupPrices(all) {
   else showToast(`📡 공시지가 ${ok}필지 반영`);
 }
 
+// 단위면적당 금액 = 산지별·지역별 단위면적당 산출금액 + min(개별공시지가 × 1/1000, 상한)
+// (2026년도 대체산림자원조성비 부과기준, 산림청고시 제2026-16호)
+function pctText() {
+  return rates.pct === 0.1 ? '1/1000' : rates.pct + '%';
+}
+function unitParts(base, price) {
+  const add = priceAdd(price, rates);
+  const raw = price != null && price > 0 ? Math.round(price * rates.pct * 1e4) / 1e6 : 0;
+  return { base, add, unit: base + add, capped: raw > rates.cap };
+}
+function fmtNum1(v) { return (Math.round(v * 10) / 10).toLocaleString(); }
+// 예) 8,340 + 85,000×1/1000 = 8,425   /  상한 시: 8,340 + min(9,000,000×1/1000, 8,340) = 16,680
+function unitFormulaText(base, price) {
+  const u = unitParts(base, price);
+  if (price == null || price <= 0) return `${base.toLocaleString()} + 0(공시지가 없음) = ${fmtNum1(u.unit)}`;
+  const f = u.capped
+    ? `${base.toLocaleString()} + min(${price.toLocaleString()}×${pctText()}, ${rates.cap.toLocaleString()})`
+    : `${base.toLocaleString()} + ${price.toLocaleString()}×${pctText()}`;
+  return `${f} = ${fmtNum1(u.unit)}`;
+}
+// 필지에 실제로 있는 산지구분(보전/준보전/제한지역) 목록
+function parcelTypes(p) {
+  let bo = 0, jun = 0, res = 0;
+  parsed.layers.forEach(n => {
+    const a = p.areas[n]; if (!a) return;
+    const c = layerCfg[n] || {};
+    if (c.include === false) return;
+    if (c.restricted) res += (a.bo || 0) + (a.jun || 0);
+    else { bo += a.bo || 0; jun += a.jun || 0; }
+  });
+  const t = [];
+  if (r1(bo) > 0) t.push({ type: '보전산지', base: rates.bo });
+  if (r1(jun) > 0) t.push({ type: '준보전산지', base: rates.jun });
+  if (r1(res) > 0) t.push({ type: '제한지역', base: rates.res });
+  return t;
+}
+
 function priceSrcText(p) {
   if (p.price == null) return '없음';
   if (p.priceSrc === 'VWorld' || p.priceSrc === '파일') return `${p.priceSrc} ${p.priceYear || ''}`.trim();
@@ -2050,6 +2088,13 @@ function openEum(i) {
   try { navigator.clipboard && navigator.clipboard.writeText(addr).catch(() => {}); } catch (e) {}
   window.open(eumUrl(p), '_blank', 'noopener');
   showToast(`🔗 토지이음 열기 · 주소 복사됨: ${addr}`);
+}
+function unitCells(p) {
+  const t = parcelTypes(p);
+  if (!t.length) return '<td>-</td><td>-</td><td>-</td>';
+  return `<td>${t.map(x => x.type).join('<br>')}</td>
+      <td class="left mono" style="font-size:11px">${t.map(x => escHtml(unitFormulaText(x.base, p.price))).join('<br>')}</td>
+      <td class="num" style="font-weight:800;color:var(--ink)">${t.map(x => fmtNum1(unitParts(x.base, p.price).unit)).join('<br>')}</td>`;
 }
 function renderPriceTable() {
   if (!parsed) return;
@@ -2078,12 +2123,13 @@ function renderPriceTable() {
       <td>${escHtml(p.jimok)}</td>
       <td><a class="eum-link" onclick="openEum(${i})" title="${escHtml(parcelAddr(p))}">🔗 토지이음</a></td>
       <td><input type="text" inputmode="numeric" class="price-input ${p.price == null ? 'missing' : ''}" value="${p.price == null ? '' : p.price.toLocaleString()}" placeholder="원/㎡" onchange="setPrice(${i}, this.value)"></td>
+      ${unitCells(p)}
       <td><span class="src-tag ${cls}">${escHtml(priceSrcText(p))}</span></td>
       <td class="left basis" style="max-width:320px;white-space:normal">${escHtml(p.priceMsg || '')}</td>
     </tr>`;
   }).join('');
   document.getElementById('priceTable').innerHTML =
-    `<thead><tr><th>연번</th><th>PNU</th><th>소재지</th><th>지번</th><th>지목</th><th>확인</th><th>공시지가(원/㎡)</th><th>출처</th><th>비고</th></tr></thead><tbody>${rows || '<tr><td colspan="9" style="padding:20px;color:var(--ink3)">공시지가 없는 필지가 없습니다 ✅</td></tr>'}</tbody>`;
+    `<thead><tr><th>연번</th><th>PNU</th><th>소재지</th><th>지번</th><th>지목</th><th>확인</th><th>공시지가(원/㎡)</th><th>산지구분</th><th>단위면적당 금액 산정식<br><span style="font-weight:400">산출금액 + 공시지가×${pctText()}</span></th><th>단위면적당 금액<br>(원/㎡)</th><th>출처</th><th>비고</th></tr></thead><tbody>${rows || '<tr><td colspan="12" style="padding:20px;color:var(--ink3)">공시지가 없는 필지가 없습니다 ✅</td></tr>'}</tbody>`;
 }
 function setPrice(i, val) {
   const p = parsed.parcels[i];
@@ -2262,6 +2308,7 @@ function setCfg(i, key, val) {
   } else {
     c[key] = !!val;
     renderLayerTable();
+    renderPriceTable();
   }
   if (!document.getElementById('resultArea').classList.contains('hidden')) calculate(false);
 }
@@ -2451,9 +2498,9 @@ function renderExample() {
       <div class="k">대상</div><div class="v">${escHtml(r.emd)} ${escHtml(r.jibun)} (${escHtml(r.jimok)}) · PNU ${escHtml(r.pnu)}</div>
       <div class="k">시설 · 산지구분</div><div class="v">${escHtml(r.layer)} · ${r.type}</div>
       <div class="k">① 산지전용 면적</div><div class="v"><b>${fmtArea(r.area)}</b> ㎡</div>
-      <div class="k">② 단위면적당 금액 (${r.type})</div><div class="v"><b>${w(r.base)}</b> 원/㎡ <span class="basis">${escHtml(rates.label || '')}</span></div>
-      <div class="k">③ 공시지가 가산</div><div class="v">${addTxt} → <b>${w(Math.round(r.add * 10) / 10)}</b> 원/㎡</div>
-      <div class="k">④ 적용단가 = ② + ③</div><div class="v">${w(r.base)} + ${w(Math.round(r.add * 10) / 10)} = <b>${w(unitR)}</b> 원/㎡</div>
+      <div class="k">② 산지별 단위면적당 산출금액 (${r.type})</div><div class="v"><b>${w(r.base)}</b> 원/㎡ <span class="basis">${escHtml(rates.label || '')}</span></div>
+      <div class="k">③ 개별공시지가 반영액</div><div class="v">${addTxt} → <b>${w(Math.round(r.add * 10) / 10)}</b> 원/㎡</div>
+      <div class="k">④ 단위면적당 금액 = ② + ③</div><div class="v">${escHtml(unitFormulaText(r.base, r.price))} → <b>${w(unitR)}</b> 원/㎡</div>
       <div class="k">⑤ 산정액 = ① × ④</div><div class="v">${fmtArea(r.area)} × ${w(unitR)} = <b>${r.include ? w(r.gross) : '산정 제외'}</b> 원</div>
       <div class="k">⑥ 감면율</div><div class="v"><b>${r.include ? r.relief : 0}%</b> <span class="basis">${r.include ? escHtml(b5Label(r.basis)) : ''}${r.basis && B5_MAP[r.basis] ? ' — ' + escHtml(B5_MAP[r.basis].t) : ''}</span></div>
       <div class="k">⑦ 감면액 = ⑤ × ⑥</div><div class="v">${r.include ? `${w(r.gross)} × ${r.relief}% = <b>${w(r.reliefAmt)}</b> 원` : '-'}</div>
@@ -2466,7 +2513,7 @@ function renderDetail() {
   const list = calcRows.filter(r => !q || r.pnu.includes(q) || r.jibun.toLowerCase().includes(q) || r.layer.toLowerCase().includes(q));
   const LIMIT = 1500;
   const shown = list.slice(0, LIMIT);
-  const head = `<thead><tr><th>PNU</th><th>읍면동</th><th>지번</th><th>지목</th><th>시설(레이어)</th><th>산지구분</th><th>면적(㎡)</th><th>공시지가(원/㎡)</th><th>단위금액</th><th>공시지가 가산</th><th>적용단가(원/㎡)</th><th>산정액(원)</th><th>감면율</th><th>감면 근거</th><th>부과액(원)</th></tr></thead>`;
+  const head = `<thead><tr><th>PNU</th><th>읍면동</th><th>지번</th><th>지목</th><th>시설(레이어)</th><th>산지구분</th><th>면적(㎡)</th><th>공시지가(원/㎡)</th><th>단위면적당 금액 산정식<br><span style="font-weight:400">산출금액 + 공시지가×${pctText()}</span></th><th>단위면적당 금액<br>(원/㎡)</th><th>산정액(원)</th><th>감면율</th><th>감면 근거</th><th>부과액(원)</th></tr></thead>`;
   const body = shown.map(r => `<tr class="clickable ${r.include ? '' : 'excluded'} ${calcRows.indexOf(r) === examplePick ? 'picked' : ''}" onclick="pickExample(${calcRows.indexOf(r)})">
     <td class="mono">${escHtml(r.pnu)}</td>
     <td>${escHtml(r.emd)}</td>
@@ -2476,15 +2523,14 @@ function renderDetail() {
     <td>${r.type}</td>
     <td class="num">${fmtArea(r.area)}</td>
     <td class="num">${r.price == null ? '<span class="tag tag-red">없음</span>' : r.price.toLocaleString()}</td>
-    <td class="num">${r.base.toLocaleString()}</td>
-    <td class="num">${(Math.round(r.add * 10) / 10).toLocaleString()}</td>
-    <td class="num" style="font-weight:700">${(Math.round(r.unit * 10) / 10).toLocaleString()}</td>
+    <td class="left mono" style="font-size:11px">${escHtml(unitFormulaText(r.base, r.price))}</td>
+    <td class="num" style="font-weight:700">${fmtNum1(r.unit)}</td>
     <td class="num">${r.include ? fmtWon(r.gross) : '제외'}</td>
     <td class="num">${r.include ? r.relief + '%' : '-'}</td>
     <td class="basis">${r.include ? escHtml(b5Label(r.basis)) : '-'}</td>
     <td class="num" style="font-weight:800;color:var(--ink)">${r.include ? fmtWon(r.net) : '-'}</td>
   </tr>`).join('');
-  document.getElementById('detailTable').innerHTML = head + `<tbody>${body || '<tr><td colspan="15" style="padding:30px;color:var(--ink3)">결과 없음</td></tr>'}</tbody>`;
+  document.getElementById('detailTable').innerHTML = head + `<tbody>${body || '<tr><td colspan="14" style="padding:30px;color:var(--ink3)">결과 없음</td></tr>'}</tbody>`;
   document.getElementById('detailNote').textContent =
     `${list.length.toLocaleString()}행` + (list.length > LIMIT ? ` 중 ${LIMIT.toLocaleString()}행만 표시 — 전체는 엑셀로 확인하세요` : '') +
     ' · 면적은 소수 1자리로 반올림 후 적용단가를 곱하고, 금액은 원 단위 반올림';
@@ -2511,14 +2557,14 @@ function exportExcel() {
   XLSX.utils.book_append_sheet(wb, ws1, '시설별 집계');
 
   // 2) 필지별 산출
-  const s2 = [['PNU', '읍면동', '지번', '지목', '시설(레이어)', '산지구분', '면적(㎡)', '공시지가(원/㎡)', '단위면적당 금액(원/㎡)', '공시지가 가산(원/㎡)', '적용단가(원/㎡)', '산정액(원)', '감면율(%)', '감면 근거', '감면액(원)', '부과액(원)', '공시지가 출처']];
+  const s2 = [['PNU', '읍면동', '지번', '지목', '시설(레이어)', '산지구분', '면적(㎡)', '공시지가(원/㎡)', '단위면적당 금액 산정식', '단위면적당 금액(원/㎡)', '산지별 단위면적당 산출금액(원/㎡)', '공시지가 반영액(원/㎡)', '산정액(원)', '감면율(%)', '감면 근거', '감면액(원)', '부과액(원)', '공시지가 출처']];
   calcRows.forEach(r => s2.push([r.pnu, r.emd, r.jibun, r.jimok, r.layer, r.type, r.area,
-    r.price == null ? '' : r.price, r.base, Math.round(r.add * 10) / 10, Math.round(r.unit * 10) / 10,
+    r.price == null ? '' : r.price, unitFormulaText(r.base, r.price), Math.round(r.unit * 10) / 10, r.base, Math.round(r.add * 10) / 10,
     r.include ? r.gross : '제외', r.include ? r.relief : '', r.include ? b5Label(r.basis) : '', r.include ? r.reliefAmt : '', r.include ? r.net : '', priceSrcText(r)]));
-  s2.push(['합계', '', '', '', '', '', r1(calcRows.filter(r => r.include).reduce((s, r) => s + r.area, 0)), '', '', '', '', gross, '', '', relief, net]);
+  s2.push(['합계', '', '', '', '', '', r1(calcRows.filter(r => r.include).reduce((s, r) => s + r.area, 0)), '', '', '', '', '', gross, '', '', relief, net]);
   const ws2 = XLSX.utils.aoa_to_sheet(s2);
-  ws2['!cols'] = [22, 10, 10, 6, 16, 10, 12, 14, 16, 14, 14, 14, 9, 18, 12, 14, 16].map(w => ({ wch: w }));
-  applyNumFmt(ws2, 1, { 6: '#,##0.0', 7: '#,##0', 8: '#,##0', 9: '#,##0.0', 10: '#,##0.0', 11: '#,##0', 14: '#,##0', 15: '#,##0' });
+  ws2['!cols'] = [22, 10, 10, 6, 16, 10, 12, 14, 34, 14, 16, 14, 14, 9, 18, 12, 14, 16].map(w => ({ wch: w }));
+  applyNumFmt(ws2, 1, { 6: '#,##0.0', 7: '#,##0', 9: '#,##0.0', 10: '#,##0', 11: '#,##0.0', 12: '#,##0', 15: '#,##0', 16: '#,##0' });
   XLSX.utils.book_append_sheet(wb, ws2, '필지별 산출');
 
   // 2-1) 시설별 감면 설정
