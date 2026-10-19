@@ -533,6 +533,16 @@ body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--
 #fundView .step-progress {padding:14px 12px;}
 }
 #fundView { display:none; }
+#fundView .price-methods { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+#fundView .pm { border:1px solid var(--border); border-radius:8px; padding:10px 12px; background:#fafaf7; display:flex; flex-direction:column; gap:8px; }
+#fundView .pm-h { font-size:12px; font-weight:800; color:var(--ink); }
+#fundView .pm-b { font-size:11px; color:var(--ink2); line-height:1.6; }
+#fundView .pm textarea { width:100%; font-family:'DM Mono',monospace; font-size:11px; padding:6px 8px; border:1px solid var(--border); border-radius:6px; resize:vertical; outline:none; }
+#fundView .pm textarea:focus { border-color:var(--green); }
+#fundView .eum-link { font-size:11px; color:var(--blue); text-decoration:none; font-weight:700; white-space:nowrap; cursor:pointer; }
+#fundView .eum-link:hover { text-decoration:underline; }
+#fundView .src-file { background:var(--teal-light); color:var(--teal); }
+@media(max-width:900px){ #fundView .price-methods { grid-template-columns:1fr; } }
 #fundView .price-tools { display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:12px; color:var(--ink2); }
 #fundView .price-tools input[type=password] { padding:6px 10px; border:1px solid var(--border); border-radius:6px; font-size:12px; width:240px; font-family:'DM Mono',monospace; outline:none; }
 #fundView .price-tools input[type=password]:focus { border-color:var(--green); }
@@ -908,28 +918,53 @@ body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--
   <!-- ①-2 공시지가 확인 -->
   <div class="sec-card hidden" id="priceCard">
     <div class="sec-card-title"><div class="dot"></div>①-2 필지별 개별공시지가 확인
-      <span class="sub">비어 있는 공시지가를 VWorld 개별공시지가 API(국토교통부)로 PNU별 조회합니다 · 표에서 직접 입력·수정도 됩니다</span>
+      <span class="sub">엑셀에 없는 공시지가를 토지이음에서 확인해 넣습니다 · 인증키 없이 쓸 수 있는 방법 3가지 + VWorld 자동조회(선택)</span>
     </div>
     <div id="priceSummary" style="margin-bottom:12px"></div>
-    <div class="price-tools">
-      <label>VWorld API 키</label>
-      <input type="password" id="vwKey" placeholder="VWorld 인증키 (config.js가 있으면 자동)" oninput="saveVwKey(this.value)">
-      <label style="margin-left:6px">기준연도</label>
-      <select id="priceYear" class="zone-select">
-        <option value="">최신 공시분</option>
-        <option value="2026">2026년</option>
-        <option value="2025">2025년</option>
-        <option value="2024">2024년</option>
-      </select>
-      <button class="btn-sm" onclick="lookupPrices(false)">📡 빈 필지만 조회</button>
-      <button class="btn-sm" onclick="lookupPrices(true)">↻ 전체 다시 조회</button>
-      <span id="priceProgress" class="mono" style="color:var(--ink3)"></span>
+
+    <div class="price-methods">
+      <div class="pm">
+        <div class="pm-h">① 토지이음 바로가기 → 칸에 입력</div>
+        <div class="pm-b">아래 표의 <b>🔗 토지이음</b>을 누르면 해당 필지 열람 화면이 새 탭으로 열리고, 주소가 클립보드에 복사됩니다(결과가 바로 안 뜨면 검색창에 붙여넣기). 개별공시지가를 보고 표의 칸에 입력하세요.</div>
+      </div>
+      <div class="pm">
+        <div class="pm-h">② 복사·붙여넣기로 한 번에</div>
+        <div class="pm-b">한 줄에 한 필지씩 <b>지번(또는 PNU)과 공시지가</b>를 붙여넣으면 자동으로 맞춰 넣습니다. 엑셀 두 열을 그대로 복사해도 됩니다.</div>
+        <textarea id="pricePaste" rows="4" placeholder="예)&#10;산1	85,000&#10;월암동 산2-1  120,500&#10;4143010100200030000 55000"></textarea>
+        <button class="btn-sm" onclick="applyPastedPrices()">📋 붙여넣은 값 반영</button>
+      </div>
+      <div class="pm">
+        <div class="pm-h">③ 공시지가 파일 불러오기</div>
+        <div class="pm-b">PNU(고유번호)와 공시지가 열이 있는 엑셀·CSV(예: 토지이음·부동산공시가격알리미·공공데이터포털 개별공시지가 내려받기 파일)를 올리면 PNU로 맞춰 넣습니다. 여러 연도가 있으면 최신 연도를 씁니다.</div>
+        <label class="btn-sm" style="display:inline-block;cursor:pointer">📂 파일 선택<input type="file" accept=".xlsx,.xls,.csv" class="hidden" onchange="loadPriceFile(event)"></label>
+      </div>
     </div>
-    <div class="table-wrap" style="max-height:360px;overflow:auto;margin-top:12px"><table class="grid" id="priceTable"></table></div>
+
+    <details class="law-box" style="margin-top:12px">
+      <summary>📡 VWorld API로 자동 조회 (인증키가 있을 때만)</summary>
+      <div class="price-tools" style="margin-top:10px">
+        <label>VWorld API 키</label>
+        <input type="password" id="vwKey" placeholder="VWorld 인증키 (config.js가 있으면 자동)" oninput="saveVwKey(this.value)">
+        <label style="margin-left:6px">기준연도</label>
+        <select id="priceYear" class="zone-select">
+          <option value="">최신 공시분</option>
+          <option value="2026">2026년</option>
+          <option value="2025">2025년</option>
+          <option value="2024">2024년</option>
+        </select>
+        <button class="btn-sm" onclick="lookupPrices(false)">📡 빈 필지만 조회</button>
+        <button class="btn-sm" onclick="lookupPrices(true)">↻ 전체 다시 조회</button>
+      </div>
+    </details>
+    <div id="priceProgress" class="mono" style="color:var(--ink3);font-size:12px;margin-top:8px"></div>
+
+    <div class="toolbar" style="margin:12px 0 6px">
+      <label style="font-size:12px;color:var(--ink2)"><input type="checkbox" id="priceOnlyMissing" onchange="renderPriceTable()" style="accent-color:var(--green)"> 공시지가 없는 필지만 보기</label>
+    </div>
+    <div class="table-wrap" style="max-height:380px;overflow:auto"><table class="grid" id="priceTable"></table></div>
     <div style="font-size:11px;color:var(--ink3);margin-top:8px;line-height:1.7">
-      · 대체산림자원조성비는 <strong>부과시점</strong>의 개별공시지가를 반영하므로, 기본은 가장 최근 공시분(최신 기준연도)을 씁니다.<br>
-      · 조회에 실패하면(키 오류·도메인 미등록·CORS 차단 등) 사유가 표시되며, 그 필지는 공시지가 칸에 직접 입력할 수 있습니다.<br>
-      · VWorld 키는 다른 작업 페이지(산지명세서·시설별 산지편입조서 등)와 같은 브라우저 저장값을 함께 씁니다.
+      · 대체산림자원조성비는 <strong>부과시점</strong>의 개별공시지가를 반영하므로 가장 최근 공시분(2026년 1월 1일 기준)을 넣으세요.<br>
+      · 2026년도 부과기준상 공시지가 가산분은 개별공시지가의 1000분의 1(최대 8,340원/㎡)이라, 금액에 미치는 영향은 크지 않습니다.
     </div>
   </div>
 
@@ -1670,7 +1705,7 @@ function parseSanjiAoa(aoa) {
 
   const idx = name => h1.findIndex(h => h === name);
   const col = {
-    pnu: idx('PNU'), emd: idx('읍면동'), jibun: idx('지번'), jimok: idx('지목'),
+    pnu: idx('PNU'), sido: idx('시도'), sgg: idx('시군구'), emd: idx('읍면동'), jibun: idx('지번'), jimok: idx('지목'),
     bojeong: idx('편입면적 보정(㎡)'), price: idx('공시지가(원/㎡)'),
     gF: idx('보전산지-임업용(㎡)'), gG: idx('보전산지-공익용(㎡)'), gJ: idx('준보전산지(㎡)'),
   };
@@ -1729,6 +1764,8 @@ function parseSanjiAoa(aoa) {
     });
     parcels.push({
       pnu,
+      sido: col.sido >= 0 ? String(row[col.sido] ?? '') : '',
+      sgg: col.sgg >= 0 ? String(row[col.sgg] ?? '') : '',
       emd: col.emd >= 0 ? String(row[col.emd] ?? '') : '',
       jibun: col.jibun >= 0 ? String(row[col.jibun] ?? '') : '',
       jimok: col.jimok >= 0 ? String(row[col.jimok] ?? '') : '',
@@ -1986,44 +2023,167 @@ async function lookupPrices(all) {
 
 function priceSrcText(p) {
   if (p.price == null) return '없음';
-  if (p.priceSrc === 'VWorld') return `VWorld ${p.priceYear || ''}`.trim();
+  if (p.priceSrc === 'VWorld' || p.priceSrc === '파일') return `${p.priceSrc} ${p.priceYear || ''}`.trim();
   return p.priceSrc || '엑셀';
+}
+// 토지이음 열람용 주소 · 링크
+function parcelAddr(p) {
+  return [p.sido, p.sgg, p.emd, p.jibun].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+}
+function eumUrl(p) {
+  return `https://www.eum.go.kr/web/ar/lu/luLandDet.jsp?pnu=${encodeURIComponent(p.pnu)}&mode=search&isNoScr=script&selGbn=umd`;
+}
+function openEum(i) {
+  const p = parsed.parcels[i];
+  const addr = parcelAddr(p);
+  try { navigator.clipboard && navigator.clipboard.writeText(addr).catch(() => {}); } catch (e) {}
+  window.open(eumUrl(p), '_blank', 'noopener');
+  showToast(`🔗 토지이음 열기 · 주소 복사됨: ${addr}`);
 }
 function renderPriceTable() {
   if (!parsed) return;
   const P = parsed.parcels;
   const nExcel = P.filter(p => p.priceSrc === '엑셀').length;
   const nApi = P.filter(p => p.priceSrc === 'VWorld').length;
-  const nManual = P.filter(p => p.priceSrc === '수동').length;
+  const nManual = P.filter(p => p.priceSrc === '직접 입력' || p.priceSrc === '붙여넣기').length;
+  const nFile = P.filter(p => p.priceSrc === '파일').length;
   const nNone = P.filter(p => p.price == null).length;
   document.getElementById('priceSummary').innerHTML = `
     <div class="alert ${nNone ? 'alert-amber' : 'alert-green'}" style="margin:0"><span class="alert-icon">${nNone ? '⚠️' : '✅'}</span>
-      <div>필지 <strong>${P.length.toLocaleString()}</strong>건 — 엑셀 ${nExcel} · VWorld 조회 ${nApi} · 직접 입력 ${nManual} ·
+      <div>필지 <strong>${P.length.toLocaleString()}</strong>건 — 엑셀 ${nExcel} · 직접 입력·붙여넣기 ${nManual} · 파일 ${nFile} · VWorld ${nApi} ·
         <strong style="color:${nNone ? 'var(--red)' : 'inherit'}">공시지가 없음 ${nNone}</strong></div></div>`;
   const kEl = document.getElementById('vwKey');
   if (kEl && !kEl.value) kEl.value = getVwKey();
+  const onlyMissing = document.getElementById('priceOnlyMissing')?.checked;
   const rows = P.map((p, i) => {
-    const cls = p.price == null ? 'src-none' : p.priceSrc === 'VWorld' ? 'src-api' : p.priceSrc === '수동' ? 'src-manual' : 'src-excel';
+    if (onlyMissing && p.price != null) return '';
+    const cls = p.price == null ? 'src-none' : p.priceSrc === 'VWorld' ? 'src-api' : p.priceSrc === '파일' ? 'src-file'
+              : (p.priceSrc === '직접 입력' || p.priceSrc === '붙여넣기') ? 'src-manual' : 'src-excel';
     return `<tr>
       <td class="mono">${i + 1}</td>
       <td class="mono">${escHtml(p.pnu)}</td>
-      <td>${escHtml(p.emd)}</td>
+      <td class="left">${escHtml([p.sgg, p.emd].filter(Boolean).join(' '))}</td>
       <td class="mono">${escHtml(p.jibun)}</td>
       <td>${escHtml(p.jimok)}</td>
+      <td><a class="eum-link" onclick="openEum(${i})" title="${escHtml(parcelAddr(p))}">🔗 토지이음</a></td>
       <td><input type="text" inputmode="numeric" class="price-input ${p.price == null ? 'missing' : ''}" value="${p.price == null ? '' : p.price.toLocaleString()}" placeholder="원/㎡" onchange="setPrice(${i}, this.value)"></td>
       <td><span class="src-tag ${cls}">${escHtml(priceSrcText(p))}</span></td>
       <td class="left basis" style="max-width:320px;white-space:normal">${escHtml(p.priceMsg || '')}</td>
     </tr>`;
   }).join('');
   document.getElementById('priceTable').innerHTML =
-    `<thead><tr><th>연번</th><th>PNU</th><th>읍면동</th><th>지번</th><th>지목</th><th>공시지가(원/㎡)</th><th>출처</th><th>비고</th></tr></thead><tbody>${rows}</tbody>`;
+    `<thead><tr><th>연번</th><th>PNU</th><th>소재지</th><th>지번</th><th>지목</th><th>확인</th><th>공시지가(원/㎡)</th><th>출처</th><th>비고</th></tr></thead><tbody>${rows || '<tr><td colspan="9" style="padding:20px;color:var(--ink3)">공시지가 없는 필지가 없습니다 ✅</td></tr>'}</tbody>`;
 }
 function setPrice(i, val) {
   const p = parsed.parcels[i];
   const v = num(val);
-  p.price = v; p.priceSrc = v == null ? '' : '수동'; p.priceYear = ''; p.priceMsg = v == null ? '' : '직접 입력';
+  p.price = v; p.priceSrc = v == null ? '' : '직접 입력'; p.priceYear = ''; p.priceMsg = '';
   renderPriceTable();
   if (!document.getElementById('resultArea').classList.contains('hidden')) calculate(false);
+}
+
+// ─── 지번 정규화 · 매칭 ───────────────────────────────────
+function normJibun(j) {
+  return String(j || '').replace(/\s+/g, '').replace(/번지$/, '').replace(/^산(\d)/, '산$1');
+}
+// PNU(19자리)에서 지번 문자열 만들기: 11번째 1=일반, 2=산
+function jibunFromPnu(pnu) {
+  if (!/^\d{19}$/.test(pnu)) return '';
+  const san = pnu[10] === '2' ? '산' : '';
+  const bon = parseInt(pnu.slice(11, 15), 10), bu = parseInt(pnu.slice(15, 19), 10);
+  return san + bon + (bu ? '-' + bu : '');
+}
+function findParcels(token, ctx) {
+  const P = parsed.parcels;
+  if (/^\d{19}$/.test(token)) return P.filter(p => p.pnu === token);
+  const j = normJibun(token);
+  // 엑셀 지번 표기(산 표기 생략 등)가 달라도 PNU에서 만든 지번으로도 비교
+  let hits = P.filter(p => normJibun(p.jibun) === j || jibunFromPnu(p.pnu) === j);
+  if (hits.length > 1 && ctx) {
+    const narrowed = hits.filter(p => ctx.includes(p.emd) || (p.sgg && ctx.includes(p.sgg)));
+    if (narrowed.length) hits = narrowed;
+  }
+  return hits;
+}
+
+// ─── ② 붙여넣기 일괄 반영 ─────────────────────────────────
+function applyPastedPrices() {
+  if (!parsed) return;
+  const lines = document.getElementById('pricePaste').value.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  let ok = 0, miss = [], dup = [];
+  lines.forEach(line => {
+    const pnuM = line.match(/\b\d{19}\b/);
+    const rest = pnuM ? line.replace(pnuM[0], ' ') : line;
+    const jibM = pnuM ? null : rest.match(/(산\s?)?\d{1,4}(-\d{1,4})?(?=\s|번지|$|\t|,)/);
+    // 공시지가: 지번 뒤에 나오는 숫자 중 가장 큰 값 (콤마·'원' 허용)
+    const after = pnuM ? rest : rest.slice((jibM ? jibM.index + jibM[0].length : 0));
+    const nums = (after.match(/\d[\d,]*(\.\d+)?/g) || []).map(x => num(x)).filter(x => x != null);
+    const price = nums.length ? Math.max(...nums) : null;
+    const token = pnuM ? pnuM[0] : (jibM ? jibM[0].replace(/\s/g, '') : '');
+    if (!token || price == null) { miss.push(line); return; }
+    const hits = findParcels(token, line);
+    if (!hits.length) { miss.push(line); return; }
+    if (hits.length > 1) { dup.push(line); return; }
+    const p = hits[0];
+    p.price = price; p.priceSrc = '붙여넣기'; p.priceYear = ''; p.priceMsg = '';
+    ok++;
+  });
+  document.getElementById('priceProgress').textContent =
+    `붙여넣기 — 반영 ${ok}` + (miss.length ? ` · 못 찾음 ${miss.length} (${miss.slice(0, 3).join(' / ')}${miss.length > 3 ? ' …' : ''})` : '')
+    + (dup.length ? ` · 지번 중복 ${dup.length} (읍면동을 함께 적어주세요)` : '');
+  renderPriceTable();
+  if (!document.getElementById('resultArea').classList.contains('hidden')) calculate(false);
+  showToast(`📋 공시지가 ${ok}필지 반영`);
+}
+
+// ─── ③ 공시지가 파일 불러오기 (PNU 매칭) ──────────────────
+async function loadPriceFile(e) {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f || !parsed) return;
+  try {
+    let aoa;
+    if (/\.csv$/i.test(f.name)) {
+      // 공공데이터 CSV는 EUC-KR인 경우가 많아 먼저 UTF-8로 읽고 깨지면 EUC-KR로 재시도
+      const buf = await f.arrayBuffer();
+      let text = new TextDecoder('utf-8').decode(buf);
+      if (/�/.test(text)) { try { text = new TextDecoder('euc-kr').decode(buf); } catch (er) {} }
+      aoa = text.split(/\r?\n/).filter(Boolean).map(l => l.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(c => c.replace(/^"|"$/g, '').trim()));
+    } else {
+      const wb = XLSX.read(await f.arrayBuffer(), { type: 'array' });
+      aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' });
+    }
+    // 헤더 행 찾기 (상위 10행 중 PNU·공시지가 열이 모두 있는 행)
+    let h = -1, cP = -1, cV = -1, cY = -1;
+    for (let r = 0; r < Math.min(10, aoa.length) && h < 0; r++) {
+      const row = (aoa[r] || []).map(v => String(v).replace(/\s/g, ''));
+      const p = row.findIndex(v => /^(PNU|pnu|고유번호|필지고유번호|토지고유번호)$/.test(v));
+      const v = row.findIndex(v => /(개별)?공시지가|pblntfPclnd/.test(v) && !/일자|일$|구분/.test(v));
+      if (p >= 0 && v >= 0) { h = r; cP = p; cV = v; cY = row.findIndex(v => /기준(연도|년도)|stdrYear/.test(v)); }
+    }
+    if (h < 0) throw new Error('PNU(고유번호)와 공시지가 열을 찾지 못했습니다.');
+    const best = {};   // pnu → { price, year }
+    for (let r = h + 1; r < aoa.length; r++) {
+      const row = aoa[r] || [];
+      const pnu = String(row[cP] ?? '').replace(/\D/g, '');
+      const price = num(row[cV]);
+      if (pnu.length !== 19 || price == null) continue;
+      const year = cY >= 0 ? String(row[cY] ?? '') : '';
+      if (!best[pnu] || year > best[pnu].year) best[pnu] = { price, year };
+    }
+    let ok = 0;
+    parsed.parcels.forEach(p => {
+      const b = best[p.pnu];
+      if (!b) return;
+      p.price = b.price; p.priceSrc = '파일'; p.priceYear = b.year; p.priceMsg = f.name; ok++;
+    });
+    document.getElementById('priceProgress').textContent = `파일 ${f.name} — ${Object.keys(best).length.toLocaleString()}건 중 이 사업 필지 ${ok}건 반영`;
+    renderPriceTable();
+    if (!document.getElementById('resultArea').classList.contains('hidden')) calculate(false);
+    showToast(`📂 공시지가 ${ok}필지 반영`);
+  } catch (err) {
+    console.error(err);
+    showToast('❌ ' + (err.message || '파일을 읽지 못했습니다'));
+  }
 }
 
 // ─── 시설별 설정 테이블 ─────────────────────────────────
