@@ -420,6 +420,9 @@ body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--
 }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>window.APP_CONFIG = window.APP_CONFIG || { encodedKey: '', vworldKey: '' };</script>
+<!-- config.js: 같은 폴더에 있으면 VWorld 키 자동 적용 (다른 작업 페이지와 공유) -->
+<script src="config.js" onerror="console.log('[config] config.js 없음')"></script>
 <style>
 /* ═══ 대체산림자원조성비 산출 화면 (#fundView 범위로 한정) ═══ */
 #fundView 400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
@@ -530,6 +533,17 @@ body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--
 #fundView .step-progress {padding:14px 12px;}
 }
 #fundView { display:none; }
+#fundView .price-tools { display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:12px; color:var(--ink2); }
+#fundView .price-tools input[type=password] { padding:6px 10px; border:1px solid var(--border); border-radius:6px; font-size:12px; width:240px; font-family:'DM Mono',monospace; outline:none; }
+#fundView .price-tools input[type=password]:focus { border-color:var(--green); }
+#fundView .price-input { width:110px; padding:4px 6px; border:1px solid var(--border); border-radius:5px; font-family:'DM Mono',monospace; font-size:12px; text-align:right; outline:none; }
+#fundView .price-input:focus { border-color:var(--green); }
+#fundView .price-input.missing { border-color:var(--red); background:#fff5f5; }
+#fundView .src-tag { display:inline-block; padding:1px 7px; border-radius:4px; font-size:10px; font-weight:700; }
+#fundView .src-excel { background:#f3f4f6; color:#555; }
+#fundView .src-api { background:var(--blue-light); color:var(--blue); }
+#fundView .src-manual { background:var(--amber-light); color:var(--amber); }
+#fundView .src-none { background:var(--red-light); color:var(--red); }
 #fundView .law-box { background:#f7f6f2; border:1px solid var(--border); border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:12px; color:var(--ink2); }
 #fundView .law-box summary { cursor:pointer; font-weight:700; color:var(--ink); }
 #fundView .law-body { margin-top:10px; display:flex; flex-direction:column; gap:8px; line-height:1.7; }
@@ -889,6 +903,34 @@ body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--
     </div>
     <input type="file" id="fileInput" accept=".xlsx,.xls" class="hidden" onchange="onFile(event)">
     <div id="parseMsg" style="margin-top:14px"></div>
+  </div>
+
+  <!-- ①-2 공시지가 확인 -->
+  <div class="sec-card hidden" id="priceCard">
+    <div class="sec-card-title"><div class="dot"></div>①-2 필지별 개별공시지가 확인
+      <span class="sub">비어 있는 공시지가를 VWorld 개별공시지가 API(국토교통부)로 PNU별 조회합니다 · 표에서 직접 입력·수정도 됩니다</span>
+    </div>
+    <div id="priceSummary" style="margin-bottom:12px"></div>
+    <div class="price-tools">
+      <label>VWorld API 키</label>
+      <input type="password" id="vwKey" placeholder="VWorld 인증키 (config.js가 있으면 자동)" oninput="saveVwKey(this.value)">
+      <label style="margin-left:6px">기준연도</label>
+      <select id="priceYear" class="zone-select">
+        <option value="">최신 공시분</option>
+        <option value="2026">2026년</option>
+        <option value="2025">2025년</option>
+        <option value="2024">2024년</option>
+      </select>
+      <button class="btn-sm" onclick="lookupPrices(false)">📡 빈 필지만 조회</button>
+      <button class="btn-sm" onclick="lookupPrices(true)">↻ 전체 다시 조회</button>
+      <span id="priceProgress" class="mono" style="color:var(--ink3)"></span>
+    </div>
+    <div class="table-wrap" style="max-height:360px;overflow:auto;margin-top:12px"><table class="grid" id="priceTable"></table></div>
+    <div style="font-size:11px;color:var(--ink3);margin-top:8px;line-height:1.7">
+      · 대체산림자원조성비는 <strong>부과시점</strong>의 개별공시지가를 반영하므로, 기본은 가장 최근 공시분(최신 기준연도)을 씁니다.<br>
+      · 조회에 실패하면(키 오류·도메인 미등록·CORS 차단 등) 사유가 표시되며, 그 필지는 공시지가 칸에 직접 입력할 수 있습니다.<br>
+      · VWorld 키는 다른 작업 페이지(산지명세서·시설별 산지편입조서 등)와 같은 브라우저 저장값을 함께 씁니다.
+    </div>
   </div>
 
   <!-- ② 부과기준 -->
@@ -1691,12 +1733,12 @@ function parseSanjiAoa(aoa) {
       jibun: col.jibun >= 0 ? String(row[col.jibun] ?? '') : '',
       jimok: col.jimok >= 0 ? String(row[col.jimok] ?? '') : '',
       bojeong: col.bojeong >= 0 ? num(row[col.bojeong]) : null,
-      price, areas,
+      price, priceSrc: price != null ? '엑셀' : '', priceYear: '', priceMsg: '', areas,
     });
   }
   if (parcels.length === 0) throw new Error('필지 데이터 행이 없습니다.');
   const noPrice = col.price >= 0 ? parcels.filter(p => p.price == null).length : 0;
-  if (noPrice > 0) warnings.push(`공시지가가 비어 있는 필지 ${noPrice}건은 공시지가 가산분 0원으로 산정합니다.`);
+  if (noPrice > 0) warnings.push(`공시지가가 비어 있는 필지 ${noPrice}건이 있습니다 — 아래 ①-2에서 VWorld로 조회하거나 직접 입력하세요. (비어 있으면 공시지가 가산분 0원으로 산정)`);
 
   return { parcels, layers: layers.map(L => L.name), mode: isSplit ? 'split' : (hasGubun ? 'ratio' : 'none'), hasPrice: col.price >= 0, warnings };
 }
@@ -1736,6 +1778,7 @@ function computeFund(P, cfg, R) {
         const gross = c.include ? Math.round(pt.area * unit) : 0;
         const net = c.include ? Math.round(gross * (1 - pt.rel / 100)) : 0;
         rows.push({ pnu: p.pnu, emd: p.emd, jibun: p.jibun, jimok: p.jimok, price: p.price,
+                    priceSrc: p.priceSrc, priceYear: p.priceYear,
                     layer: name, type: pt.type, area: pt.area, base: pt.base, add, unit,
                     relief: c.include ? pt.rel : null, basis: c.include ? pt.basis : '', gross, reliefAmt: gross - net, net, include: c.include });
         const s = sum[name];
@@ -1791,6 +1834,8 @@ async function handleFile(file) {
     document.getElementById('upTitle').textContent = file.name;
     document.getElementById('upDesc').textContent = '다른 파일로 바꾸려면 클릭하세요';
 
+    document.getElementById('priceCard').classList.remove('hidden');
+    renderPriceTable();
     document.getElementById('rateCard').classList.remove('hidden');
     document.getElementById('layerCard').classList.remove('hidden');
     document.getElementById('resultArea').classList.add('hidden');
@@ -1802,6 +1847,183 @@ async function handleFile(file) {
     msg.innerHTML = `<div class="alert alert-red"><span class="alert-icon">❌</span><div>${escHtml(err.message || '파일을 읽을 수 없습니다.')}</div></div>`;
     showToast('❌ 산지내역서를 읽지 못했습니다');
   }
+}
+
+// ═══════════════════════════════════════════════════════
+// 개별공시지가 조회 — VWorld 개별공시지가속성조회 API
+//   GET https://api.vworld.kr/ned/data/getIndvdLandPriceAttr
+//       ?key=&pnu=&stdrYear=&format=json&numOfRows=&pageNo=&domain=
+//   응답 필드: stdrYear(기준연도) · stdrMt · pblntfPclnd(공시지가, 원/㎡) · pblntfDe · lastUpdtDt
+// 브라우저 직접 호출이 CORS로 막히면 → 같은 사이트의 /api/land-price 프록시 → JSONP 순으로 시도
+// ═══════════════════════════════════════════════════════
+const VW_KEY_STORE = 'vworld_api_key';
+function getVwKey() {
+  let k = '';
+  try { k = localStorage.getItem(VW_KEY_STORE) || ''; } catch (e) {}
+  if (!k) {
+    const cfg = window.APP_CONFIG || {};
+    if (cfg.encodedKey) { try { k = atob(atob(cfg.encodedKey)).split('').reverse().join(''); } catch (e) {} }
+    else if (cfg.vworldKey) k = cfg.vworldKey;
+    if (k) { try { localStorage.setItem(VW_KEY_STORE, k); } catch (e) {} }
+  }
+  return k;
+}
+function saveVwKey(v) { try { localStorage.setItem(VW_KEY_STORE, v.trim()); } catch (e) {} }
+
+// 응답(JSON 어떤 형태든)에서 pblntfPclnd 가진 레코드 배열 추출
+function extractPriceRecords(obj) {
+  const out = [];
+  (function walk(o) {
+    if (!o || typeof o !== 'object') return;
+    if (Array.isArray(o)) { o.forEach(walk); return; }
+    if ('pblntfPclnd' in o) { out.push(o); return; }
+    Object.values(o).forEach(walk);
+  })(obj);
+  return out;
+}
+function pickLatestPrice(recs, year) {
+  const list = recs
+    .map(r => ({ year: String(r.stdrYear || ''), mt: String(r.stdrMt || ''), price: num(r.pblntfPclnd), upd: String(r.lastUpdtDt || '') }))
+    .filter(r => r.price != null && (!year || r.year === String(year)));
+  if (!list.length) return null;
+  list.sort((a, b) => (b.year + b.mt + b.upd).localeCompare(a.year + a.mt + a.upd));
+  return list[0];
+}
+function vwUrl(base, pnu, year, key) {
+  const q = new URLSearchParams({ key, pnu, format: 'json', numOfRows: '100', pageNo: '1', domain: location.origin });
+  if (year) q.set('stdrYear', year);
+  return `${base}?${q.toString()}`;
+}
+function jsonp(url, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const cb = '__vw_cb_' + Math.random().toString(36).slice(2);
+    const sc = document.createElement('script');
+    const timer = setTimeout(() => { cleanup(); reject(new Error('JSONP 시간 초과')); }, timeoutMs);
+    function cleanup() { clearTimeout(timer); delete window[cb]; sc.remove(); }
+    window[cb] = data => { cleanup(); resolve(data); };
+    sc.onerror = () => { cleanup(); reject(new Error('JSONP 로드 실패')); };
+    sc.src = url + '&callback=' + cb;
+    document.head.appendChild(sc);
+  });
+}
+let vwMode = null;   // 성공한 호출 방식 기억: 'direct' | 'proxy' | 'jsonp'
+async function fetchLandPrice(pnu, year, key) {
+  const direct = vwUrl('https://api.vworld.kr/ned/data/getIndvdLandPriceAttr', pnu, year, key);
+  const proxy = `/api/land-price?pnu=${encodeURIComponent(pnu)}${year ? '&stdrYear=' + year : ''}&domain=${encodeURIComponent(location.origin)}${key ? '&key=' + encodeURIComponent(key) : ''}`;
+  const tries = {
+    direct: async () => { const r = await fetch(direct); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); },
+    proxy:  async () => { const r = await fetch(proxy);  if (!r.ok) throw new Error('프록시 HTTP ' + r.status); return r.json(); },
+    jsonp:  () => jsonp(direct, 12000),
+  };
+  const order = vwMode ? [vwMode, ...['direct', 'proxy', 'jsonp'].filter(m => m !== vwMode)] : ['direct', 'proxy', 'jsonp'];
+  let lastErr = null;
+  for (const m of order) {
+    try {
+      const data = await tries[m]();
+      const err = findVwError(data);
+      if (err) throw new Error(err);
+      vwMode = m;
+      return pickLatestPrice(extractPriceRecords(data), year);   // null = 해당 연도 공시지가 없음
+    } catch (e) {
+      lastErr = e;
+      if (/INVALID_KEY|INCORRECT_KEY|UNREGISTERED|DOMAIN/i.test(e.message)) throw e;   // 키·도메인 오류는 다른 방식 시도해도 동일
+    }
+  }
+  throw lastErr || new Error('조회 실패');
+}
+function findVwError(data) {
+  let msg = '';
+  (function walk(o) {
+    if (msg || !o || typeof o !== 'object') return;
+    const code = o.resultCode || (o.error && o.error.code);
+    if (code && !/^(INFO-000|00|0|OK|NOT_FOUND)?$/i.test(String(code))) { msg = `${code} ${o.resultMsg || (o.error && o.error.text) || ''}`.trim(); return; }
+    Object.values(o).forEach(walk);
+  })(data);
+  return msg;
+}
+
+let priceBusy = false;
+async function lookupPrices(all) {
+  if (!parsed || priceBusy) return;
+  const keyEl = document.getElementById('vwKey');
+  const key = (keyEl.value || '').trim() || getVwKey();
+  if (!key) { showToast('⚠️ VWorld API 키를 입력해주세요'); keyEl.focus(); return; }
+  saveVwKey(key);
+  const year = document.getElementById('priceYear').value;
+  const targets = parsed.parcels.filter(p => /^\d{19}$/.test(p.pnu) && (all || p.price == null));
+  const bad = parsed.parcels.filter(p => !/^\d{19}$/.test(p.pnu)).length;
+  if (!targets.length) { showToast(all ? '⚠️ 조회할 필지가 없습니다' : '✅ 비어 있는 공시지가가 없습니다'); return; }
+  priceBusy = true;
+  const prog = document.getElementById('priceProgress');
+  let done = 0, ok = 0, fail = 0, none = 0, idx = 0;
+  const worker = async () => {
+    while (idx < targets.length) {
+      const p = targets[idx++];
+      try {
+        const res = await fetchLandPrice(p.pnu, year, key);
+        if (res) { p.price = res.price; p.priceSrc = 'VWorld'; p.priceYear = res.year + (res.mt ? '.' + res.mt : ''); p.priceMsg = ''; ok++; }
+        else { p.priceMsg = (year ? `${year}년 공시지가 없음` : '공시지가 없음') + (p.price != null ? ' — 기존 값 유지' : ''); none++; }
+      } catch (e) {
+        p.priceMsg = '조회 실패: ' + (e.message || e); fail++;
+        if (/INVALID_KEY|INCORRECT_KEY|UNREGISTERED|DOMAIN/i.test(p.priceMsg)) { idx = targets.length; }   // 키 오류면 중단
+      }
+      done++;
+      prog.textContent = `${done} / ${targets.length} 조회 중…`;
+      if (done % 10 === 0) renderPriceTable();
+    }
+  };
+  try {
+    await Promise.all(Array.from({ length: Math.min(4, targets.length) }, worker));
+  } finally {
+    priceBusy = false;
+  }
+  prog.textContent = `완료 — 성공 ${ok} · 공시지가 없음 ${none} · 실패 ${fail}` + (bad ? ` · PNU 형식 오류 ${bad}` : '');
+  renderPriceTable();
+  if (!document.getElementById('resultArea').classList.contains('hidden')) calculate(false);
+  if (fail && !ok) showToast('❌ 공시지가 조회 실패 — 표의 사유를 확인하세요');
+  else showToast(`📡 공시지가 ${ok}필지 반영`);
+}
+
+function priceSrcText(p) {
+  if (p.price == null) return '없음';
+  if (p.priceSrc === 'VWorld') return `VWorld ${p.priceYear || ''}`.trim();
+  return p.priceSrc || '엑셀';
+}
+function renderPriceTable() {
+  if (!parsed) return;
+  const P = parsed.parcels;
+  const nExcel = P.filter(p => p.priceSrc === '엑셀').length;
+  const nApi = P.filter(p => p.priceSrc === 'VWorld').length;
+  const nManual = P.filter(p => p.priceSrc === '수동').length;
+  const nNone = P.filter(p => p.price == null).length;
+  document.getElementById('priceSummary').innerHTML = `
+    <div class="alert ${nNone ? 'alert-amber' : 'alert-green'}" style="margin:0"><span class="alert-icon">${nNone ? '⚠️' : '✅'}</span>
+      <div>필지 <strong>${P.length.toLocaleString()}</strong>건 — 엑셀 ${nExcel} · VWorld 조회 ${nApi} · 직접 입력 ${nManual} ·
+        <strong style="color:${nNone ? 'var(--red)' : 'inherit'}">공시지가 없음 ${nNone}</strong></div></div>`;
+  const kEl = document.getElementById('vwKey');
+  if (kEl && !kEl.value) kEl.value = getVwKey();
+  const rows = P.map((p, i) => {
+    const cls = p.price == null ? 'src-none' : p.priceSrc === 'VWorld' ? 'src-api' : p.priceSrc === '수동' ? 'src-manual' : 'src-excel';
+    return `<tr>
+      <td class="mono">${i + 1}</td>
+      <td class="mono">${escHtml(p.pnu)}</td>
+      <td>${escHtml(p.emd)}</td>
+      <td class="mono">${escHtml(p.jibun)}</td>
+      <td>${escHtml(p.jimok)}</td>
+      <td><input type="text" inputmode="numeric" class="price-input ${p.price == null ? 'missing' : ''}" value="${p.price == null ? '' : p.price.toLocaleString()}" placeholder="원/㎡" onchange="setPrice(${i}, this.value)"></td>
+      <td><span class="src-tag ${cls}">${escHtml(priceSrcText(p))}</span></td>
+      <td class="left basis" style="max-width:320px;white-space:normal">${escHtml(p.priceMsg || '')}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('priceTable').innerHTML =
+    `<thead><tr><th>연번</th><th>PNU</th><th>읍면동</th><th>지번</th><th>지목</th><th>공시지가(원/㎡)</th><th>출처</th><th>비고</th></tr></thead><tbody>${rows}</tbody>`;
+}
+function setPrice(i, val) {
+  const p = parsed.parcels[i];
+  const v = num(val);
+  p.price = v; p.priceSrc = v == null ? '' : '수동'; p.priceYear = ''; p.priceMsg = v == null ? '' : '직접 입력';
+  renderPriceTable();
+  if (!document.getElementById('resultArea').classList.contains('hidden')) calculate(false);
 }
 
 // ─── 시설별 설정 테이블 ─────────────────────────────────
@@ -2051,7 +2273,7 @@ function renderExample() {
   const capped = r.price != null && rawAdd > rates.cap;
   const addTxt = r.price == null
     ? '공시지가 없음 → 0원'
-    : `${w(r.price)} × ${rates.pct}%${rates.pct === 0.1 ? '(1000분의 1)' : ''} = ${w(Math.round(rawAdd * 10) / 10)}원` + (capped ? ` → 상한 ${w(rates.cap)}원 적용` : ` (상한 ${w(rates.cap)}원 이하)`);
+    : `<span class="basis">[${escHtml(priceSrcText(r))}]</span> ${w(r.price)} × ${rates.pct}%${rates.pct === 0.1 ? '(1000분의 1)' : ''} = ${w(Math.round(rawAdd * 10) / 10)}원` + (capped ? ` → 상한 ${w(rates.cap)}원 적용` : ` (상한 ${w(rates.cap)}원 이하)`);
   const unitR = Math.round(r.unit * 10) / 10;
   el.innerHTML = `
     <div class="ex-grid">
@@ -2118,13 +2340,13 @@ function exportExcel() {
   XLSX.utils.book_append_sheet(wb, ws1, '시설별 집계');
 
   // 2) 필지별 산출
-  const s2 = [['PNU', '읍면동', '지번', '지목', '시설(레이어)', '산지구분', '면적(㎡)', '공시지가(원/㎡)', '단위면적당 금액(원/㎡)', '공시지가 가산(원/㎡)', '적용단가(원/㎡)', '산정액(원)', '감면율(%)', '감면 근거', '감면액(원)', '부과액(원)']];
+  const s2 = [['PNU', '읍면동', '지번', '지목', '시설(레이어)', '산지구분', '면적(㎡)', '공시지가(원/㎡)', '단위면적당 금액(원/㎡)', '공시지가 가산(원/㎡)', '적용단가(원/㎡)', '산정액(원)', '감면율(%)', '감면 근거', '감면액(원)', '부과액(원)', '공시지가 출처']];
   calcRows.forEach(r => s2.push([r.pnu, r.emd, r.jibun, r.jimok, r.layer, r.type, r.area,
     r.price == null ? '' : r.price, r.base, Math.round(r.add * 10) / 10, Math.round(r.unit * 10) / 10,
-    r.include ? r.gross : '제외', r.include ? r.relief : '', r.include ? b5Label(r.basis) : '', r.include ? r.reliefAmt : '', r.include ? r.net : '']));
+    r.include ? r.gross : '제외', r.include ? r.relief : '', r.include ? b5Label(r.basis) : '', r.include ? r.reliefAmt : '', r.include ? r.net : '', priceSrcText(r)]));
   s2.push(['합계', '', '', '', '', '', r1(calcRows.filter(r => r.include).reduce((s, r) => s + r.area, 0)), '', '', '', '', gross, '', '', relief, net]);
   const ws2 = XLSX.utils.aoa_to_sheet(s2);
-  ws2['!cols'] = [22, 10, 10, 6, 16, 10, 12, 14, 16, 14, 14, 14, 9, 18, 12, 14].map(w => ({ wch: w }));
+  ws2['!cols'] = [22, 10, 10, 6, 16, 10, 12, 14, 16, 14, 14, 14, 9, 18, 12, 14, 16].map(w => ({ wch: w }));
   applyNumFmt(ws2, 1, { 6: '#,##0.0', 7: '#,##0', 8: '#,##0', 9: '#,##0.0', 10: '#,##0.0', 11: '#,##0', 14: '#,##0', 15: '#,##0' });
   XLSX.utils.book_append_sheet(wb, ws2, '필지별 산출');
 
@@ -2183,7 +2405,7 @@ function resetAll() {
   document.getElementById('upIcon').textContent = '📊';
   document.getElementById('upTitle').textContent = '산지내역서 엑셀 업로드';
   document.getElementById('upDesc').textContent = '.xlsx 파일 · 드래그&드롭 가능';
-  ['rateCard', 'layerCard', 'resultArea'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  ['priceCard', 'rateCard', 'layerCard', 'resultArea'].forEach(id => document.getElementById(id).classList.add('hidden'));
   setStep(1);
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
