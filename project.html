@@ -420,7 +420,11 @@ body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--
 }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script>window.APP_CONFIG = window.APP_CONFIG || { encodedKey: '', vworldKey: '' };</script>
+<script>
+// VWorld 인증키 기본값 (서비스 URL: urban-planning-test.vercel.app 로 발급된 운영키)
+// 같은 폴더의 config.js가 있으면 그 값이 우선합니다.
+window.APP_CONFIG = window.APP_CONFIG || { encodedKey: 'TVVVMk9ESTNNRVZHTUVORkxURXpPRUl0UXpRNU5DMHdRekJCTFRJeU1USTVNakEw', vworldKey: '' };
+</script>
 <!-- config.js: 같은 폴더에 있으면 VWorld 키 자동 적용 (다른 작업 페이지와 공유) -->
 <script src="config.js" onerror="console.log('[config] config.js 없음')"></script>
 <style>
@@ -1879,6 +1883,11 @@ async function handleFile(file) {
     renderLayerTable();
     setStep(2);
     showToast(`✅ 필지 ${parsed.parcels.length.toLocaleString()}건 · 시설 ${parsed.layers.length}개 불러옴`);
+    // 인증키가 있고 공시지가가 빈 필지가 있으면 VWorld로 자동 조회
+    if (getVwKey() && parsed.parcels.some(p => p.price == null)) {
+      document.getElementById('priceProgress').textContent = '공시지가 빈 필지를 VWorld에서 자동 조회합니다…';
+      lookupPrices(false);
+    }
   } catch (err) {
     console.error(err);
     msg.innerHTML = `<div class="alert alert-red"><span class="alert-icon">❌</span><div>${escHtml(err.message || '파일을 읽을 수 없습니다.')}</div></div>`;
@@ -1894,15 +1903,17 @@ async function handleFile(file) {
 // 브라우저 직접 호출이 CORS로 막히면 → 같은 사이트의 /api/land-price 프록시 → JSONP 순으로 시도
 // ═══════════════════════════════════════════════════════
 const VW_KEY_STORE = 'vworld_api_key';
+// 키 우선순위: 설정된 운영키(config.js / 기본값) → 브라우저에 저장된 값
+// (예전에 저장된 시험용 키가 운영키를 덮어쓰지 않도록 설정값을 먼저 사용)
+function getCfgKey() {
+  const cfg = window.APP_CONFIG || {};
+  if (cfg.encodedKey) { try { return atob(atob(cfg.encodedKey)).split('').reverse().join(''); } catch (e) {} }
+  return cfg.vworldKey || '';
+}
 function getVwKey() {
-  let k = '';
+  let k = getCfgKey();
+  if (k) { try { localStorage.setItem(VW_KEY_STORE, k); } catch (e) {} return k; }
   try { k = localStorage.getItem(VW_KEY_STORE) || ''; } catch (e) {}
-  if (!k) {
-    const cfg = window.APP_CONFIG || {};
-    if (cfg.encodedKey) { try { k = atob(atob(cfg.encodedKey)).split('').reverse().join(''); } catch (e) {} }
-    else if (cfg.vworldKey) k = cfg.vworldKey;
-    if (k) { try { localStorage.setItem(VW_KEY_STORE, k); } catch (e) {} }
-  }
   return k;
 }
 function saveVwKey(v) { try { localStorage.setItem(VW_KEY_STORE, v.trim()); } catch (e) {} }
@@ -1983,7 +1994,7 @@ let priceBusy = false;
 async function lookupPrices(all) {
   if (!parsed || priceBusy) return;
   const keyEl = document.getElementById('vwKey');
-  const key = (keyEl.value || '').trim() || getVwKey();
+  const key = (keyEl && keyEl.value || '').trim() || getVwKey();
   if (!key) { showToast('⚠️ VWorld API 키를 입력해주세요'); keyEl.focus(); return; }
   saveVwKey(key);
   const year = document.getElementById('priceYear').value;
