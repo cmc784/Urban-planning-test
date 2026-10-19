@@ -894,7 +894,7 @@ body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--
   <!-- ② 부과기준 -->
   <div class="sec-card hidden" id="rateCard">
     <div class="sec-card-title"><div class="dot"></div>② 부과기준 (산림청 고시)
-      <span class="sub">매년 바뀌므로 해당 연도 고시값으로 확인 후 입력하세요 · 입력값은 이 브라우저에 저장됩니다</span>
+      <span class="sub">기본값: 2026년도 대체산림자원조성비 부과기준 (산림청고시 제2026-16호, 2026. 1. 30. 시행) · 고친 값은 이 브라우저에 저장됩니다</span>
     </div>
     <div class="rate-grid">
       <div class="rate-box"><label>준보전산지 단위면적당 금액</label>
@@ -908,17 +908,23 @@ body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--
     </div>
     <div class="rate-meta">
       <span>공시지가 반영비율</span>
-      <div class="rate-box" style="padding:4px 10px;display:inline-block"><div class="rate-input-wrap"><input type="number" id="rPct" step="0.1" style="width:50px;font-size:13px" oninput="onRateChange()"><span class="unit">%</span></div></div>
+      <div class="rate-box" style="padding:4px 10px;display:inline-block"><div class="rate-input-wrap"><input type="number" id="rPct" step="0.01" style="width:60px;font-size:13px" oninput="onRateChange()"><span class="unit">%</span></div></div>
+      <span style="font-size:11px">(0.1% = 1000분의 1)</span>
       <span style="margin-left:8px">적용 기준</span>
       <input type="text" id="rLabel" placeholder="예: 2026년도 고시" oninput="onRateChange()">
       <button class="btn-sm" onclick="restoreDefaultRates()">↺ 기본값</button>
     </div>
     <div class="formula">
-      부과금액 = 산지전용면적(㎡) × [ 산지구분별 단위면적당 금액 + min(개별공시지가 × <span id="fPct">1</span>%, <span id="fCap">-</span>원) ] × (1 − 감면율)
+      부과금액 = 산지전용·일시사용허가 면적(㎡) × 단위면적당 금액 × (1 − 감면율)<br>
+      단위면적당 금액 = 산지별·지역별 단위면적당 산출금액 + min(개별공시지가 × <span id="fPct">0.1</span>%, <span id="fCap">-</span>원)
     </div>
-    <div class="alert alert-amber" style="margin:12px 0 0" id="rateWarn">
+    <div class="alert alert-green" style="margin:12px 0 0" id="rateOk">
+      <span class="alert-icon">✅</span>
+      <div style="font-size:12px"><strong>2026년도 부과기준</strong>(산림청고시 제2026-16호) 적용 중 — 준보전 8,340 · 보전 10,840 · 제한지역 16,680원/㎡, 개별공시지가의 1000분의 1(최대 8,340원/㎡)</div>
+    </div>
+    <div class="alert alert-amber hidden" style="margin:12px 0 0" id="rateWarn">
       <span class="alert-icon">⚠️</span>
-      <div style="font-size:12px">기본값은 공개 자료로 확인한 <strong>2023년도 부과기준</strong>(준보전 7,260 · 보전 9,430 · 제한지역 14,520 · 상한 7,260원/㎡)입니다. 2026년도 고시값을 산림청·국가법령정보센터에서 확인해 고쳐 주세요.</div>
+      <div style="font-size:12px">2026년도 고시값과 다른 값으로 산정 중입니다. 고시값으로 돌리려면 <strong>↺ 기본값</strong>을 누르세요.</div>
     </div>
   </div>
 
@@ -940,10 +946,20 @@ body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--
         </div>
         <div><b>법 제19조제7항 · 시행령 제23조제1항</b> — 감면대상 및 감면비율은 <b>별표 5</b>에 따름 (보전산지·준보전산지 감면율이 따로 정해짐)</div>
         <div><b>법 제19조제8항</b> — 대체산림자원조성비 = 산지전용·일시사용 면적 × 부과시점의 단위면적당 금액</div>
+        <div><b>2026년도 부과기준 (산림청고시 제2026-16호)</b> — 단위면적당 금액 = 산지별·지역별 단위면적당 산출금액(준보전 8,340 · 보전 10,840 · 제한지역 16,680원/㎡) + 개별공시지가의 1000분의 1(최대 8,340원/㎡)</div>
         <div><b>별표 5 비고 1·2</b> — 공용·공공용시설(제1호 거목)이나 지역·지구·구역(제2호 자·차·카·파·하·거·머·버목, 제3호 너·더·러목) 안의 시설이 다른 감면 항목에도 해당하면 <b>가장 높은 감면율</b> 적용</div>
         <div><b>별표 5 비고 8</b> — 감면대상 면적은 해당 대상시설이 <b>설치되는 산지의 면적</b>으로 한정 (법제처 해석도 같은 취지) → 이 화면은 시설(레이어)별 면적에 그 시설의 감면율만 적용합니다</div>
       </div>
     </details>
+
+    <div class="zone-row" style="background:var(--green-light);border-color:#b8dfc6">
+      <div class="zone-label" style="color:#1a4a2e">🏛️ 사업시행자 <span style="font-weight:400;color:var(--ink3)">(시설 명칭 자동 매칭 기준)</span></div>
+      <select id="sponsorSelect" class="zone-select" onchange="setSponsor(this.value)">
+        <option value="gov">국가·지방자치단체 → 제1호 (공용·공공용) 항목으로 매칭</option>
+        <option value="pub">공기업·민간 등 (LH 등) → 공공시설은 제3호 사목 (무상귀속) 등으로 매칭</option>
+      </select>
+      <button class="btn-sm" onclick="reapplyAutoMatch(true)">↻ 명칭으로 다시 매칭</button>
+    </div>
 
     <div class="zone-row">
       <div class="zone-label">🗺️ 지역·지구 감면 <span style="font-weight:400;color:var(--ink3)">(별표 5 비고 2 — 사업지구 전체에 적용, 시설 감면율과 비교해 높은 쪽 적용)</span></div>
@@ -1411,11 +1427,15 @@ loadProject();
 <script>
 // ═══ 대체산림자원조성비 산출 ═══
 // ═══════════════════════════════════════════════════════
-// 부과기준 기본값 — 2023년도 대체산림자원조성비 부과기준(산림청 고시)
+// 부과기준 기본값 — 2026년도 대체산림자원조성비 부과기준
+// [시행 2026. 1. 30.] 산림청고시 제2026-16호
+//  · 단위면적당 금액 = 산지별·지역별 단위면적당 산출금액 + 개별공시지가의 1000분의 1 (최대 8,340원/㎡)
 // 매년 고시로 바뀌므로 화면에서 수정 가능, localStorage에 저장
 // ═══════════════════════════════════════════════════════
-const DEFAULT_RATES = { jun: 7260, bo: 9430, res: 14520, cap: 7260, pct: 1, label: '2023년도 고시(기본값)' };
-const RATE_KEY = 'forestFundRates_v1';
+const DEFAULT_RATES = { jun: 8340, bo: 10840, res: 16680, cap: 8340, pct: 0.1, label: '2026년도 고시(제2026-16호)' };
+// v2: 이전 버전(2023 기본값·반영비율 1%)으로 저장된 값을 쓰지 않도록 키 변경
+const RATE_KEY = 'forestFundRates_v2';
+try { localStorage.removeItem('forestFundRates_v1'); } catch (e) {}
 const UNCLASS = '미분류';
 
 let rates = { ...DEFAULT_RATES };
@@ -1561,8 +1581,10 @@ function writeRatesToUI() {
 function updateFormula() {
   document.getElementById('fPct').textContent = rates.pct;
   document.getElementById('fCap').textContent = Number(rates.cap || 0).toLocaleString();
-  const isDefault = rates.jun === DEFAULT_RATES.jun && rates.bo === DEFAULT_RATES.bo && rates.res === DEFAULT_RATES.res && rates.cap === DEFAULT_RATES.cap;
-  document.getElementById('rateWarn').classList.toggle('hidden', !isDefault);
+  const isDefault = rates.jun === DEFAULT_RATES.jun && rates.bo === DEFAULT_RATES.bo && rates.res === DEFAULT_RATES.res
+    && rates.cap === DEFAULT_RATES.cap && rates.pct === DEFAULT_RATES.pct;
+  document.getElementById('rateOk').classList.toggle('hidden', !isDefault);
+  document.getElementById('rateWarn').classList.toggle('hidden', isDefault);
 }
 function onRateChange() {
   rates = {
@@ -1686,7 +1708,8 @@ function parseSanjiAoa(aoa) {
 // ═══════════════════════════════════════════════════════
 function priceAdd(price, R) {
   if (price == null || price <= 0) return 0;
-  return Math.min(price * (R.pct / 100), R.cap);
+  // 부동소수 오차 제거 (예: 0.1% → 1000분의 1)
+  return Math.min(Math.round(price * R.pct * 1e4) / 1e6, R.cap);
 }
 function computeFund(P, cfg, R) {
   const rows = [];
@@ -1750,9 +1773,10 @@ async function handleFile(file) {
 
     // 시설 설정 초기화 (미분류는 기본 산정 포함)
     layerCfg = {};
-    parsed.layers.forEach(n => { layerCfg[n] = { include: true, item: '', rBo: 0, rJun: 0, restricted: false }; });
+    parsed.layers.forEach(n => { layerCfg[n] = { include: true, item: '', rBo: 0, rJun: 0, restricted: false, auto: true, match: null }; });
     zoneItem = ''; examplePick = null;
     renderZone();
+    reapplyAutoMatch(false);
 
     const modeLabel = { split: '시설별 보전/준보전 구분 있음', ratio: '필지 산지구분 비율로 배분', none: '전체 준보전산지로 산정' }[parsed.mode];
     msg.innerHTML =
@@ -1804,7 +1828,8 @@ function renderLayerTable() {
       <td class="num">${fmtArea(t[n].jun)}</td>
       <td class="num" style="font-weight:700">${fmtArea(t[n].bo + t[n].jun)}</td>
       <td><input type="checkbox" class="chk" ${c.include ? 'checked' : ''} onchange="setCfg(${i},'include',this.checked)"></td>
-      <td class="left"><select class="item-select" ${c.include ? '' : 'disabled'} onchange="setCfg(${i},'item',this.value)">${b5Options(c.item, false)}</select></td>
+      <td class="left"><select class="item-select" ${c.include ? '' : 'disabled'} onchange="setCfg(${i},'item',this.value)">${b5Options(c.item, false)}</select>
+        <div class="basis" style="margin-top:3px">${matchNote(c)}</div></td>
       <td><input type="number" class="cell-input" id="rbo-${i}" min="0" max="100" step="1" value="${c.rBo}" ${c.include ? '' : 'disabled'} oninput="setCfg(${i},'rBo',this.value)"> %</td>
       <td><input type="number" class="cell-input" id="rjun-${i}" min="0" max="100" step="1" value="${c.rJun}" ${c.include ? '' : 'disabled'} oninput="setCfg(${i},'rJun',this.value)"> %</td>
       <td class="num" id="eff-${i}">${effCell(c)}</td>
@@ -1831,13 +1856,13 @@ function setCfg(i, key, val) {
   if (key === 'rBo' || key === 'rJun') {
     let v = num(val); if (v == null) v = 0;
     c[key] = Math.max(0, Math.min(100, v));
-    c.item = 'custom';
+    c.item = 'custom'; c.auto = false;
     // 입력 중 포커스 유지를 위해 표 전체 대신 해당 칸만 갱신
     const sel = document.querySelectorAll('#layerTable .item-select')[i];
     if (sel) sel.value = 'custom';
     document.getElementById('eff-' + i).innerHTML = effCell(c);
   } else if (key === 'item') {
-    c.item = val;
+    c.item = val; c.auto = false;
     if (val && val !== 'custom' && B5_MAP[val]) { c.rBo = B5_MAP[val].bo; c.rJun = B5_MAP[val].jun; }
     else if (!val) { c.rBo = 0; c.rJun = 0; }
     renderLayerTable();
@@ -1847,7 +1872,98 @@ function setCfg(i, key, val) {
   }
   if (!document.getElementById('resultArea').classList.contains('hidden')) calculate(false);
 }
+// ═══════════════════════════════════════════════════════
+// 시설(레이어) 명칭 → 별표 5 대상시설 자동 매칭
+// · 위에서부터 먼저 걸리는 규칙 적용 (구체적인 명칭을 위에 둠)
+// · gov: 국가·지자체 시행 / pub: 공기업·민간 시행 (공공시설은 무상귀속 전제 3호 사목)
+// · code '' = 감면 대상 아님(자동 판정), null = 매칭 없음
+// ═══════════════════════════════════════════════════════
+let sponsor = 'pub';
+const AUTO_RULES = [
+  { kw: ['미분류'],                                                         gov: null,   pub: null },
+  { kw: ['휴게소', '휴게시설', '대기실'],                                     gov: '',     pub: '' },
+  { kw: ['분양', '전원주택', '단독주택', '공동주택', '연립', '상업', '업무', '근린생활', '자족', '숙박', '판매', '주상복합'], gov: '', pub: '' },
+  { kw: ['임대주택', '공공임대', '국민임대', '영구임대', '행복주택', '장기전세', '통합공공임대', '공공지원민간임대'], gov: '3-타', pub: '3-타' },
+  { kw: ['농어촌도로'],                                                      gov: '1-카', pub: '3-사' },
+  { kw: ['도시철도', '지하철', '경전철'],                                     gov: '1-자', pub: '3-사' },
+  { kw: ['고속철도', '철도'],                                                gov: '1-라', pub: '3-사' },
+  { kw: ['도로', '가로', '광로', '대로', '중로', '소로', '보행자', '교량', '터널', '자전거'], gov: '1-가', pub: '3-사' },
+  { kw: ['댐'],                                                             gov: '1-나', pub: '3-사' },
+  { kw: ['전통사찰'],                                                        gov: '3-바', pub: '3-바' },
+  { kw: ['국가유산', '문화재', '문화유산'],                                    gov: '1-아', pub: '3-사' },
+  { kw: ['박물관', '미술관', '도서관'],                                        gov: '1-하', pub: '3-사' },
+  { kw: ['유치원', '초등학교', '중학교', '고등학교', '대학', '학교'],             gov: '3-나', pub: '3-나' },
+  { kw: ['청소년수련', '청소년시설'],                                          gov: '3-하', pub: '2-타' },
+  { kw: ['사회복지', '노인복지', '장애인복지', '복지시설'],                       gov: '1-거', pub: '3-카' },
+  { kw: ['폐기물', '자원순환', '소각', '재활용'],                               gov: '1-마', pub: '2-타' },
+  { kw: ['하수', '오수', '물재생', '분뇨'],                                    gov: '1-거', pub: '2-타' },
+  { kw: ['정수', '배수지', '가압장', '상수', '수도'],                           gov: '1-차', pub: '2-타' },
+  { kw: ['저수지', '소류지', '농업용수', '용수로', '수로'],                      gov: '1-사', pub: '3-사' },
+  { kw: ['하천', '구거'],                                                    gov: '1-거', pub: '2-타' },
+  { kw: ['저류', '유수지', '침사지', '사방', '재해방지', '방재'],                 gov: '1-마', pub: '3-사' },
+  { kw: ['묘지'],                                                           gov: '1-마', pub: null },
+  { kw: ['공원'],                                                           gov: '1-마', pub: '3-사' },
+  { kw: ['공공청사', '청사', '행정복지센터', '주민센터', '파출소', '지구대', '소방', '119안전센터', '우체국'], gov: '1-마', pub: '3-사' },
+  { kw: ['국방', '군사', '군부대'],                                           gov: '1-바', pub: null },
+  { kw: ['체육', '운동장'],                                                  gov: '1-거', pub: '2-타' },
+  { kw: ['변전', '송전', '전원', '전기공급'],                                  gov: '1-거', pub: '2-타' },
+  { kw: ['가스'],                                                           gov: '1-거', pub: '2-타' },
+  { kw: ['통신'],                                                           gov: '1-거', pub: '2-타' },
+  { kw: ['공항'],                                                           gov: '1-거', pub: '2-타' },
+  { kw: ['어항'],                                                           gov: '1-거', pub: '2-타' },
+  { kw: ['물류단지', '물류터미널'],                                           gov: '2-카', pub: '2-카' },
+  { kw: ['연료전지', '수소', '풍력', '지열', '수력', '바이오'],                  gov: '2-라', pub: '2-라' },
+  { kw: ['초지'],                                                           gov: '3-아', pub: '3-아' },
+  { kw: ['녹지', '광장', '공공공지', '주차장', '공영차고지', '자동차정류장', '정류장', '문화시설', '집단에너지', '열공급', '공공시설'], gov: '1-거', pub: '3-사' },
+];
+function autoMatch(name) {
+  const n = String(name || '').replace(/\s+/g, '');
+  for (const r of AUTO_RULES) {
+    const kw = r.kw.find(k => n.includes(k));
+    if (kw) {
+      const code = r[sponsor];
+      return code === null ? null : { code, kw };
+    }
+  }
+  return null;
+}
+function applyMatch(c, m) {
+  c.match = m;
+  if (!m) { c.item = ''; c.rBo = 0; c.rJun = 0; return; }
+  c.item = m.code;
+  c.rBo = m.code ? B5_MAP[m.code].bo : 0;
+  c.rJun = m.code ? B5_MAP[m.code].jun : 0;
+}
+// force=true: 수동으로 고친 시설까지 모두 다시 매칭
+function reapplyAutoMatch(force) {
+  if (!parsed) return;
+  parsed.layers.forEach(n => {
+    const c = layerCfg[n];
+    if (!force && !c.auto) return;
+    c.auto = true;
+    applyMatch(c, autoMatch(n));
+  });
+  renderLayerTable();
+  if (!document.getElementById('resultArea').classList.contains('hidden')) calculate(false);
+  if (force) {
+    const hit = parsed.layers.filter(n => layerCfg[n].match).length;
+    showToast(`↻ 시설 ${parsed.layers.length}개 중 ${hit}개 자동 매칭`);
+  }
+}
+function setSponsor(v) {
+  sponsor = v;
+  reapplyAutoMatch(false);   // 수동으로 고친 시설은 유지
+}
+function matchNote(c) {
+  if (!c.auto) return '✋ 수동 지정';
+  if (!c.match) return '자동 매칭 없음 — 직접 선택';
+  if (!c.match.code) return `🤖 '${escHtml(c.match.kw)}' → 감면 대상 아님`;
+  const x = B5_MAP[c.match.code];
+  return `🤖 '${escHtml(c.match.kw)}' ↔ ${escHtml(b5Label(c.match.code))} ${escHtml(x.t)}`;
+}
+
 function renderZone() {
+  document.getElementById('sponsorSelect').value = sponsor;
   document.getElementById('zoneSelect').innerHTML = b5Options(zoneItem, true);
   const z = zoneItem ? B5_MAP[zoneItem] : null;
   document.getElementById('zoneRates').textContent = z ? `보전 ${z.bo}% · 준보전 ${z.jun}%` : '';
@@ -1935,7 +2051,7 @@ function renderExample() {
   const capped = r.price != null && rawAdd > rates.cap;
   const addTxt = r.price == null
     ? '공시지가 없음 → 0원'
-    : `${w(r.price)} × ${rates.pct}% = ${w(Math.round(rawAdd * 10) / 10)}원` + (capped ? ` → 상한 ${w(rates.cap)}원 적용` : ` (상한 ${w(rates.cap)}원 이하)`);
+    : `${w(r.price)} × ${rates.pct}%${rates.pct === 0.1 ? '(1000분의 1)' : ''} = ${w(Math.round(rawAdd * 10) / 10)}원` + (capped ? ` → 상한 ${w(rates.cap)}원 적용` : ` (상한 ${w(rates.cap)}원 이하)`);
   const unitR = Math.round(r.unit * 10) / 10;
   el.innerHTML = `
     <div class="ex-grid">
@@ -2013,13 +2129,16 @@ function exportExcel() {
   XLSX.utils.book_append_sheet(wb, ws2, '필지별 산출');
 
   // 2-1) 시설별 감면 설정
-  const sR = [['시설(레이어)', '산정여부', '감면 항목', '감면 항목 내용', '보전 감면율(%)', '준보전 감면율(%)', '최종 보전(%)', '최종 준보전(%)', '제한지역']];
+  const sR = [['시설(레이어)', '산정여부', '감면 항목', '감면 항목 내용', '매칭 방법', '보전 감면율(%)', '준보전 감면율(%)', '최종 보전(%)', '최종 준보전(%)', '제한지역']];
   parsed.layers.forEach(n => {
     const c = layerCfg[n], e = effRelief(c);
-    sR.push([n, c.include ? '산정' : '제외', b5Label(c.item), c.item && B5_MAP[c.item] ? B5_MAP[c.item].t : '', c.rBo, c.rJun, e.bo, e.jun, c.restricted ? 'O' : '']);
+    sR.push([n, c.include ? '산정' : '제외', b5Label(c.item), c.item && B5_MAP[c.item] ? B5_MAP[c.item].t : '',
+             matchNote(c).replace(/^🤖 /, '자동: ').replace(/^✋ /, ''), c.rBo, c.rJun, e.bo, e.jun, c.restricted ? 'O' : '']);
   });
+  sR.push([]);
+  sR.push(['사업시행자', sponsor === 'gov' ? '국가·지방자치단체' : '공기업·민간 등']);
   const wsR = XLSX.utils.aoa_to_sheet(sR);
-  wsR['!cols'] = [18, 8, 16, 60, 12, 12, 12, 12, 8].map(w => ({ wch: w }));
+  wsR['!cols'] = [18, 8, 16, 60, 40, 12, 12, 12, 12, 8].map(w => ({ wch: w }));
   XLSX.utils.book_append_sheet(wb, wsR, '감면 설정');
 
   // 3) 적용 기준
