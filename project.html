@@ -537,6 +537,16 @@ window.APP_CONFIG = window.APP_CONFIG || { encodedKey: 'TVVVMk9ESTNNRVZHTUVORkxU
 #fundView .step-progress {padding:14px 12px;}
 }
 #fundView { display:none; }
+#fundView .ym-input { width:92px; padding:4px 6px; border:1px solid var(--border); border-radius:5px; font-family:'DM Mono',monospace; font-size:12px; text-align:center; outline:none; }
+#fundView .ym-input:focus { border-color:var(--green); }
+#fundView .ym-input.unset { border-style:dashed; color:var(--ink3); }
+#fundView .ym-chips { display:flex; flex-wrap:wrap; gap:3px; margin-top:3px; justify-content:center; }
+#fundView .ym-chip { font-size:10px; font-family:'DM Mono',monospace; padding:1px 6px; border-radius:10px; background:#f3f4f6; color:#555; cursor:pointer; border:1px solid transparent; white-space:nowrap; }
+#fundView .ym-chip:hover { border-color:var(--green); color:var(--green); }
+#fundView .ym-chip.on { background:var(--green-light); color:var(--green); font-weight:700; cursor:default; }
+#fundView .ym-chip .x { margin-left:3px; color:#b91c1c; cursor:pointer; }
+#fundView .ym-bar { background:#f7f6f2; border:1px solid var(--border2); border-radius:8px; padding:8px 10px; }
+#fundView .ym-bar-label { font-size:12px; font-weight:700; color:var(--ink); }
 #fundView .price-methods { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
 #fundView .pm { border:1px solid var(--border); border-radius:8px; padding:10px 12px; background:#fafaf7; display:flex; flex-direction:column; gap:8px; }
 #fundView .pm-h { font-size:12px; font-weight:800; color:var(--ink); }
@@ -962,7 +972,14 @@ window.APP_CONFIG = window.APP_CONFIG || { encodedKey: 'TVVVMk9ESTNNRVZHTUVORkxU
     </details>
     <div id="priceProgress" class="mono" style="color:var(--ink3);font-size:12px;margin-top:8px"></div>
 
-    <div class="toolbar" style="margin:12px 0 6px">
+    <div class="toolbar ym-bar" style="margin:12px 0 6px">
+      <span class="ym-bar-label">📅 기준연월 일괄 적용</span>
+      <input type="text" id="ymAll" class="ym-input" placeholder="YYYY.MM" list="ymList">
+      <datalist id="ymList"></datalist>
+      <button class="btn-sm" onclick="applyYMAll(document.getElementById('ymAll').value)">전체 필지에 적용</button>
+      <button class="btn-sm" onclick="applyLatestYM()">최신 연월로</button>
+      <span id="ymBarMsg" class="basis"></span>
+      <div style="flex:1"></div>
       <label style="font-size:12px;color:var(--ink2)"><input type="checkbox" id="priceOnlyMissing" onchange="renderPriceTable()" style="accent-color:var(--green)"> 공시지가 없는 필지만 보기</label>
     </div>
     <div class="table-wrap" style="max-height:380px;overflow:auto"><table class="grid" id="priceTable"></table></div>
@@ -1781,7 +1798,7 @@ function parseSanjiAoa(aoa) {
       gF: col.gF >= 0 ? (num(row[col.gF]) || 0) : null,
       gG: col.gG >= 0 ? (num(row[col.gG]) || 0) : null,
       gJ: col.gJ >= 0 ? (num(row[col.gJ]) || 0) : null,
-      price, priceSrc: price != null ? '엑셀' : '', priceYear: '', priceMsg: '', areas,
+      price, priceSrc: price != null ? '엑셀' : '', priceYear: '', priceMsg: '', priceHist: null, priceYM: '', areas,
     });
   }
   if (parcels.length === 0) throw new Error('필지 데이터 행이 없습니다.');
@@ -1942,7 +1959,14 @@ function pickLatestPrice(recs, year) {
     .filter(r => r.price != null && (!year || r.year === String(year)));
   if (!list.length) return null;
   list.sort((a, b) => (b.year + b.mt + b.upd).localeCompare(a.year + a.mt + a.upd));
-  return list[0];
+  // 연월별 전체 이력도 함께 반환 (같은 연월은 최신 갱신분)
+  const all = {};
+  recs.forEach(r => {
+    const price = num(r.pblntfPclnd); if (price == null) return;
+    const ym = normYM(String(r.stdrYear || '') + '.' + (String(r.stdrMt || '') || '1'));
+    if (ym && !(ym in all)) all[ym] = price;
+  });
+  return { ...list[0], all };
 }
 function vwUrl(base, pnu, year, key) {
   const q = new URLSearchParams({ key, pnu, format: 'json', numOfRows: '100', pageNo: '1', domain: location.origin });
@@ -2016,7 +2040,12 @@ async function lookupPrices(all) {
       const p = targets[idx++];
       try {
         const res = await fetchLandPrice(p.pnu, year, key);
-        if (res) { p.price = res.price; p.priceSrc = 'VWorld'; p.priceYear = res.year + (res.mt ? '.' + res.mt : ''); p.priceMsg = ''; ok++; }
+        if (res) {
+          Object.entries(res.all || {}).forEach(([ym, price]) => setPriceEntry(p, ym, price, 'VWorld', false));
+          const ym = normYM(res.year + '.' + (res.mt || '1')) || '';
+          setPriceEntry(p, ym, res.price, 'VWorld', true);
+          p.priceMsg = ''; ok++;
+        }
         else { p.priceMsg = (year ? `${year}년 공시지가 없음` : '공시지가 없음') + (p.price != null ? ' — 기존 값 유지' : ''); none++; }
       } catch (e) {
         p.priceMsg = '조회 실패: ' + (e.message || e); fail++;
@@ -2078,8 +2107,125 @@ function parcelTypes(p) {
 
 function priceSrcText(p) {
   if (p.price == null) return '없음';
-  if (p.priceSrc === 'VWorld' || p.priceSrc === '파일') return `${p.priceSrc} ${p.priceYear || ''}`.trim();
-  return p.priceSrc || '엑셀';
+  return `${p.priceSrc || '엑셀'}${p.priceYear ? ' ' + p.priceYear : ''}`;
+}
+
+// ═══════════════════════════════════════════════════════
+// 필지별 공시지가 — 기준연월(YYYY.MM)별 이력
+//   p.priceHist = { 'YYYY.MM': { price, src } }  ('' = 연월 미지정, 예: 엑셀 원본값)
+//   p.priceYM   = 현재 산정에 적용하는 연월  → p.price / p.priceSrc / p.priceYear 를 동기화
+// 개별공시지가는 매년 1월 1일 기준(분할·합병 등은 7월 1일 기준)으로 공시되므로 연월로 구분
+// ═══════════════════════════════════════════════════════
+function normYM(v) {
+  const t = String(v ?? '').trim();
+  if (!t) return '';
+  const m = t.replace(/\s+/g, '').match(/^(\d{4})(?:[.\-\/년]?(\d{1,2})월?)?\.?$/) || t.replace(/\s+/g, '').match(/^(\d{4})(\d{2})$/);
+  if (!m) return null;
+  const y = +m[1], mo = m[2] ? +m[2] : 1;
+  if (y < 1990 || y > 2100 || mo < 1 || mo > 12) return null;
+  return `${y}.${String(mo).padStart(2, '0')}`;
+}
+function ensureHist(p) {
+  if (p.priceHist) return;
+  p.priceHist = {};
+  const key = normYM(p.priceYear) || '';
+  if (p.price != null) p.priceHist[key] = { price: p.price, src: p.priceSrc || '엑셀' };
+  p.priceYM = key;
+}
+function selectYM(p, ym) {
+  ensureHist(p);
+  // 값을 넣지 않고 지나간 빈 연월은 정리
+  Object.keys(p.priceHist).forEach(k => { if (k !== ym && p.priceHist[k].price == null) delete p.priceHist[k]; });
+  const e = p.priceHist[ym];
+  p.priceYM = ym;
+  p.price = e && e.price != null ? e.price : null;
+  p.priceSrc = e && e.price != null ? e.src : '';
+  p.priceYear = ym;
+}
+function setPriceEntry(p, ym, price, src, select) {
+  ensureHist(p);
+  p.priceHist[ym] = { price, src };
+  if (select || p.priceYM === ym) selectYM(p, ym);
+}
+function histKeys(p) {
+  ensureHist(p);
+  return Object.keys(p.priceHist).sort((a, b) => (b || '0').localeCompare(a || '0'));
+}
+function latestYM(p) {
+  return histKeys(p).find(k => k && p.priceHist[k].price != null) ?? (p.priceHist[''] ? '' : null);
+}
+function afterPriceChange() {
+  renderPriceTable();
+  if (!document.getElementById('resultArea').classList.contains('hidden')) calculate(false);
+}
+// 행의 기준연월 입력
+function setYM(i, val) {
+  const p = parsed.parcels[i];
+  ensureHist(p);
+  const ym = normYM(val);
+  if (ym === null) { showToast('⚠️ 기준연월은 YYYY.MM 형식으로 입력하세요 (예: 2026.01)'); renderPriceTable(); return; }
+  if (ym === p.priceYM) return;
+  if (p.priceHist[ym]) {
+    selectYM(p, ym);                                   // 이미 있는 연월 → 그 값으로 전환
+  } else if (p.priceYM === '' && p.priceHist['']) {
+    p.priceHist[ym] = p.priceHist[''];                  // 연월 미지정 값 → 입력한 연월로 이름 지정
+    delete p.priceHist[''];
+    selectYM(p, ym);
+  } else {
+    p.priceHist[ym] = { price: null, src: '' };         // 새 연월 → 공시지가 입력 대기
+    selectYM(p, ym);
+  }
+  p.priceMsg = '';
+  afterPriceChange();
+}
+function pickYM(i, ym) {
+  selectYM(parsed.parcels[i], ym);
+  afterPriceChange();
+}
+function delYM(i, ym, ev) {
+  if (ev) ev.stopPropagation();
+  const p = parsed.parcels[i];
+  ensureHist(p);
+  delete p.priceHist[ym];
+  if (p.priceYM === ym) { const l = latestYM(p); selectYM(p, l == null ? '' : l); }
+  afterPriceChange();
+}
+// 전체 필지 기준연월 일괄 적용
+function applyYMAll(val) {
+  if (!parsed) return;
+  const ym = normYM(val);
+  if (!ym) { showToast('⚠️ 기준연월을 YYYY.MM 형식으로 입력하세요 (예: 2026.01)'); return; }
+  let have = 0, relabel = 0, blank = 0;
+  parsed.parcels.forEach(p => {
+    ensureHist(p);
+    if (p.priceHist[ym]) { selectYM(p, ym); if (p.price != null) have++; else blank++; }
+    else if (p.priceYM === '' && p.priceHist[''] && p.priceHist[''].price != null) {
+      p.priceHist[ym] = p.priceHist['']; delete p.priceHist['']; selectYM(p, ym); relabel++;
+    } else { p.priceHist[ym] = { price: null, src: '' }; selectYM(p, ym); blank++; }
+  });
+  document.getElementById('ymBarMsg').textContent =
+    `${ym} 적용 — 값 있음 ${have}` + (relabel ? ` · 연월 지정 ${relabel}` : '') + (blank ? ` · 입력 필요 ${blank}` : '');
+  afterPriceChange();
+  showToast(`📅 기준연월 ${ym} 적용`);
+}
+function applyLatestYM() {
+  if (!parsed) return;
+  parsed.parcels.forEach(p => { const l = latestYM(p); if (l != null) selectYM(p, l); });
+  document.getElementById('ymBarMsg').textContent = '필지별 가장 최근 연월의 공시지가를 적용했습니다';
+  afterPriceChange();
+}
+function ymCell(p, i) {
+  ensureHist(p);
+  const keys = histKeys(p);
+  const chips = keys.filter(k => k !== p.priceYM || keys.length > 1).map(k => {
+    const e = p.priceHist[k];
+    const lbl = `${k || '미지정'} ${e.price != null ? e.price.toLocaleString() : '—'}`;
+    return k === p.priceYM
+      ? `<span class="ym-chip on" title="${escHtml(e.src || '')}">${escHtml(lbl)}</span>`
+      : `<span class="ym-chip" title="${escHtml((e.src || '') + ' · 클릭하면 이 연월 값 적용')}" onclick="pickYM(${i}, '${k}')">${escHtml(lbl)}<span class="x" title="이 연월 삭제" onclick="delYM(${i}, '${k}', event)">×</span></span>`;
+  }).join('');
+  return `<td><input type="text" class="ym-input ${p.priceYM ? '' : 'unset'}" value="${escHtml(p.priceYM)}" placeholder="YYYY.MM" list="ymList" onchange="setYM(${i}, this.value)">
+      ${keys.length > 1 ? `<div class="ym-chips">${chips}</div>` : ''}</td>`;
 }
 // 토지이음 열람용 주소 · 링크
 function parcelAddr(p) {
@@ -2105,6 +2251,14 @@ function unitCells(p) {
 function renderPriceTable() {
   if (!parsed) return;
   const P = parsed.parcels;
+  P.forEach(ensureHist);
+  // 입력 도우미: 이 사업에 등장한 연월 + 최근 3개년 1월·7월
+  const yms = new Set();
+  P.forEach(p => Object.keys(p.priceHist).forEach(k => k && yms.add(k)));
+  const y0 = new Date().getFullYear();
+  [y0, y0 - 1, y0 - 2].forEach(y => { yms.add(`${y}.01`); yms.add(`${y}.07`); });
+  const dl = document.getElementById('ymList');
+  if (dl) dl.innerHTML = [...yms].sort().reverse().map(k => `<option value="${k}">`).join('');
   const nExcel = P.filter(p => p.priceSrc === '엑셀').length;
   const nApi = P.filter(p => p.priceSrc === 'VWorld').length;
   const nManual = P.filter(p => p.priceSrc === '직접 입력' || p.priceSrc === '붙여넣기').length;
@@ -2128,6 +2282,7 @@ function renderPriceTable() {
       <td class="mono">${escHtml(p.jibun)}</td>
       <td>${escHtml(p.jimok)}</td>
       <td><a class="eum-link" onclick="openEum(${i})" title="${escHtml(parcelAddr(p))}">🔗 토지이음</a></td>
+      ${ymCell(p, i)}
       <td><input type="text" inputmode="numeric" class="price-input ${p.price == null ? 'missing' : ''}" value="${p.price == null ? '' : p.price.toLocaleString()}" placeholder="원/㎡" onchange="setPrice(${i}, this.value)"></td>
       ${unitCells(p)}
       <td><span class="src-tag ${cls}">${escHtml(priceSrcText(p))}</span></td>
@@ -2135,14 +2290,14 @@ function renderPriceTable() {
     </tr>`;
   }).join('');
   document.getElementById('priceTable').innerHTML =
-    `<thead><tr><th>연번</th><th>PNU</th><th>소재지</th><th>지번</th><th>지목</th><th>확인</th><th>공시지가(원/㎡)</th><th>산지구분</th><th>단위면적당 금액 산정식<br><span style="font-weight:400">산출금액 + 공시지가×${pctText()}</span></th><th>단위면적당 금액<br>(원/㎡)</th><th>출처</th><th>비고</th></tr></thead><tbody>${rows || '<tr><td colspan="12" style="padding:20px;color:var(--ink3)">공시지가 없는 필지가 없습니다 ✅</td></tr>'}</tbody>`;
+    `<thead><tr><th>연번</th><th>PNU</th><th>소재지</th><th>지번</th><th>지목</th><th>확인</th><th>기준연월<br><span style="font-weight:400">(다른 연월 클릭 시 전환)</span></th><th>공시지가(원/㎡)</th><th>산지구분</th><th>단위면적당 금액 산정식<br><span style="font-weight:400">산출금액 + 공시지가×${pctText()}</span></th><th>단위면적당 금액<br>(원/㎡)</th><th>출처</th><th>비고</th></tr></thead><tbody>${rows || '<tr><td colspan="13" style="padding:20px;color:var(--ink3)">공시지가 없는 필지가 없습니다 ✅</td></tr>'}</tbody>`;
 }
 function setPrice(i, val) {
   const p = parsed.parcels[i];
   const v = num(val);
-  p.price = v; p.priceSrc = v == null ? '' : '직접 입력'; p.priceYear = ''; p.priceMsg = '';
-  renderPriceTable();
-  if (!document.getElementById('resultArea').classList.contains('hidden')) calculate(false);
+  setPriceEntry(p, p.priceYM || '', v, v == null ? '' : '직접 입력', true);
+  p.priceMsg = '';
+  afterPriceChange();
 }
 
 // ─── 지번 정규화 · 매칭 ───────────────────────────────────
@@ -2179,7 +2334,7 @@ function applyPastedPrices() {
     const rest = pnuM ? line.replace(pnuM[0], ' ') : line;
     const jibM = pnuM ? null : rest.match(/(산\s?)?\d{1,4}(-\d{1,4})?(?=\s|번지|$|\t|,)/);
     // 공시지가: 지번 뒤에 나오는 숫자 중 가장 큰 값 (콤마·'원' 허용)
-    const after = pnuM ? rest : rest.slice((jibM ? jibM.index + jibM[0].length : 0));
+    const after = (pnuM ? rest : rest.slice((jibM ? jibM.index + jibM[0].length : 0))).replace(/20\d{2}\s*[.\-\/년]\s*\d{1,2}\s*월?/g, ' ');
     const nums = (after.match(/\d[\d,]*(\.\d+)?/g) || []).map(x => num(x)).filter(x => x != null);
     const price = nums.length ? Math.max(...nums) : null;
     const token = pnuM ? pnuM[0] : (jibM ? jibM[0].replace(/\s/g, '') : '');
@@ -2188,7 +2343,10 @@ function applyPastedPrices() {
     if (!hits.length) { miss.push(line); return; }
     if (hits.length > 1) { dup.push(line); return; }
     const p = hits[0];
-    p.price = price; p.priceSrc = '붙여넣기'; p.priceYear = ''; p.priceMsg = '';
+    // 줄 안에 '2025.01'·'2025년 7월' 같은 연월이 있으면 그 연월로, 없으면 현재 선택 연월로 저장
+    const ymM = line.match(/(20\d{2})\s*[.\-\/년]\s*(\d{1,2})\s*월?/);
+    const ym = ymM ? normYM(ymM[1] + '.' + ymM[2]) : (ensureHist(p), p.priceYM || '');
+    setPriceEntry(p, ym, price, '붙여넣기', true); p.priceMsg = '';
     ok++;
   });
   document.getElementById('priceProgress').textContent =
@@ -2216,28 +2374,32 @@ async function loadPriceFile(e) {
       aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' });
     }
     // 헤더 행 찾기 (상위 10행 중 PNU·공시지가 열이 모두 있는 행)
-    let h = -1, cP = -1, cV = -1, cY = -1;
+    let h = -1, cP = -1, cV = -1, cY = -1, cM = -1;
     for (let r = 0; r < Math.min(10, aoa.length) && h < 0; r++) {
       const row = (aoa[r] || []).map(v => String(v).replace(/\s/g, ''));
       const p = row.findIndex(v => /^(PNU|pnu|고유번호|필지고유번호|토지고유번호)$/.test(v));
       const v = row.findIndex(v => /(개별)?공시지가|pblntfPclnd/.test(v) && !/일자|일$|구분/.test(v));
-      if (p >= 0 && v >= 0) { h = r; cP = p; cV = v; cY = row.findIndex(v => /기준(연도|년도)|stdrYear/.test(v)); }
+      if (p >= 0 && v >= 0) { h = r; cP = p; cV = v; cY = row.findIndex(v => /기준(연도|년도)|stdrYear/.test(v)); cM = row.findIndex(v => /기준월|stdrMt/.test(v)); }
     }
     if (h < 0) throw new Error('PNU(고유번호)와 공시지가 열을 찾지 못했습니다.');
-    const best = {};   // pnu → { price, year }
+    const best = {};   // pnu → { 'YYYY.MM': price }
     for (let r = h + 1; r < aoa.length; r++) {
       const row = aoa[r] || [];
       const pnu = String(row[cP] ?? '').replace(/\D/g, '');
       const price = num(row[cV]);
       if (pnu.length !== 19 || price == null) continue;
-      const year = cY >= 0 ? String(row[cY] ?? '') : '';
-      if (!best[pnu] || year > best[pnu].year) best[pnu] = { price, year };
+      const yy = cY >= 0 ? String(row[cY] ?? '').replace(/\D/g, '').slice(0, 4) : '';
+      const mm = cM >= 0 ? String(row[cM] ?? '').replace(/\D/g, '') : '';
+      const ym = yy ? (normYM(yy + '.' + (mm || '1')) || '') : '';
+      (best[pnu] = best[pnu] || {})[ym] = price;
     }
     let ok = 0;
     parsed.parcels.forEach(p => {
       const b = best[p.pnu];
       if (!b) return;
-      p.price = b.price; p.priceSrc = '파일'; p.priceYear = b.year; p.priceMsg = f.name; ok++;
+      Object.entries(b).forEach(([ym, price]) => setPriceEntry(p, ym, price, '파일', false));
+      const l = Object.keys(b).sort().reverse()[0];
+      selectYM(p, l); p.priceMsg = f.name; ok++;
     });
     document.getElementById('priceProgress').textContent = `파일 ${f.name} — ${Object.keys(best).length.toLocaleString()}건 중 이 사업 필지 ${ok}건 반영`;
     renderPriceTable();
@@ -2878,7 +3040,7 @@ function buildFormSpec() {
   box(S4, H1, P.gubun, H1 + 1, P.gubun, '산지구분', 'hG'); box(S4, H1, P.area, H1 + 1, P.area, '전용\n면적(㎡)', 'hG');
   box(S4, H1, P.price, H1, P.cap, '개별공시지가(원/㎡)', 'hG');
   put(S4, H1 + 1, P.price, '공시지가', 'hG'); put(S4, H1 + 1, P.raw, rates.pct === 0.1 ? '1000분의1' : `×${rates.pct}%`, 'hG'); put(S4, H1 + 1, P.cap, '상한액 적용', 'hG');
-  box(S4, H1, P.year, H1 + 1, P.year, '기준년도', 'hG'); box(S4, H1, P.src, H1 + 1, P.src, '출처', 'hW');
+  box(S4, H1, P.year, H1 + 1, P.year, '기준연월', 'hG'); box(S4, H1, P.src, H1 + 1, P.src, '출처', 'hW');
   S4.rows[H1] = 22; S4.rows[H1 + 1] = 30;
   const R4 = H1 + 3;   // 합계 6행 → 데이터 7행부터
   const L4 = R4 + D.parcels.length - 1;
@@ -2896,7 +3058,7 @@ function buildFormSpec() {
     const raw = p.price != null ? Math.round(p.price * rates.pct * 1e4) / 1e6 : 0;
     put(S4, r, P.raw, raw, 'w', p.price != null ? `${ref(P.price, r)}*${rates.pct}/100` : null);
     put(S4, r, P.cap, Math.min(raw, rates.cap), 'w', `MIN(${ref(P.raw, r)},${rates.cap})`);
-    put(S4, r, P.year, p.priceYear ? String(p.priceYear).slice(0, 4) + '년' : '', 'tC');
+    put(S4, r, P.year, p.priceYear ? String(p.priceYear) : '', 'tC');
     put(S4, r, P.src, priceSrcText(p), 'tC');
   });
   box(S4, H1 + 2, P.no, H1 + 2, P.gubun, '합     계', 'totL');
