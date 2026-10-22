@@ -537,6 +537,8 @@ window.APP_CONFIG = window.APP_CONFIG || { encodedKey: 'TVVVMk9ESTNNRVZHTUVORkxU
 #fundView .step-progress {padding:14px 12px;}
 }
 #fundView { display:none; }
+#fundView .preset-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px; font-size:12px; font-weight:700; color:var(--ink2); }
+#fundView .preset-row select { max-width:100%; font-weight:400; }
 #fundView .ym-input { width:92px; padding:4px 6px; border:1px solid var(--border); border-radius:5px; font-family:'DM Mono',monospace; font-size:12px; text-align:center; outline:none; }
 #fundView .ym-input:focus { border-color:var(--green); }
 #fundView .ym-input.unset { border-style:dashed; color:var(--ink3); }
@@ -992,7 +994,12 @@ window.APP_CONFIG = window.APP_CONFIG || { encodedKey: 'TVVVMk9ESTNNRVZHTUVORkxU
   <!-- ② 부과기준 -->
   <div class="sec-card hidden" id="rateCard">
     <div class="sec-card-title"><div class="dot"></div>② 부과기준 (산림청 고시)
-      <span class="sub">기본값: 2026년도 대체산림자원조성비 부과기준 (산림청고시 제2026-16호, 2026. 1. 30. 시행) · 고친 값은 이 브라우저에 저장됩니다</span>
+      <span class="sub">2021~2026년도 고시 중 선택 · 기본값 2026년도(산림청고시 제2026-16호) · 선택·수정값은 이 브라우저에 저장됩니다</span>
+    </div>
+    <div class="preset-row">
+      <label>적용 고시 연도</label>
+      <select id="rPreset" class="zone-select" onchange="applyPreset(this.value)"></select>
+      <span class="basis">부과시점(허가 신청·협의 시점)에 시행 중인 고시를 고르세요 · 값은 아래에서 직접 고칠 수도 있습니다</span>
     </div>
     <div class="rate-grid">
       <div class="rate-box"><label>준보전산지 단위면적당 금액</label>
@@ -1010,7 +1017,7 @@ window.APP_CONFIG = window.APP_CONFIG || { encodedKey: 'TVVVMk9ESTNNRVZHTUVORkxU
       <span style="font-size:11px">(0.1% = 1000분의 1)</span>
       <span style="margin-left:8px">적용 기준</span>
       <input type="text" id="rLabel" placeholder="예: 2026년도 고시" oninput="onRateChange()">
-      <button class="btn-sm" onclick="restoreDefaultRates()">↺ 기본값</button>
+      <button class="btn-sm" onclick="restoreDefaultRates()">↺ 선택한 고시값으로</button>
     </div>
     <div class="formula">
       부과금액 = 산지전용·일시사용허가 면적(㎡) × 단위면적당 금액 × (1 − 감면율)<br>
@@ -1018,11 +1025,11 @@ window.APP_CONFIG = window.APP_CONFIG || { encodedKey: 'TVVVMk9ESTNNRVZHTUVORkxU
     </div>
     <div class="alert alert-green" style="margin:12px 0 0" id="rateOk">
       <span class="alert-icon">✅</span>
-      <div style="font-size:12px"><strong>2026년도 부과기준</strong>(산림청고시 제2026-16호) 적용 중 — 준보전 8,340 · 보전 10,840 · 제한지역 16,680원/㎡, 개별공시지가의 1000분의 1(최대 8,340원/㎡)</div>
+      <div style="font-size:12px" id="rateOkText"></div>
     </div>
     <div class="alert alert-amber hidden" style="margin:12px 0 0" id="rateWarn">
       <span class="alert-icon">⚠️</span>
-      <div style="font-size:12px">2026년도 고시값과 다른 값으로 산정 중입니다. 고시값으로 돌리려면 <strong>↺ 기본값</strong>을 누르세요.</div>
+      <div style="font-size:12px" id="rateWarnText"></div>
     </div>
   </div>
 
@@ -1530,7 +1537,22 @@ loadProject();
 //  · 단위면적당 금액 = 산지별·지역별 단위면적당 산출금액 + 개별공시지가의 1000분의 1 (최대 8,340원/㎡)
 // 매년 고시로 바뀌므로 화면에서 수정 가능, localStorage에 저장
 // ═══════════════════════════════════════════════════════
-const DEFAULT_RATES = { jun: 8340, bo: 10840, res: 16680, cap: 8340, pct: 0.1, label: '2026년도 고시(제2026-16호)' };
+// 연도별 대체산림자원조성비 부과기준 (산지별·지역별 단위면적당 산출금액, 개별공시지가 반영비율·상한)
+//  · 2026: 산림청고시 제2026-16호 원문(사용자 제공 PDF)
+//  · 2021~2025: 사용자 제공 「대체산림자원조성비 부과대상 조서」(남양주왕숙) 개별공시지가 시트의 부과기준
+//  · 2024.7.1. 개정(제2024-44호)부터 공시지가 반영비율이 1000분의 10 → 1000분의 1로 변경
+const RATE_PRESETS = [
+  { key: '2026',   label: '2026년도 고시(제2026-16호, 2026.1.30. 시행)', jun: 8340, bo: 10840, res: 16680, cap: 8340, pct: 0.1 },
+  { key: '2025',   label: '2025년도 고시(2025.1.20. 시행)',              jun: 8190, bo: 10640, res: 16380, cap: 8190, pct: 0.1 },
+  { key: '2024-2', label: '2024년도 고시 개정(제2024-44호, 2024.7.1. 시행)', jun: 8090, bo: 10510, res: 16180, cap: 8090, pct: 0.1 },
+  { key: '2024-1', label: '2024년도 고시(2024.6.30.까지)',               jun: 8090, bo: 10510, res: 16180, cap: 8090, pct: 1 },
+  { key: '2023',   label: '2023년도 고시',                              jun: 7260, bo: 9430,  res: 14520, cap: 7260, pct: 1 },
+  { key: '2022',   label: '2022년도 고시(2021년 수준 동결)',              jun: 6790, bo: 8820,  res: 13580, cap: 6790, pct: 1 },
+  { key: '2021',   label: '2021년도 고시',                              jun: 6790, bo: 8820,  res: 13580, cap: 6790, pct: 1 },
+];
+const PRESET_MAP = Object.fromEntries(RATE_PRESETS.map(p => [p.key, p]));
+const DEFAULT_RATES = { ...RATE_PRESETS[0], preset: '2026', label: RATE_PRESETS[0].label };
+delete DEFAULT_RATES.key;
 // v2: 이전 버전(2023 기본값·반영비율 1%)으로 저장된 값을 쓰지 않도록 키 변경
 const RATE_KEY = 'forestFundRates_v2';
 try { localStorage.removeItem('forestFundRates_v1'); } catch (e) {}
@@ -1663,11 +1685,36 @@ function setStep(n) {
 function loadRates() {
   try {
     const saved = JSON.parse(localStorage.getItem(RATE_KEY) || 'null');
-    if (saved && typeof saved === 'object') rates = { ...DEFAULT_RATES, ...saved };
+    if (saved && typeof saved === 'object') {
+      rates = { ...DEFAULT_RATES, ...saved };
+      // 이전 버전 저장값(preset 없음): 일치하는 고시를 찾아 연결
+      if (!saved.preset) rates.preset = (RATE_PRESETS.find(p => matchesPreset(rates, p)) || { key: 'custom' }).key;
+    }
   } catch (e) {}
   writeRatesToUI();
 }
+function presetOptions() {
+  return RATE_PRESETS.map(p => `<option value="${p.key}">${escHtml(p.label)} — 준보전 ${p.jun.toLocaleString()} · 보전 ${p.bo.toLocaleString()} · ${p.pct === 0.1 ? '1/1000' : '10/1000'}</option>`).join('')
+    + '<option value="custom">직접 입력</option>';
+}
+function matchesPreset(r, p) {
+  return p && r.jun === p.jun && r.bo === p.bo && r.res === p.res && r.cap === p.cap && r.pct === p.pct;
+}
+function applyPreset(key) {
+  const p = PRESET_MAP[key];
+  if (!p) { rates.preset = 'custom'; saveRates(); updateFormula(); return; }
+  rates = { jun: p.jun, bo: p.bo, res: p.res, cap: p.cap, pct: p.pct, label: p.label, preset: key };
+  saveRates();
+  writeRatesToUI();
+  if (parsed) renderPriceTable();
+  if (!document.getElementById('resultArea').classList.contains('hidden')) calculate(false);
+  showToast(`📑 ${p.label} 적용`);
+}
+function saveRates() { try { localStorage.setItem(RATE_KEY, JSON.stringify(rates)); } catch (e) {} }
 function writeRatesToUI() {
+  const sel = document.getElementById('rPreset');
+  if (!sel.options.length) sel.innerHTML = presetOptions();
+  sel.value = PRESET_MAP[rates.preset] ? rates.preset : 'custom';
   document.getElementById('rJun').value = rates.jun;
   document.getElementById('rBo').value = rates.bo;
   document.getElementById('rRes').value = rates.res;
@@ -1679,10 +1726,18 @@ function writeRatesToUI() {
 function updateFormula() {
   document.getElementById('fPct').textContent = rates.pct;
   document.getElementById('fCap').textContent = Number(rates.cap || 0).toLocaleString();
-  const isDefault = rates.jun === DEFAULT_RATES.jun && rates.bo === DEFAULT_RATES.bo && rates.res === DEFAULT_RATES.res
-    && rates.cap === DEFAULT_RATES.cap && rates.pct === DEFAULT_RATES.pct;
-  document.getElementById('rateOk').classList.toggle('hidden', !isDefault);
-  document.getElementById('rateWarn').classList.toggle('hidden', isDefault);
+  const p = PRESET_MAP[rates.preset];
+  const ok = matchesPreset(rates, p);
+  const pctTxt = r => r.pct === 0.1 ? '1000분의 1' : r.pct === 1 ? '1000분의 10' : r.pct + '%';
+  document.getElementById('rateOk').classList.toggle('hidden', !ok);
+  document.getElementById('rateWarn').classList.toggle('hidden', ok);
+  if (ok) document.getElementById('rateOkText').innerHTML =
+    `<strong>${escHtml(p.label)}</strong> 적용 중 — 준보전 ${p.jun.toLocaleString()} · 보전 ${p.bo.toLocaleString()} · 제한지역 ${p.res.toLocaleString()}원/㎡, 개별공시지가의 ${pctTxt(p)}(최대 ${p.cap.toLocaleString()}원/㎡)`;
+  else document.getElementById('rateWarnText').innerHTML = p
+    ? `${escHtml(p.label)} 값과 다르게 고쳐서 산정 중입니다. 고시값으로 돌리려면 <strong>↺ 선택한 고시값으로</strong>를 누르세요.`
+    : '직접 입력한 부과기준으로 산정 중입니다.';
+  const sel = document.getElementById('rPreset');
+  if (sel && sel.options.length) sel.value = p ? rates.preset : 'custom';
 }
 function onRateChange() {
   rates = {
@@ -1692,18 +1747,15 @@ function onRateChange() {
     cap: num(document.getElementById('rCap').value) ?? 0,
     pct: num(document.getElementById('rPct').value) ?? 0,
     label: document.getElementById('rLabel').value.trim(),
+    preset: rates.preset,
   };
-  try { localStorage.setItem(RATE_KEY, JSON.stringify(rates)); } catch (e) {}
+  saveRates();
   updateFormula();
   if (parsed) renderPriceTable();
   if (!document.getElementById('resultArea').classList.contains('hidden')) calculate(false);
 }
 function restoreDefaultRates() {
-  rates = { ...DEFAULT_RATES };
-  try { localStorage.removeItem(RATE_KEY); } catch (e) {}
-  writeRatesToUI();
-  if (!document.getElementById('resultArea').classList.contains('hidden')) calculate(false);
-  showToast('↺ 기본 부과기준으로 되돌렸습니다');
+  applyPreset(PRESET_MAP[rates.preset] ? rates.preset : DEFAULT_RATES.preset);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2216,16 +2268,11 @@ function applyLatestYM() {
 }
 function ymCell(p, i) {
   ensureHist(p);
-  const keys = histKeys(p);
-  const chips = keys.filter(k => k !== p.priceYM || keys.length > 1).map(k => {
-    const e = p.priceHist[k];
-    const lbl = `${k || '미지정'} ${e.price != null ? e.price.toLocaleString() : '—'}`;
-    return k === p.priceYM
-      ? `<span class="ym-chip on" title="${escHtml(e.src || '')}">${escHtml(lbl)}</span>`
-      : `<span class="ym-chip" title="${escHtml((e.src || '') + ' · 클릭하면 이 연월 값 적용')}" onclick="pickYM(${i}, '${k}')">${escHtml(lbl)}<span class="x" title="이 연월 삭제" onclick="delYM(${i}, '${k}', event)">×</span></span>`;
-  }).join('');
-  return `<td><input type="text" class="ym-input ${p.priceYM ? '' : 'unset'}" value="${escHtml(p.priceYM)}" placeholder="YYYY.MM" list="ymList" onchange="setYM(${i}, this.value)">
-      ${keys.length > 1 ? `<div class="ym-chips">${chips}</div>` : ''}</td>`;
+  const keys = histKeys(p).filter(k => p.priceHist[k].price != null);
+  const tip = keys.length
+    ? '저장된 연월 — 입력하면 그 값으로 전환\n' + keys.map(k => `${k || '미지정'}  ${p.priceHist[k].price.toLocaleString()}원 (${p.priceHist[k].src || ''})`).join('\n')
+    : 'YYYY.MM 형식으로 입력';
+  return `<td><input type="text" class="ym-input ${p.priceYM ? '' : 'unset'}" value="${escHtml(p.priceYM)}" placeholder="YYYY.MM" list="ymList" title="${escHtml(tip)}" onchange="setYM(${i}, this.value)"></td>`;
 }
 // 토지이음 열람용 주소 · 링크
 function parcelAddr(p) {
@@ -2290,7 +2337,7 @@ function renderPriceTable() {
     </tr>`;
   }).join('');
   document.getElementById('priceTable').innerHTML =
-    `<thead><tr><th>연번</th><th>PNU</th><th>소재지</th><th>지번</th><th>지목</th><th>확인</th><th>기준연월<br><span style="font-weight:400">(다른 연월 클릭 시 전환)</span></th><th>공시지가(원/㎡)</th><th>산지구분</th><th>단위면적당 금액 산정식<br><span style="font-weight:400">산출금액 + 공시지가×${pctText()}</span></th><th>단위면적당 금액<br>(원/㎡)</th><th>출처</th><th>비고</th></tr></thead><tbody>${rows || '<tr><td colspan="13" style="padding:20px;color:var(--ink3)">공시지가 없는 필지가 없습니다 ✅</td></tr>'}</tbody>`;
+    `<thead><tr><th>연번</th><th>PNU</th><th>소재지</th><th>지번</th><th>지목</th><th>확인</th><th>기준연월<br><span style="font-weight:400">(YYYY.MM 입력)</span></th><th>공시지가(원/㎡)</th><th>산지구분</th><th>단위면적당 금액 산정식<br><span style="font-weight:400">산출금액 + 공시지가×${pctText()}</span></th><th>단위면적당 금액<br>(원/㎡)</th><th>출처</th><th>비고</th></tr></thead><tbody>${rows || '<tr><td colspan="13" style="padding:20px;color:var(--ink3)">공시지가 없는 필지가 없습니다 ✅</td></tr>'}</tbody>`;
 }
 function setPrice(i, val) {
   const p = parsed.parcels[i];
